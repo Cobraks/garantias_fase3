@@ -227,6 +227,30 @@ const ADD_DOC_KEY = "add-document";
 
                 initResizableColumns(table);
 
+                function resolveCurrentUserNameFromConfig(config = {}) {
+                        const user = (config && config.user) || {};
+                        const candidates = [
+                                user.name,
+                                user.display_name,
+                                user.displayName,
+                                user.full_name,
+                                user.fullName,
+                                user.username,
+                                user.user_login,
+                        ];
+
+                        for (const candidate of candidates) {
+                                if (typeof candidate === "string") {
+                                        const trimmed = candidate.trim();
+                                        if (trimmed) {
+                                                return trimmed;
+                                        }
+                                }
+                        }
+
+                        return "";
+                }
+
                 const goConfig = window.__GO_CONFIG__ || {};
                 const restRoot =
                         (goConfig.rest && goConfig.rest.root) ||
@@ -236,6 +260,7 @@ const ADD_DOC_KEY = "add-document";
                         (goConfig.rest && goConfig.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
+                const currentUserName = resolveCurrentUserNameFromConfig(goConfig);
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
@@ -262,6 +287,8 @@ const ADD_DOC_KEY = "add-document";
                         ["administrator", "admin", "go_garantias"].includes(normalizedRole);
                 const isCoreAdmin =
                         normalizedRole === "administrator" || normalizedRole === "admin";
+                const isComercial =
+                        normalizedRole === "go_comercial" || normalizedRole === "comercial";
                 const isDirector = normalizedRole === "go_director_comercial";
                 const isProfesional =
                         normalizedRole === "go_profesional" || normalizedRole === "profesional";
@@ -468,6 +495,16 @@ const ADD_DOC_KEY = "add-document";
                 const managementCoverageLabel = managementModal
                         ? managementModal.querySelector("[data-management-coverage]")
                         : null;
+                const managementActionsList = managementModal
+                        ? managementModal.querySelector(".management-actions__list")
+                        : null;
+                const managementActionsTitle = managementModal
+                        ? managementModal.querySelector(".management-actions__title")
+                        : null;
+                const managementActionsDanger = managementModal
+                        ? managementModal.querySelector(".management-actions__danger")
+                        : null;
+                const managementActionAnchors = new Map();
                 const MANAGEMENT_MODAL_TRANSITION = 260;
                 let managementModalCloseTimer = null;
                 let managementModalTrigger = null;
@@ -2946,7 +2983,7 @@ const ADD_DOC_KEY = "add-document";
                         return String(value).trim();
                 }
 
-                function dispatchTrashNotification(detail) {
+                function dispatchNotificationEvent(detail) {
                         if (!notificationsRoot || !detail) {
                                 return;
                         }
@@ -3003,7 +3040,7 @@ const ADD_DOC_KEY = "add-document";
                                 meta,
                                 created_at: new Date().toISOString(),
                         };
-                        dispatchTrashNotification(detail);
+                        dispatchNotificationEvent(detail);
                 }
 
                 function parseDisplayDate(value) {
@@ -3403,6 +3440,7 @@ const ADD_DOC_KEY = "add-document";
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 panel.dataset.plan = data.plan || rowData.plan || "";
+                                                panel.dataset.uuid = data.uuid || panel.dataset.uuid || "";
                                                 hydrateManagementDataset(panel, data, rowData);
                                                 syncManagementDetailFields(panel);
                                                 syncPdfModalDocs(panel);
@@ -3510,12 +3548,15 @@ const ADD_DOC_KEY = "add-document";
                                         return res.json();
                                 })
                                 .then((json) => {
-                                        const detailResponse = json?.detail || json;
-                                        if (!detailResponse) {
-                                                return;
-                                        }
-                                        const data = normalizeDetailData(detailResponse);
-                                        detailCache.set(id, data);
+                        const detailResponse = json?.detail || json;
+                        if (!detailResponse) {
+                                return;
+                        }
+                        const data = normalizeDetailData(detailResponse);
+                        detailCache.set(id, data);
+                        if (panel && data && data.uuid) {
+                                panel.dataset.uuid = data.uuid;
+                        }
                                         if (!row || !row.isConnected) {
                                                 row = tbody.querySelector(
                                                         `.guarantees-table__row[data-id="${id}"]`
@@ -3554,6 +3595,7 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.estado = newEstadoLabel;
                                         panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
+                                        panel.dataset.uuid = data.uuid || panel.dataset.uuid || "";
                                         hydrateManagementDataset(panel, data, rowData);
                                         syncManagementDetailFields(panel);
                                         setupTransferCountdown(panel);
@@ -3710,7 +3752,11 @@ const ADD_DOC_KEY = "add-document";
 
                         let row = context.row && context.row.isConnected ? context.row : findRowById(id);
                         const detail = detailCache.get(id) || {};
-                        const uuid = context.uuid || detail.uuid || "";
+                        const uuid =
+                                context.uuid ||
+                                detail.uuid ||
+                                panel?.dataset?.uuid ||
+                                "";
                         const originalLabel = confirmBtn?.textContent?.trim() || "Cancelar garantía";
 
                         const setConfirmLabel = (text, disabled) => {
@@ -3722,6 +3768,7 @@ const ADD_DOC_KEY = "add-document";
                         setConfirmLabel("Cancelando garantía", true);
 
                         const todayIso = formatDateIsoLocal(new Date());
+                        const cancelReasons = resolveCancelReasons(context);
                                 const body = {
                                         id,
                                         uuid,
@@ -3729,8 +3776,8 @@ const ADD_DOC_KEY = "add-document";
                                                 estado_garantia: {
                                                         estado_contratacion: "cancelada",
                                                         fecha_cancelacion: todayIso,
-                                                        motivo_cancelacion: context.cancelReason || "",
-                                                        otra_causa: context.cancelOtherReason || "",
+                                                        motivo_cancelacion: cancelReasons.reason || "",
+                                                        otra_causa: cancelReasons.other || "",
                                                 },
                                         },
                                         notify_customer: Boolean(context.notifyCustomer),
@@ -3797,20 +3844,27 @@ const ADD_DOC_KEY = "add-document";
                                         const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
                                         if (targetPanel) {
                                                 targetPanel.innerHTML = renderFullDetail(data, rowData);
-                                                targetPanel.dataset.matricula =
-                                                        data.matricula || rowData.matricula || "";
-                                                targetPanel.dataset.plan = data.plan || rowData.plan || "";
-                                                targetPanel.dataset.estado = newEstadoLabel;
-                                                targetPanel.dataset.estadoclase = newEstadoClase;
-                                                targetPanel.dataset.loadedId = id;
-                                                hydrateManagementDataset(targetPanel, data, rowData);
+                                                  targetPanel.dataset.matricula =
+                                                          data.matricula || rowData.matricula || "";
+                                                  targetPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                  targetPanel.dataset.estado = newEstadoLabel;
+                                                  targetPanel.dataset.estadoclase = newEstadoClase;
+                                                  targetPanel.dataset.loadedId = id;
+                                                  targetPanel.dataset.uuid = data.uuid || targetPanel.dataset.uuid || "";
+                                                  hydrateManagementDataset(targetPanel, data, rowData);
                                                 syncManagementDetailFields(targetPanel);
                                                 setupTransferCountdown(targetPanel);
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
+                                                syncManagementActionsAvailability(targetPanel);
                                                 showDetailToast(targetPanel, "Garantía cancelada.");
                                         }
 
+                                        const cancellationReasonText = resolveCancellationReasonText(
+                                                data?.estado_garantia || {},
+                                                cancelReasons.reason,
+                                                cancelReasons.other
+                                        );
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
                                         window.setTimeout(() => {
@@ -4503,6 +4557,82 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function ensureManagementAction(selector) {
+                        if (!managementModal || !managementActionsList) {
+                                return null;
+                        }
+                        const cached = managementActionAnchors.get(selector);
+                        if (cached) {
+                                return cached;
+                        }
+                        const action = managementModal.querySelector(selector);
+                        if (!action || !action.parentNode) {
+                                return null;
+                        }
+                        const placeholder = document.createComment(selector);
+                        action.parentNode.insertBefore(placeholder, action);
+                        managementActionAnchors.set(selector, {
+                                placeholder,
+                                template: action.cloneNode(true),
+                        });
+                        return managementActionAnchors.get(selector);
+                }
+
+                function syncManagementActionsAvailability(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+
+                        if (isComercial) {
+                                if (managementActionsTitle?.isConnected) {
+                                        managementActionsTitle.remove();
+                                }
+                                if (managementActionsList?.isConnected) {
+                                        managementActionsList.remove();
+                                }
+                                if (managementActionsDanger?.isConnected) {
+                                        managementActionsDanger.remove();
+                                }
+                                return;
+                        }
+
+                        if (!managementActionsList) {
+                                return;
+                        }
+                        const estadoClase =
+                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
+                                        .toLowerCase();
+                        const isCancelled = estadoClase === "cancelada";
+                        const toggleAction = (selector) => {
+                                const cache = ensureManagementAction(selector);
+                                if (!cache || !cache.placeholder || !cache.placeholder.parentNode) {
+                                        return;
+                                }
+                                const existing = managementModal.querySelector(selector);
+                                if (isCancelled) {
+                                        if (existing) {
+                                                existing.remove();
+                                        }
+                                        return;
+                                }
+
+                                if (existing) {
+                                        existing.hidden = false;
+                                        existing.removeAttribute("aria-hidden");
+                                        return;
+                                }
+
+                                const clone = cache.template.cloneNode(true);
+                                cache.placeholder.parentNode.insertBefore(
+                                        clone,
+                                        cache.placeholder.nextSibling
+                                );
+                        };
+
+                        toggleAction('[data-management-action="cancel-for-nonpayment"]');
+                        toggleAction('[data-management-action="certificate-error"]');
+                }
+
                 function formatDateIsoLocal(value) {
                         const date = value instanceof Date ? value : new Date(value);
                         if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -4510,6 +4640,49 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const pad = (v) => String(v).padStart(2, "0");
                         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                }
+
+                function resolveCancelReasons(context = {}) {
+                        const selected =
+                                typeof context.cancelReason === "string"
+                                        ? context.cancelReason.trim()
+                                        : "";
+                        const other =
+                                typeof context.cancelOtherReason === "string"
+                                        ? context.cancelOtherReason.trim()
+                                        : "";
+                        const isOther = selected === "Otra causa";
+                        return {
+                                reason: isOther && other ? other : selected,
+                                other: isOther ? other : "",
+                        };
+                }
+
+                function resolveCancellationReasonText(detailData = {}, fallbackReason = "", fallbackOther = "") {
+                        const estado =
+                                (detailData && typeof detailData === "object"
+                                        ? detailData.estado_garantia || detailData
+                                        : {}) || {};
+                        const reason =
+                                (typeof estado.motivo_cancelacion === "string"
+                                        ? estado.motivo_cancelacion.trim()
+                                        : "") ||
+                                (typeof detailData.motivo_cancelacion === "string"
+                                        ? detailData.motivo_cancelacion.trim()
+                                        : "") ||
+                                fallbackReason;
+                        const other =
+                                (typeof estado.otra_causa === "string" ? estado.otra_causa.trim() : "") ||
+                                (typeof detailData.otra_causa === "string" ? detailData.otra_causa.trim() : "") ||
+                                fallbackOther;
+
+                        if (reason && reason !== "Otra causa") {
+                                return reason;
+                        }
+                        if (reason === "Otra causa" && other) {
+                                return other;
+                        }
+                        return reason || other || "";
                 }
 
                 function syncManagementNotesEmptyState() {
@@ -5042,6 +5215,7 @@ const ADD_DOC_KEY = "add-document";
 
                         syncManagementDetailFields(activePanel);
                         syncManagementNotesEmptyState();
+                        syncManagementActionsAvailability(activePanel);
                 }
 
                 function openManagementModal(trigger) {
@@ -6534,6 +6708,12 @@ const ADD_DOC_KEY = "add-document";
                         card.className = "guarantee-card";
                         if (view.id) {
                                 card.dataset.id = view.id;
+                        }
+                        if (view.estadoClase) {
+                                card.dataset.estadoclase = view.estadoClase;
+                        }
+                        if (view.estadoLabel) {
+                                card.dataset.estado = view.estadoLabel;
                         }
                         const statusClasses = ["guarantee-card__status"];
                         if (view.estadoClase) {
@@ -9302,6 +9482,11 @@ const ADD_DOC_KEY = "add-document";
         .map((doc) => {
             const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
             const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;
+            const enforcedCancelledLabel = isCancelada && key === "certificate";
+            const isCancelledCertificate = Boolean(
+                doc.is_cancelled_certificate || doc.cancelled_certificate
+            ) || enforcedCancelledLabel;
+            const cancelDate = typeof doc.cancel_date === "string" ? doc.cancel_date : "";
             const listLabel =
                 (typeof doc.listLabel === "string" && doc.listLabel.trim() !== "" ? doc.listLabel : null) ||
                 (typeof doc.title === "string" && doc.title.trim() !== "" ? doc.title : null) ||
@@ -9311,6 +9496,12 @@ const ADD_DOC_KEY = "add-document";
                 (typeof doc.downloadLabel === "string" && doc.downloadLabel.trim() !== "" ? doc.downloadLabel : null) ||
                 (base && base.successLabel) ||
                 "Descargar documento";
+            const resolvedListLabel = isCancelledCertificate
+                ? "Certificado cancelado"
+                : listLabel;
+            const resolvedDownloadLabel = isCancelledCertificate
+                ? "Descargar certificado cancelado"
+                : downloadLabel;
             let iconKey = "";
             if (base && base.icon) {
                 iconKey = base.icon.toLowerCase();
@@ -9329,14 +9520,16 @@ const ADD_DOC_KEY = "add-document";
             return {
                 key: key || `doc-${Math.random().toString(16).slice(2)}`,
                 url,
-                listLabel,
-                downloadLabel,
+                listLabel: resolvedListLabel,
+                downloadLabel: resolvedDownloadLabel,
                 iconKey,
                 mime: typeof doc.mime === "string" ? doc.mime : "",
                 extension: typeof doc.extension === "string" ? doc.extension : "",
                 filename: typeof doc.filename === "string" ? doc.filename : "",
                 kind: typeof doc.kind === "string" ? doc.kind : "general",
                 row: doc.row || "",
+                isCancelledCertificate,
+                cancelDate,
             };
         })
         .filter((doc) => doc.url)
@@ -9363,7 +9556,14 @@ const ADD_DOC_KEY = "add-document";
                 const safeClassName = rawClassKey
                     ? rawClassKey.toLowerCase().replace(/[^a-z0-9_-]/g, "")
                     : "";
-                const buttonClass = safeClassName !== "" ? ` detail__docs-btn--${safeClassName}` : "";
+                const buttonClasses = [];
+                if (safeClassName !== "") {
+                    buttonClasses.push(`detail__docs-btn--${safeClassName}`);
+                }
+                if (doc.isCancelledCertificate) {
+                    buttonClasses.push("detail__docs-btn--cancelled");
+                }
+                const buttonClass = buttonClasses.length ? ` ${buttonClasses.join(" ")}` : "";
                 const iconMarkup = doc.iconKey === "payment"
                     ? paymentIcon
                     : doc.iconKey === "download" && downloadIcon !== ""
@@ -9374,6 +9574,7 @@ const ADD_DOC_KEY = "add-document";
                     `data-doc-index="${idx}"`,
                     `data-doc-url="${escapeAttr(doc.url)}"`,
                 ];
+                if (doc.isCancelledCertificate) attrs.push('data-doc-cancelled="1"');
                 if (doc.mime) attrs.push(`data-doc-mime="${escapeAttr(doc.mime)}"`);
                 if (doc.extension) attrs.push(`data-doc-extension="${escapeAttr(doc.extension)}"`);
                 if (doc.filename) attrs.push(`data-doc-filename="${escapeAttr(doc.filename)}"`);
@@ -9410,6 +9611,8 @@ const ADD_DOC_KEY = "add-document";
     } else {
         docsListHtml = `<p class="detail__alert-section">Documentación no disponible</p>`;
     }
+    const hideDetailSections = isProfesional || isParticular;
+
     const docsSectionHtml = isSinFinalizar
         ? ""
         : `<section class="detail__section detail__section--docs">` +
@@ -9417,6 +9620,57 @@ const ADD_DOC_KEY = "add-document";
               `${docsListHtml}` +
           `</section>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
+    const vehicleSectionHtml = hideDetailSections
+        ? ""
+        : `<section class="detail__section">` +
+              `<h3>Datos del vehículo</h3>` +
+              `<ul>` +
+                  `<li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>` +
+                  `<li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>` +
+                  `<li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>` +
+                  `<li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>` +
+                  `${antiguedadRowHtml}` +
+                  `<li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>` +
+                  `<li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>` +
+                  `<li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>` +
+              `</ul>` +
+          `</section>`;
+    const technicalSectionHtml = hideDetailSections
+        ? ""
+        : `<section class="detail__section">` +
+              `<h3>Detalles técnicos</h3>` +
+              `<ul>` +
+                  `<li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>` +
+                  `<li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>` +
+                  `${traccionRowHtml}` +
+                  `<li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>` +
+                  `<li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>` +
+              `</ul>` +
+          `</section>`;
+    const customerSectionHtml = hideDetailSections
+        ? ""
+        : `<section class="detail__section detail__section--datos_cliente">`
+              + `<h3>Datos del cliente</h3>`
+              + (hasBuyerInfo
+                    ? `
+                        <ul>
+                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
+                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
+                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
+                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
+                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
+                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
+                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
+
+                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
+                        </ul>
+                        ${renderFastActions(
+                            data.telefono_comprador ?? rowData.telefono_comprador,
+                            data.email_comprador ?? rowData.email_comprador
+                        )}
+                    `
+                    : `<p class="detail__alert-section">Faltan datos del cliente</p>`)
+              + `</section>`;
     const showChannelSection = isAdmin;
     const showActions = canManageDetailActions;
     const showManagementHub = canAccessManagementHub;
@@ -9690,8 +9944,9 @@ const ADD_DOC_KEY = "add-document";
         if (numeric === null) return "";
         return numeric.toFixed(2).replace(".", ",");
     };
+    const canShowInlineUtilities = !(isProfesional || isParticular);
     const inlineUtilitiesHtml =
-        canAccessManagementHub || inlineCountdownHtml
+        canShowInlineUtilities && (canAccessManagementHub || inlineCountdownHtml)
             ? `<div class="detail__inline-utilities">` +
                   `${inlineCountdownHtml}` +
                   `${canAccessManagementHub
@@ -9702,13 +9957,16 @@ const ADD_DOC_KEY = "add-document";
                       : ""}` +
               `</div>`
             : "";
+    const timelineValueClass = isCancelada
+        ? "detail__timeline-value detail__timeline-value--cancelled"
+        : "detail__timeline-value";
     const billingTimelineHtml = `${inlineUtilitiesHtml}<div class="detail__timeline-list">` +
         `<div class="detail__timeline detail__timeline--contract">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">${
                     isSinFinalizar ? "Iniciada" : "Fecha contratación"
                 }</span>` +
-                `<span class="detail__timeline-value">${formatTimelineDate(
+                `<span class="${timelineValueClass}">${formatTimelineDate(
                     isSinFinalizar ? creationDateValue : contractDateRaw
                 )}</span>` +
             `</div>` +
@@ -9716,7 +9974,7 @@ const ADD_DOC_KEY = "add-document";
         `<div class="detail__timeline detail__timeline--range">` +
             `<div class="detail__timeline-point">` +
                 `<span class="detail__timeline-label">Inicio cobertura</span>` +
-                `<span class="detail__timeline-value">${
+                `<span class="${timelineValueClass}">${
                     hasCoverageStart ? formatTimelineDate(coverageStartDateRaw) : "—"
                 }</span>` +
             `</div>` +
@@ -9728,7 +9986,7 @@ const ADD_DOC_KEY = "add-document";
             `</div>` +
             `<div class="detail__timeline-point detail__timeline-point--end">` +
                 `<span class="detail__timeline-label">Vencimiento</span>` +
-                `<span class="detail__timeline-value">${
+                `<span class="${timelineValueClass}">${
                     hasCoverageEnd ? formatTimelineDate(coverageEndDateRaw) : "—"
                 }</span>` +
             `</div>` +
@@ -9909,50 +10167,10 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                ${antiguedadRowHtml}
-                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
+                ${vehicleSectionHtml}
+                ${technicalSectionHtml}
                 ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        ${hasBuyerInfo
-                            ? `<ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-                        
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>
-                        ${renderFastActions(
-                                data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador
-                        )}`
-                            : `<p class="detail__alert-section">Faltan datos del cliente</p>`}
-                </section>
+                ${customerSectionHtml}
                 ${sinFinalActionsHtml}
         </div>`;
     }
@@ -10065,9 +10283,9 @@ const ADD_DOC_KEY = "add-document";
     const validationBaseHtml = vendorDisplayHtml
         ? `${vendorDisplayHtml} ha indicado que ha realizado la transferencia.`
         : escapeHtml("El cliente ha indicado que ha realizado la transferencia.");
-    const adminValidationHtml = `${validationBaseHtml} Revisa la operación y activa la garantía cuando proceda.`;
-    const staffValidationHtml = validationBaseHtml;
-        const cancellationDateRaw = pickEstadoGarantiaField("fecha_cancelacion", "");
+            const adminValidationHtml = `${validationBaseHtml} Revisa la operación y activa la garantía cuando proceda.`;
+            const staffValidationHtml = validationBaseHtml;
+                const cancellationDateRaw = pickEstadoGarantiaField("fecha_cancelacion", "");
         const cancellationDateFmt = pickEstadoGarantiaField("fecha_cancelacion_fmt", cancellationDateRaw);
         const cancellationReason = pickEstadoGarantiaField("motivo_cancelacion", "");
         const cancellationOther = pickEstadoGarantiaField("otra_causa", "");
@@ -10079,17 +10297,27 @@ const ADD_DOC_KEY = "add-document";
                 const cancelText = cancelDateLabel
                     ? `La garantía ha sido cancelada el ${cancelDateLabel}.`
                     : "La garantía ha sido cancelada.";
-                const cancelNote = `${cancelText} Ponte en contacto con ${cancelTarget}.`;
-                const reasonDisplay = cancellationReason === "Otra causa"
-                    ? cancellationOther
-                    : cancellationReason;
-                const reasonHtml = reasonDisplay
-                    ? `<p class="detail__payment-note detail__payment-note--cancelled-reason">` +
-                      `Motivo: ${escapeHtml(reasonDisplay)}</p>`
+                const reasonDisplay = cancellationReason && cancellationReason !== "Otra causa"
+                    ? cancellationReason
+                    : (cancellationOther || cancellationReason);
+                const contactLine =
+                    isProfesional || isParticular
+                        ? "Ponte en contacto con tu comercial asignado o con el Departamento Comercial de 360VO."
+                        : `Ponte en contacto con ${cancelTarget}.`;
+                const reasonRow = reasonDisplay
+                    ? `<span class="detail__payment-note-row"><span class="detail__payment-note-label">Motivo:</span> <span class="detail__payment-note-value">${escapeHtml(reasonDisplay)}</span></span>`
                     : "";
+                const cancelNoteHtml =
+                    `<p class="detail__payment-note detail__payment-note--cancelled">` +
+                        `<span class="detail__payment-note-icon" aria-hidden="true">${warningIcon}</span>` +
+                        `<span class="detail__payment-note-text">` +
+                            `<span class="detail__payment-note-row">${cancelText}</span>` +
+                            `${reasonRow}` +
+                            `<span class="detail__payment-note-row detail__payment-note-subtext">${contactLine}</span>` +
+                        `</span>` +
+                    `</p>`;
                 return `<section class="detail__section detail__section--payment">` +
-                        `<p class="detail__payment-note detail__payment-note--cancelled">${cancelNote}</p>` +
-                        `${reasonHtml}` +
+                        `${cancelNoteHtml}` +
                         `</section>`;
             }
         if (isAdmin && metodoPago.startsWith("domiciliacion") && !cobroRealizado) {
@@ -10209,49 +10437,10 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
-                <section class="detail__section">
-                        <h3>Datos del vehículo</h3>
-                        <ul>
-                                <li class="detail__item"><strong>Marca/Modelo:</strong> ${pickField("marca_modelo")}</li>
-                                <li class="detail__item"><strong>Tipo:</strong> ${pickField("tipo", "-")}</li>
-                                <li class="detail__item${recargoClass("kilometros")}"><strong>Kilómetros:</strong> ${pickField("kilometros", "-")} km</li>
-                                <li class="detail__item${recargoClass("antiguedad")}"><strong>1ª Matriculación:</strong> ${pickField("primera_matriculacion", "-")}</li>
-                                ${antiguedadRowHtml}
-                                <li class="detail__item"><strong>Matrícula:</strong> ${pickField("matricula")}</li>
-                                <li class="detail__item"><strong>Nº Bastidor:</strong> ${pickField("bastidor", "-")}</li>
-                                <li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>
-                        </ul>
-                </section>
-                <section class="detail__section">
-                        <h3>Detalles técnicos</h3>
-                        <ul>
-                                <li class="detail__item${recargoClass("combustible")}"><strong>Combustible:</strong> ${pickField("combustible", "-")}</li>
-                                <li class="detail__item${recargoClass("cambio")}"><strong>Cambio:</strong> ${pickField("cambio", "-")}</li>
-                                ${traccionRowHtml}
-                                <li class="detail__item${recargoClass("potencia")}"><strong>Potencia:</strong> ${pickField("potencia", "-")} ${potenciaUnidad}</li>
-                                <li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>
-                        </ul>
-                </section>
+                ${vehicleSectionHtml}
+                ${technicalSectionHtml}
                 ${docsSectionHtml}
-                <section class="detail__section detail__section--datos_cliente">
-                        <h3>Datos del cliente</h3>
-                        <ul>
-                                <li><strong>Nombre:</strong> ${pickField("nombre_comprador", "-")}</li>
-                                <li><strong>DNI/NIE:</strong> ${pickField("dni_comprador", "-")}</li>
-                                <li><strong>Teléfono:</strong> ${pickField("telefono_comprador", "-")}</li>
-                                <li><strong>Email:</strong> ${pickField("email_comprador", "-")}</li>
-                                <li><strong>Dirección:</strong> ${pickField("direccion_comprador", "-")}</li>
-                                <li><strong>Localidad:</strong> ${pickField("localidad_comprador", "-")}</li>
-                                <li><strong>Provincia:</strong> ${pickField("provincia_comprador", "-")}</li>
-                                <li><strong>Código Postal:</strong> ${pickField("codigo_postal_comprador", "-")}</li>
-                        </ul>
-                        ${renderFastActions(
-                                data.telefono_comprador ?? rowData.telefono_comprador,
-                                data.email_comprador ?? rowData.email_comprador,
-                                "telefono_comprador",
-                                "email_comprador"
-                        )}
-                </section>
+                ${customerSectionHtml}
                 ${actionsHtml}
                 ${deleteActionHtml}
         </div>
@@ -10401,6 +10590,7 @@ async function activateRow(row, options = {}) {
                                 nextPanel.dataset.matricula =
                                         cachedDetail.matricula || rowData.matricula || "";
                                 nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                nextPanel.dataset.uuid = cachedDetail.uuid || nextPanel.dataset.uuid || "";
                                 hydrateManagementDataset(nextPanel, cachedDetail, rowData);
                                 syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
@@ -10415,6 +10605,7 @@ async function activateRow(row, options = {}) {
                                 nextPanel.classList.add("is-loading");
                                 nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
                                 nextPanel.dataset.plan = rowData.plan || "";
+                                nextPanel.dataset.uuid = rowData.uuid || nextPanel.dataset.uuid || "";
                                 hydrateManagementDataset(nextPanel, {}, rowData);
                                 syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
@@ -10470,6 +10661,7 @@ async function activateRow(row, options = {}) {
                                                 nextPanel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                nextPanel.dataset.uuid = data.uuid || nextPanel.dataset.uuid || "";
                                                 hydrateManagementDataset(nextPanel, data, rowData);
                                                 syncManagementDetailFields(nextPanel);
                                                 syncPdfModalDocs(nextPanel);
@@ -10604,9 +10796,9 @@ async function activateRow(row, options = {}) {
                                 }
                         }
 
-                        function showPdfView(buttons) {
-                                if (uploadView) uploadView.hidden = true;
-                                if (iframe) iframe.hidden = false;
+        function showPdfView(buttons) {
+                if (uploadView) uploadView.hidden = true;
+                if (iframe) iframe.hidden = false;
                                 if (dl) dl.hidden = false;
                                 const docButtons = buttons.filter(
                                         (btn) => btn.dataset.docKey !== ADD_DOC_KEY
@@ -10619,18 +10811,24 @@ async function activateRow(row, options = {}) {
                                 if (nextBtn) nextBtn.hidden = hideNav;
                                 if (prevBtn) prevBtn.disabled = hideNav;
                                 if (nextBtn) nextBtn.disabled = hideNav;
-                                if (docList) docList.hidden = hideHeader;
-                        }
+                if (docList) docList.hidden = hideHeader;
+        }
 
-                        function openDocByIndex(idx) {
-                                const buttons = getButtons();
-                                if (idx < 0 || idx >= buttons.length) return;
-                                const prevIdx = currentIdx;
-                                currentIdx = idx;
-                                const btn = buttons[idx];
-                                const rawUrl = btn.dataset.docUrl || "";
-                                const docKey = btn.dataset.docKey || "";
-                                const isAddDoc = docKey === ADD_DOC_KEY;
+        const toggleDocButtonLoading = (btn, isLoading) => {
+                if (!btn) return;
+                btn.classList.toggle("detail__docs-btn--loading", Boolean(isLoading));
+        };
+
+        function openDocByIndex(idx) {
+                const buttons = getButtons();
+                if (idx < 0 || idx >= buttons.length) return;
+                const prevIdx = currentIdx;
+                currentIdx = idx;
+                const btn = buttons[idx];
+                buttons.forEach((b) => b.classList.remove("detail__docs-btn--loading"));
+                const rawUrl = btn.dataset.docUrl || "";
+                const docKey = btn.dataset.docKey || "";
+                const isAddDoc = docKey === ADD_DOC_KEY;
                                 buttons.forEach((b, i) => b.classList.toggle("active", i === idx));
                                 if (prevBtn) {
                                         prevBtn.disabled = idx === 0;
@@ -10639,20 +10837,22 @@ async function activateRow(row, options = {}) {
                                         nextBtn.disabled = idx === buttons.length - 1;
                                 }
 
-                                if (isAddDoc) {
-                                        showUploadView();
-                                        return;
-                                }
+                if (isAddDoc) {
+                        showUploadView();
+                        toggleDocButtonLoading(btn, false);
+                        return;
+                }
 
-                                const url = normalizeDocUrl(rawUrl);
-                                if (!url) {
-                                        if (spinner) spinner.classList.remove("active");
-                                        if (iframe) {
-                                                iframe.hidden = false;
-                                                iframe.src = "about:blank";
-                                        }
-                                        return;
-                                }
+                const url = normalizeDocUrl(rawUrl);
+                if (!url) {
+                        if (spinner) spinner.classList.remove("active");
+                        if (iframe) {
+                                iframe.hidden = false;
+                                iframe.src = "about:blank";
+                        }
+                        toggleDocButtonLoading(btn, false);
+                        return;
+                }
 
                                 showPdfView(buttons);
 
@@ -10686,37 +10886,41 @@ async function activateRow(row, options = {}) {
                                         if (spinner) spinner.classList.remove("active");
                                 };
 
-                                const cachedObjectUrl = getCachedDocumentObjectUrl(url);
-                                if (cachedObjectUrl) {
-                                        if (spinner) spinner.classList.remove("active");
-                                        applyIframeSrc(cachedObjectUrl);
-                                        return;
-                                }
+                const cachedObjectUrl = getCachedDocumentObjectUrl(url);
+                if (cachedObjectUrl) {
+                        if (spinner) spinner.classList.remove("active");
+                        applyIframeSrc(cachedObjectUrl);
+                        toggleDocButtonLoading(btn, false);
+                        return;
+                }
 
-                                if (spinner) spinner.classList.add("active");
-                                if (iframe) {
-                                        iframe.hidden = false;
-                                        iframe.src = "about:blank";
-                                }
+                toggleDocButtonLoading(btn, true);
+                if (spinner) spinner.classList.add("active");
+                if (iframe) {
+                        iframe.hidden = false;
+                        iframe.src = "about:blank";
+                }
 
                                 ensureDocumentPreloaded(url)
                                         .then((objectUrl) => {
-                                                if (!objectUrl) {
-                                                        throw new Error("Documento no disponible");
-                                                }
-                                                applyIframeSrc(objectUrl);
-                                        })
-                                        .catch((error) => {
-                                                if (currentIdx !== idx) {
-                                                        return;
-                                                }
-                                                console.error(
-                                                        "No se pudo cargar el documento",
-                                                        error
-                                                );
-                                                if (spinner) spinner.classList.remove("active");
-                                        });
-                        }
+                                        if (!objectUrl) {
+                                                throw new Error("Documento no disponible");
+                                        }
+                                        applyIframeSrc(objectUrl);
+                                        toggleDocButtonLoading(btn, false);
+                                })
+                                .catch((error) => {
+                                        if (currentIdx !== idx) {
+                                                return;
+                                        }
+                                        console.error(
+                                                "No se pudo cargar el documento",
+                                                error
+                                        );
+                                        if (spinner) spinner.classList.remove("active");
+                                        toggleDocButtonLoading(btn, false);
+                                });
+        }
 
                         const canUseHistory = () =>
                                 panelHistory &&

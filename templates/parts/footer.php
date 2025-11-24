@@ -79,6 +79,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
         $current_user = wp_get_current_user();
     }
     $roles = (array) $current_user->roles;
+    $display_name = $current_user instanceof \WP_User ? $current_user->display_name : '';
     $is_admin = user_can($current_user, 'manage_options');
     $is_comercial = in_array('go_comercial', $roles, true);
     $is_director = in_array('go_director_comercial', $roles, true);
@@ -114,7 +115,8 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                 nonce: "<?php echo esc_js(wp_create_nonce('wp_rest')); ?>"
             },
             user: {
-                role: "<?php echo esc_js($js_user_role); ?>"
+                role: "<?php echo esc_js($js_user_role); ?>",
+                name: "<?php echo esc_js($display_name ?? ''); ?>"
             },
             icons: {
                 pdf: `<?php echo addslashes($icon_pdf_html); ?>`,
@@ -529,6 +531,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                         }
                         ?>",
                 currentUserId: <?php echo (int) get_current_user_id(); ?>,
+                name: "<?php echo esc_js($display_name ?? ''); ?>",
                 companyName: "<?php echo esc_js($current_user_company_name); ?>",
                 companyTypeLabel: "<?php echo esc_js($current_user_company_type_label); ?>"
             },
