@@ -236,6 +236,9 @@ const ADD_DOC_KEY = "add-document";
                         (goConfig.rest && goConfig.rest.nonce) ||
                         (window.GO_REST && window.GO_REST.nonce) ||
                         "";
+                const currentUserName =
+                        (goConfig.user && goConfig.user.name) ||
+                        "";
                 const userRole =
                         (goConfig.user && goConfig.user.role) ||
                         "user";
@@ -2946,7 +2949,7 @@ const ADD_DOC_KEY = "add-document";
                         return String(value).trim();
                 }
 
-                function dispatchTrashNotification(detail) {
+                function dispatchNotificationEvent(detail) {
                         if (!notificationsRoot || !detail) {
                                 return;
                         }
@@ -3003,7 +3006,55 @@ const ADD_DOC_KEY = "add-document";
                                 meta,
                                 created_at: new Date().toISOString(),
                         };
-                        dispatchTrashNotification(detail);
+                        dispatchNotificationEvent(detail);
+                }
+
+                function notifyGuaranteeCancelled(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const plan = formatNotificationMetaText(context.plan);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const reason = formatNotificationMetaText(context.reason);
+                        const userName = formatNotificationMetaText(context.userName);
+
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (plan) {
+                                meta.push({ label: "Plan", text: plan });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const displayPlate = safePlate || (guaranteeId ? `#${guaranteeId}` : "");
+                        const actor = userName || "Alguien";
+                        const reasonText = reason || "-";
+
+                        const bodyParts = [
+                                displayPlate
+                                        ? `${actor} ha cancelado la garantía ${displayPlate}.`
+                                        : `${actor} ha cancelado una garantía.`,
+                                `Motivo: ${reasonText}.`,
+                        ];
+
+                        const detail = {
+                                id: Date.now(),
+                                title: "Garantía cancelada",
+                                body: bodyParts.join(" "),
+                                icon_slug: "delete",
+                                icon_svg: deleteNotificationIcon,
+                                badge: "Garantías",
+                                tone: "warning",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        };
+
+                        dispatchNotificationEvent(detail);
                 }
 
                 function parseDisplayDate(value) {
@@ -3722,6 +3773,7 @@ const ADD_DOC_KEY = "add-document";
                         setConfirmLabel("Cancelando garantía", true);
 
                         const todayIso = formatDateIsoLocal(new Date());
+                        const cancelReasons = resolveCancelReasons(context);
                                 const body = {
                                         id,
                                         uuid,
@@ -3729,8 +3781,8 @@ const ADD_DOC_KEY = "add-document";
                                                 estado_garantia: {
                                                         estado_contratacion: "cancelada",
                                                         fecha_cancelacion: todayIso,
-                                                        motivo_cancelacion: context.cancelReason || "",
-                                                        otra_causa: context.cancelOtherReason || "",
+                                                        motivo_cancelacion: cancelReasons.reason || "",
+                                                        otra_causa: cancelReasons.other || "",
                                                 },
                                         },
                                         notify_customer: Boolean(context.notifyCustomer),
@@ -3808,8 +3860,22 @@ const ADD_DOC_KEY = "add-document";
                                                 setupTransferCountdown(targetPanel);
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
+                                                syncManagementActionsAvailability(targetPanel);
                                                 showDetailToast(targetPanel, "Garantía cancelada.");
                                         }
+
+                                        const cancellationReasonText = resolveCancellationReasonText(
+                                                data?.estado_garantia || {},
+                                                cancelReasons.reason,
+                                                cancelReasons.other
+                                        );
+                                        notifyGuaranteeCancelled({
+                                                id,
+                                                matricula: data.matricula || rowData.matricula || "",
+                                                plan: data.plan || rowData.plan || "",
+                                                reason: cancellationReasonText,
+                                                userName: currentUserName,
+                                        });
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
@@ -4503,6 +4569,29 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
+                function syncManagementActionsAvailability(panel) {
+                        if (!managementModal) {
+                                return;
+                        }
+                        const estadoClase =
+                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
+                                        .toLowerCase();
+                        const isCancelled = estadoClase === "cancelada";
+                        const toggleAction = (selector) => {
+                                const btn = managementModal.querySelector(selector);
+                                if (!btn) return;
+                                btn.hidden = isCancelled;
+                                if (isCancelled) {
+                                        btn.setAttribute("aria-hidden", "true");
+                                } else {
+                                        btn.removeAttribute("aria-hidden");
+                                }
+                        };
+
+                        toggleAction('[data-management-action="cancel-for-nonpayment"]');
+                        toggleAction('[data-management-action="certificate-error"]');
+                }
+
                 function formatDateIsoLocal(value) {
                         const date = value instanceof Date ? value : new Date(value);
                         if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
@@ -4510,6 +4599,49 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const pad = (v) => String(v).padStart(2, "0");
                         return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+                }
+
+                function resolveCancelReasons(context = {}) {
+                        const selected =
+                                typeof context.cancelReason === "string"
+                                        ? context.cancelReason.trim()
+                                        : "";
+                        const other =
+                                typeof context.cancelOtherReason === "string"
+                                        ? context.cancelOtherReason.trim()
+                                        : "";
+                        const isOther = selected === "Otra causa";
+                        return {
+                                reason: isOther && other ? other : selected,
+                                other: isOther ? other : "",
+                        };
+                }
+
+                function resolveCancellationReasonText(detailData = {}, fallbackReason = "", fallbackOther = "") {
+                        const estado =
+                                (detailData && typeof detailData === "object"
+                                        ? detailData.estado_garantia || detailData
+                                        : {}) || {};
+                        const reason =
+                                (typeof estado.motivo_cancelacion === "string"
+                                        ? estado.motivo_cancelacion.trim()
+                                        : "") ||
+                                (typeof detailData.motivo_cancelacion === "string"
+                                        ? detailData.motivo_cancelacion.trim()
+                                        : "") ||
+                                fallbackReason;
+                        const other =
+                                (typeof estado.otra_causa === "string" ? estado.otra_causa.trim() : "") ||
+                                (typeof detailData.otra_causa === "string" ? detailData.otra_causa.trim() : "") ||
+                                fallbackOther;
+
+                        if (reason && reason !== "Otra causa") {
+                                return reason;
+                        }
+                        if (reason === "Otra causa" && other) {
+                                return other;
+                        }
+                        return reason || other || "";
                 }
 
                 function syncManagementNotesEmptyState() {
@@ -5042,6 +5174,7 @@ const ADD_DOC_KEY = "add-document";
 
                         syncManagementDetailFields(activePanel);
                         syncManagementNotesEmptyState();
+                        syncManagementActionsAvailability(activePanel);
                 }
 
                 function openManagementModal(trigger) {
@@ -6534,6 +6667,12 @@ const ADD_DOC_KEY = "add-document";
                         card.className = "guarantee-card";
                         if (view.id) {
                                 card.dataset.id = view.id;
+                        }
+                        if (view.estadoClase) {
+                                card.dataset.estadoclase = view.estadoClase;
+                        }
+                        if (view.estadoLabel) {
+                                card.dataset.estado = view.estadoLabel;
                         }
                         const statusClasses = ["guarantee-card__status"];
                         if (view.estadoClase) {
@@ -10080,9 +10219,9 @@ const ADD_DOC_KEY = "add-document";
                     ? `La garantía ha sido cancelada el ${cancelDateLabel}.`
                     : "La garantía ha sido cancelada.";
                 const cancelNote = `${cancelText} Ponte en contacto con ${cancelTarget}.`;
-                const reasonDisplay = cancellationReason === "Otra causa"
-                    ? cancellationOther
-                    : cancellationReason;
+                const reasonDisplay = cancellationReason && cancellationReason !== "Otra causa"
+                    ? cancellationReason
+                    : (cancellationOther || cancellationReason);
                 const reasonHtml = reasonDisplay
                     ? `<p class="detail__payment-note detail__payment-note--cancelled-reason">` +
                       `Motivo: ${escapeHtml(reasonDisplay)}</p>`
