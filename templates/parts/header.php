@@ -108,88 +108,119 @@ $home_destination = $is_admin_user
             }
         })();
     </script>
-    <script>
-        (function (doc) {
-            var FONT_CACHE_KEY = 'go360:fonts:inter:v1';
-            var FONT_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
-            var storedCss = null;
-            var styleElement = null;
-            var storageAvailable = true;
+    <style id="go-critical-shell">
+        :root {
+            color-scheme: light;
+        }
 
-            try {
-                storedCss = window.localStorage.getItem(FONT_CACHE_KEY);
-            } catch (error) {
-                storageAvailable = false;
-            }
+        body {
+            margin: 0;
+            min-height: 100%;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background-color: #eef0f4;
+            color: #0f172a;
+        }
 
-            var injectCss = function (cssText) {
-                if (!cssText || typeof cssText !== 'string') {
-                    return;
-                }
-                if (!styleElement) {
-                    styleElement = doc.createElement('style');
-                    styleElement.setAttribute('data-go-font-cache', 'inter');
-                    doc.head.appendChild(styleElement);
-                }
-                styleElement.textContent = cssText;
-                doc.documentElement.classList.add('go-fonts-ready');
-            };
+        [data-theme="dark"] body {
+            background-color: #0b0c10;
+            color: #e5e7eb;
+        }
 
-            if (storedCss) {
-                injectCss(storedCss);
-            }
+        .top-bar {
+            position: relative;
+            z-index: 10;
+            min-height: 72px;
+            padding: 0 1.25rem;
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+        }
 
-            var persistCss = function (cssText) {
-                if (!storageAvailable || !cssText) {
-                    return;
-                }
-                try {
-                    window.localStorage.setItem(FONT_CACHE_KEY, cssText);
-                } catch (error) {
-                    // No almacenamos si el espacio está lleno o bloqueado
-                }
-            };
+        [data-theme="dark"] .top-bar {
+            background: #0f172a;
+            border-bottom-color: rgba(226, 232, 240, 0.08);
+        }
 
-            var fetchAndCacheCss = function () {
-                if (!window.fetch) {
-                    return;
-                }
+        .top-bar__wrapper {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
 
-                fetch(FONT_URL, { mode: 'cors', credentials: 'omit' })
-                    .then(function (response) {
-                        if (!response || !response.ok) {
-                            throw new Error('GO360: no se pudo obtener la fuente');
-                        }
-                        return response.text();
-                    })
-                    .then(function (cssText) {
-                        injectCss(cssText);
-                        persistCss(cssText);
-                    })
-                    .catch(function () {
-                        // Si hay un error, dejamos que el <link> tradicional actúe como reserva
-                    });
-            };
+        .top-bar__logo-container {
+            display: inline-flex;
+            align-items: center;
+        }
 
-            if (!storedCss) {
-                fetchAndCacheCss();
-            } else if (typeof window.requestIdleCallback === 'function') {
-                window.requestIdleCallback(fetchAndCacheCss, { timeout: 1200 });
-            } else {
-                window.setTimeout(fetchAndCacheCss, 600);
-            }
-        })(document);
-    </script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        .top-bar__menu ul {
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0;
+            margin: 0;
+        }
+
+        .top-bar__menu a {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            text-decoration: none;
+            color: inherit;
+            padding: 0.35rem 0.6rem;
+            border-radius: 0.5rem;
+            transition: background-color 160ms ease, color 160ms ease;
+        }
+
+        .top-bar__menu a:hover,
+        .top-bar__menu a:focus-visible {
+            background-color: rgba(15, 23, 42, 0.06);
+            color: #0f172a;
+        }
+
+        [data-theme="dark"] .top-bar__menu a:hover,
+        [data-theme="dark"] .top-bar__menu a:focus-visible {
+            background-color: rgba(226, 232, 240, 0.08);
+            color: #e2e8f0;
+        }
+
+        .top-bar__actions,
+        .top-bar__profile {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+    <?php
+    // Prefer custom webfonts when enabled; toggle to false to fallback to system fonts only.
+    $go360_use_remote_fonts = true;
+    if ($go360_use_remote_fonts) :
+        ?>
+        <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" as="style">
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        >
+    <?php endif; ?>
     <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="preload"
+        href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>"
+        as="style"
+        fetchpriority="high"
     >
-    <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>">
+    <link rel="stylesheet" href="<?= esc_url(plugins_url('assets/css/global.min.css', GARANTIAS360VO__FILE__)); ?>" fetchpriority="high">
 
 
     <?php if (! empty($is_dashboard_page)) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/dashboard.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/dashboard.min.css', GARANTIAS360VO__FILE__)); ?>">
@@ -213,11 +244,11 @@ $home_destination = $is_admin_user
     <?php endif; ?>
 
     <?php if (! empty($is_add_guarantee)) : ?>
-
-
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
@@ -225,8 +256,16 @@ $home_destination = $is_admin_user
 
     <?php endif; ?>
     <?php if (! empty($is_register_page)) : ?>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <?php if ($go360_use_remote_fonts) : ?>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+            <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
+        <?php endif; ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/register.min.css', GARANTIAS360VO__FILE__)); ?>">
@@ -235,6 +274,11 @@ $home_destination = $is_admin_user
             href="<?php echo esc_url(plugins_url('assets/css/auth.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if (! empty($is_register_page)) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link
             rel="stylesheet"
             href="<?php echo esc_url(plugins_url('assets/css/nueva_garantia.min.css', GARANTIAS360VO__FILE__)); ?>">
@@ -251,18 +295,70 @@ $home_destination = $is_admin_user
         </script>
     <?php endif; ?>
     <?php if (! empty($is_list_page) || ! empty($is_breakdowns_page)) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if (! empty($is_clients_page)) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__)); ?>">
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/clientes.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/clientes.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if ($is_breakdown_detail_template) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/averias.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/averias.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
     <?php if (! empty($is_account_page)) : ?>
+        <link
+            rel="preload"
+            href="<?php echo esc_url(plugins_url('assets/css/account.min.css', GARANTIAS360VO__FILE__)); ?>"
+            as="style"
+        >
         <link rel="stylesheet" href="<?php echo esc_url(plugins_url('assets/css/account.min.css', GARANTIAS360VO__FILE__)); ?>">
     <?php endif; ?>
+    <?php
+    $prefetch_styles = [];
+    $prefetch_scripts = [];
+
+    // Warm cross-navigation assets only when leaving the current context.
+    if (! empty($is_list_page) || ! empty($is_breakdowns_page)) {
+        $prefetch_styles[] = plugins_url('assets/css/clientes.min.css', GARANTIAS360VO__FILE__);
+        $prefetch_scripts[] = plugins_url('assets/js/clientes.min.js', GARANTIAS360VO__FILE__);
+    }
+
+    if (! empty($is_clients_page)) {
+        $prefetch_scripts[] = plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__);
+        $prefetch_styles[] = plugins_url('assets/css/mis_garantias.min.css', GARANTIAS360VO__FILE__);
+    }
+
+    foreach ($prefetch_styles as $style_href) :
+        ?>
+        <link rel="prefetch" href="<?php echo esc_url($style_href); ?>" as="style">
+        <?php
+    endforeach;
+
+    foreach ($prefetch_scripts as $script_href) :
+        ?>
+        <link rel="prefetch" href="<?php echo esc_url($script_href); ?>" as="script">
+        <?php
+    endforeach;
+    ?>
     <script src="<?php echo esc_url(plugins_url(
                         'assets/js/global.min.js',
                         GARANTIAS360VO__FILE__
@@ -300,7 +396,7 @@ $home_destination = $is_admin_user
     ?>
 <body class="<?php echo esc_attr(implode(' ', $body_classes)); ?>">
     <?php if (! $is_auth_template) : ?>
-    <header class="top-bar" style="view-transition-name: header">
+    <header class="top-bar">
         <div class="top-bar__wrapper">
             <button
                 class="top-bar__hamburger"
@@ -335,7 +431,7 @@ $home_destination = $is_admin_user
                 </a>
             </div>
             <?php if (! empty($is_dashboard_page)) : ?>
-                <div class="dashboard__filters" style="view-transition-name: filtros">
+                <div class="dashboard__filters">
                     <div class="dashboard__filter-group">
                         <select class="dashboard__filter-select" id="filter-category" aria-label="Categoría de garantías">
                             <option value="all">Todas las garantías</option>
