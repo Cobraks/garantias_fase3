@@ -1460,9 +1460,9 @@
             const safeName = displayName || name.company || '';
             const fallbackName = safeName !== '' ? safeName : '—';
             const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const initialsSource = companyName !== '' ? companyName : fallbackName;
             const avatar = renderAvatar(profile, avatarAlt, initialsSource);
-            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const channelLabel = normalizeSalesChannelLabel(salesChannel);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
