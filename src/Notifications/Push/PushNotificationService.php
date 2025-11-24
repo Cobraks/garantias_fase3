@@ -148,7 +148,12 @@ class PushNotificationService
             return $administrators;
         }
 
-        $managers = $this->get_users_by_roles(['go_director_comercial', 'go_garantias']);
+        $managers = $this->get_users_by_roles([
+            'go_director_comercial',
+            'go_garantias',
+            'go_comercial',
+            'go_gestor_comercial',
+        ]);
         $all = array_merge($administrators, $managers);
 
         if (empty($all)) {
