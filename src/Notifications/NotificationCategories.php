@@ -89,7 +89,9 @@ class NotificationCategories
             case 'management':
                 return current_user_can('administrator')
                     || current_user_can('go_director_comercial')
-                    || current_user_can('go_garantias');
+                    || current_user_can('go_garantias')
+                    || current_user_can('go_comercial')
+                    || current_user_can('go_gestor_comercial');
             default:
                 return true;
         }
