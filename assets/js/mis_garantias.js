@@ -3908,7 +3908,12 @@ const ADD_DOC_KEY = "add-document";
                                         let data = detailResponse
                                                 ? normalizeDetailData(detailResponse)
                                                 : null;
-                                        if (!data || typeof data !== "object") {
+                                        const lacksState =
+                                                !data ||
+                                                typeof data !== "object" ||
+                                                !data.estado ||
+                                                !data.estado_garantia;
+                                        if (lacksState) {
                                                 data = fallbackDetail;
                                         }
                                         detailCache.set(id, data);
@@ -3926,13 +3931,28 @@ const ADD_DOC_KEY = "add-document";
                                                 row.dataset.estado = newEstadoLabel;
                                                 const badge = row.querySelector(".guarantees-list__badge");
                                                 if (badge) {
-                                                badge.className =
-                                                        "guarantees-list__badge guarantees-list__badge--" + newEstadoClase;
-                                                badge.textContent = newEstadoLabel;
+                                                        badge.className =
+                                                                "guarantees-list__badge guarantees-list__badge--" +
+                                                                newEstadoClase;
+                                                        badge.textContent = newEstadoLabel;
                                                 }
                                         }
 
                                         const rowData = row ? buildRowData(row) : {};
+                                        const card = mobileCardsMap.get(id);
+                                        if (card) {
+                                                card.dataset.estado = newEstadoLabel;
+                                                card.dataset.estadoclase = newEstadoClase;
+                                                const status = card.querySelector(".guarantee-card__status");
+                                                if (status) {
+                                                        status.textContent = newEstadoLabel;
+                                                        status.className =
+                                                                "guarantee-card__status guarantee-card__status--" +
+                                                                newEstadoClase;
+                                                }
+                                                ensureCardRealtimeBadge(card, false);
+                                                card.classList.remove("guarantee-card--is-new");
+                                        }
                                         const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
                                         if (targetPanel) {
                                                 targetPanel.innerHTML = renderFullDetail(data, rowData);
@@ -3965,6 +3985,53 @@ const ADD_DOC_KEY = "add-document";
                                                 plan: data.plan || rowData.plan,
                                                 reason: cancellationReasonText,
                                         });
+                                        listCache.forEach((entry, key) => {
+                                                if (!entry || !Array.isArray(entry.data)) {
+                                                        return;
+                                                }
+                                                let touched = false;
+                                                const updated = entry.data.map((item) => {
+                                                        if (!item || (item.id || item.ID || "") + "" !== id + "") {
+                                                                return item;
+                                                        }
+                                                        touched = true;
+                                                        const next = { ...item };
+                                                        next.estado = {
+                                                                value: newEstadoValue,
+                                                                label: newEstadoLabel,
+                                                        };
+                                                        next.estado_garantia = {
+                                                                ...(item.estado_garantia || {}),
+                                                                estado_contratacion: "cancelada",
+                                                                fecha_cancelacion: todayIso,
+                                                                fecha_cancelacion_fmt:
+                                                                        formatDate(todayIso).display || todayIso,
+                                                                motivo_cancelacion: cancelReasons.reason || "",
+                                                                otra_causa: cancelReasons.other || "",
+                                                        };
+                                                        if (next.detail && typeof next.detail === "object") {
+                                                                next.detail = {
+                                                                        ...next.detail,
+                                                                        estado_garantia: {
+                                                                                ...(next.detail.estado_garantia || {}),
+                                                                                estado_contratacion: "cancelada",
+                                                                                fecha_cancelacion: todayIso,
+                                                                                fecha_cancelacion_fmt:
+                                                                                        formatDate(todayIso).display ||
+                                                                                        todayIso,
+                                                                                motivo_cancelacion:
+                                                                                        cancelReasons.reason || "",
+                                                                                otra_causa: cancelReasons.other || "",
+                                                                        },
+                                                                };
+                                                        }
+                                                        return next;
+                                                });
+                                                if (touched) {
+                                                        listCache.set(key, { ...entry, data: updated });
+                                                }
+                                        });
+                                        persistListCacheSnapshot(listCache);
                                         if (json && typeof json.__rawError === "string" && json.__rawError.trim() !== "") {
                                                 console.warn("Cancel guarantee response contained non-JSON payload", json.__rawError);
                                         }
