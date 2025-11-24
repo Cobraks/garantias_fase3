@@ -1363,6 +1363,14 @@ section.guarantees-list {
     display: none;
 }
 
+.guarantee-card[data-estadoclase="cancelada"] .guarantee-card__validity,
+.guarantee-card[data-estadoclase="cancelada"] .guarantee-card__plan {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--neutral30);
+    opacity: 0.75;
+}
+
 body.has-mobile-detail-open:not(.has-mobile-summary-open) .guarantees-cards {
     transform: translateX(-100%);
 }
@@ -1633,6 +1641,14 @@ body.has-mobile-summary-open .column-resizer {
 
 .guarantees-table__plan .plan__price {
     font-weight: 500;
+}
+
+.guarantees-table__row[data-estadoclase="cancelada"] .guarantees-table__period,
+.guarantees-table__row[data-estadoclase="cancelada"] .guarantees-table__plan {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--neutral30);
+    opacity: 0.75;
 }
 
 .guarantees-table__cliente,
@@ -2173,6 +2189,14 @@ body.has-mobile-summary-open .guarantee-detail[data-mobile-open="true"] .guarant
 .detail__inline-meta span:last-child {
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+.guarantee-detail__panel[data-estadoclase="cancelada"] .detail__inline-meta--countdown span,
+.guarantee-detail__panel[data-estadoclase="cancelada"] .detail__timeline-value {
+    text-decoration: line-through;
+    text-decoration-thickness: 1.3px;
+    text-decoration-color: var(--neutral30);
+    opacity: 0.75;
 }
 
 .detail__timeline-list--countdown {
