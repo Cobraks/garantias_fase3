@@ -38,6 +38,7 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
     const LIST_CACHE_GENERATION_OPTION = 'go_glist_generation';
+    const DISABLE_CANCELLED_CERTIFICATE_OVERLAY = true;
     const SUMMARY_PROFESSIONAL_TRANSIENT_PREFIX = 'go_gsummary_prof_';
     const RECEIPT_ALLOWED_MIMES = [
         'pdf'  => 'application/pdf',
@@ -715,49 +716,56 @@ class GuaranteeRestController
 
                 $info = self::get_plan_info($id);
                 $is_cancelled = self::is_cancelled_state($id);
-                $cancelled_filename = self::normalize_document_filename(sprintf(
-                    'Certificado cancelado %s %s.pdf',
-                    $info['plan'],
-                    $info['matricula']
-                ));
                 $default_filename = self::normalize_document_filename(sprintf(
                     'Certificado Garantía %s %s.pdf',
                     $info['plan'],
                     $info['matricula']
                 ));
 
+                $binary = $original_binary;
+                $filename = $default_filename;
+
                 if ($is_cancelled) {
-                    $cancelled_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
-                    if ($cancelled_hash) {
-                        $binary = PrivateDocsManager::retrieve($cancelled_hash, 'pdf');
+                    if (! self::should_disable_cancelled_certificate_overlay()) {
+                        $cancelled_filename = self::normalize_document_filename(sprintf(
+                            'Certificado cancelado %s %s.pdf',
+                            $info['plan'],
+                            $info['matricula']
+                        ));
+
+                        $cancelled_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+                        if ($cancelled_hash) {
+                            $binary = PrivateDocsManager::retrieve($cancelled_hash, 'pdf');
+                            if (!$binary) {
+                                delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
+                                $binary = $original_binary;
+                            }
+                        }
+
                         if (!$binary) {
+                            $overlay_binary = self::build_cancelled_certificate_overlay(
+                                $original_binary,
+                                self::format_cancellation_date(self::get_cancellation_date($id))
+                            );
+                            if ($overlay_binary) {
+                                $new_hash = PrivateDocsManager::store($overlay_binary, 'pdf');
+                                if ($new_hash) {
+                                    update_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, $new_hash);
+                                }
+                                $binary = $overlay_binary;
+                            }
+                        }
+
+                        if ($binary) {
+                            $filename = $cancelled_filename;
+                        }
+                    } else {
+                        $stale_cancel_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+                        if ($stale_cancel_hash) {
                             delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
                         }
                     }
-
-                    if (!$binary) {
-                        $overlay_binary = self::build_cancelled_certificate_overlay(
-                            $original_binary,
-                            self::format_cancellation_date(self::get_cancellation_date($id))
-                        );
-                        if ($overlay_binary) {
-                            $new_hash = PrivateDocsManager::store($overlay_binary, 'pdf');
-                            if ($new_hash) {
-                                update_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, $new_hash);
-                            }
-                            $binary = $overlay_binary;
-                        }
-                    }
-
-                    if (!$binary) {
-                        $binary = $original_binary;
-                    }
-
-                    $filename = $cancelled_filename;
                 } else {
-                    $binary = $original_binary;
-                    $filename = $default_filename;
-
                     $stale_cancel_hash = get_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META, true);
                     if ($stale_cancel_hash) {
                         delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
@@ -826,6 +834,19 @@ class GuaranteeRestController
             'png'  => 'image/png',
             default => 'application/octet-stream',
         };
+    }
+
+    private static function should_disable_cancelled_certificate_overlay(): bool
+    {
+        $disabled = (bool) self::DISABLE_CANCELLED_CERTIFICATE_OVERLAY;
+
+        /**
+         * Allows disabling the cancelled certificate overlay generation.
+         */
+        return (bool) apply_filters(
+            'go360/disable_cancelled_certificate_overlay',
+            $disabled
+        );
     }
 
     private static function is_cancelled_state(int $post_id): bool
@@ -1242,11 +1263,12 @@ class GuaranteeRestController
 
         $is_cancelled = self::is_cancelled_state($post_id);
         $cancel_date = self::get_cancellation_date($post_id);
+        $should_disable_cancelled_certificate = self::should_disable_cancelled_certificate_overlay();
 
         $static_docs = [
             [
                 'key'           => 'certificate',
-                'title'         => $is_cancelled
+                'title'         => $is_cancelled && ! $should_disable_cancelled_certificate
                     ? __('Certificado cancelado', 'garantias-online-360vo')
                     : __('Certificado completo', 'garantias-online-360vo'),
                 'routeType'     => 'certificado',
@@ -1256,8 +1278,8 @@ class GuaranteeRestController
                 'allowed_users' => [],
                 'filename'      => '',
                 'source'        => 'static',
-                'is_cancelled_certificate' => $is_cancelled,
-                'cancel_date'   => $cancel_date,
+                'is_cancelled_certificate' => $is_cancelled && ! $should_disable_cancelled_certificate,
+                'cancel_date'   => $should_disable_cancelled_certificate ? '' : $cancel_date,
             ],
             [
                 'key'           => 'cobertura',
