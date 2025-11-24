@@ -26,11 +26,11 @@ TemplateLoader::load_part('header', compact('is_register_page', 'is_auth_page'))
     src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"
     defer></script>
 
-<main class="register-page" style="view-transition-name: register">
+<main class="register-page">
     <div class="container">
-        <div class="info-panel" style="view-transition-name: header">
+        <div class="info-panel">
             <span class="badge"><?php esc_html_e('Registro', 'garantias-online-360vo'); ?></span>
-            <div class="brand-logo" style="view-transition-name: logo">
+            <div class="brand-logo">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" focusable="false">
                     <style>.st0{fill:#ffffff;}.st1{fill:#c5444e;}</style>
                     <g id="Capa_2">
