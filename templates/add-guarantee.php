@@ -65,7 +65,7 @@ $traccion_camion_choices = get_acf_group_subfield_choices('datos_vehiculo', 'tra
 $is_add_guarantee = true;
 TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
 <!-- FORMULARIO -->
-<div class="form-container" style="view-transition-name: garantias-table">
+<div class="form-container">
     <div class="tabs">
         <div class="tabs__connector">
             <div class="connector connector-1"></div>
@@ -476,7 +476,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     <?php \GarantiasOnline360VO\TemplateLoader::load_part('form-success'); ?>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
-<aside class="summary-container" style="view-transition-name: resume-derecha">
+<aside class="summary-container">
     <div class="summary-section summary-section--header">
         <h3>Resumen del Contrato</h3>
         <p id="summary-canal-venta" class="summary-header__canal">
