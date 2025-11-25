@@ -1594,6 +1594,8 @@ class GuaranteeRestController
         $plan = self::resolve_contracted_plan($id);
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
         $matricula_slug = get_post_meta($id, 'estado_garantia_matricula_slug', true);
+        $matricula_slug = is_string($matricula_slug) ? $matricula_slug : '';
+        $matricula_slug = get_post_meta($id, 'estado_garantia_matricula_slug', true);
 
         return [
             'plan'      => is_string($plan['label']) ? $plan['label'] : '',
