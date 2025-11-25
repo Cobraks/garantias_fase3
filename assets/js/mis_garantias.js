@@ -4657,9 +4657,9 @@ const ADD_DOC_KEY = "add-document";
                         if (!managementActionsList) {
                                 return;
                         }
-                        const estadoClase =
-                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
-                                        .toLowerCase();
+                        const estadoClaseRaw =
+                                panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "";
+                        const estadoClase = normalizeEstadoClase(estadoClaseRaw || "");
                         const isCancelled = estadoClase === "cancelada";
                         const toggleAction = (selector) => {
                                 const cache = ensureManagementAction(selector);
