@@ -257,6 +257,7 @@ export default function initAutosave() {
                 draftUuid = urlUuid;
                 localStorage.setItem("go_draft_uuid", draftUuid);
         }
+        let cancelledPlateConfirmed = Boolean(draftId);
         let saving = false;
 
         const navButtons = document.querySelector(".nav-buttons");
@@ -1887,8 +1888,31 @@ export default function initAutosave() {
                 launchConfetti();
         }
 
+        function requiresCancelledPlateConfirmation() {
+                if (cancelledPlateConfirmed || draftId) return false;
+                const plateInput = document.getElementById("matricula");
+                if (!plateInput) return false;
+                return plateInput.dataset.cancelled === "true";
+        }
+
+        function confirmCancelledPlate() {
+                const plateInput = document.getElementById("matricula");
+                const plateValue = plateInput?.value?.trim().toUpperCase() || "";
+                const message = plateValue
+                        ? `Se archivará la garantía cancelada con matrícula ${plateValue} y se creará una nueva. ¿Quieres continuar?`
+                        : "Se archivará la garantía cancelada y se creará una nueva. ¿Quieres continuar?";
+                return window.confirm(message);
+        }
+
         async function sendAutosave(finalize = false) {
                 if (saving) return;
+                if (requiresCancelledPlateConfirmation()) {
+                        const confirmed = confirmCancelledPlate();
+                        if (!confirmed) {
+                                return;
+                        }
+                        cancelledPlateConfirmed = true;
+                }
                 saving = true;
 
                 console.log("[AUTOSAVE] Triggered", { draftId, finalize });
@@ -2196,6 +2220,14 @@ export default function initAutosave() {
                                 draftUuid = json.uuid;
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
+                        }
+                        if (json.trashed_cancelled_id) {
+                                cancelledPlateConfirmed = true;
+                                const plateInput = document.getElementById("matricula");
+                                if (plateInput) {
+                                        plateInput.dataset.cancelled = "false";
+                                        delete plateInput.dataset.cancelledId;
+                                }
                         }
                         if (!finalize && json.template_url) {
                                 loadStaticPdf(json.template_url).catch((err) => {
