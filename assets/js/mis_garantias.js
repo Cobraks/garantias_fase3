@@ -4657,9 +4657,41 @@ const ADD_DOC_KEY = "add-document";
                         if (!managementActionsList) {
                                 return;
                         }
-                        const estadoClase =
-                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
-                                        .toLowerCase();
+                        const normalizeEstadoClaseValue = (value) =>
+                                typeof value === "string" ? value.toLowerCase().trim() : "";
+                        const estadoDesdePanel = normalizeEstadoClaseValue(
+                                panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || ""
+                        );
+                        const estadoDesdeBadge = (() => {
+                                const badgeElement =
+                                        managementStatusBadge?.querySelector(
+                                                "[data-management-status-badge]"
+                                        ) || managementStatusBadge?.querySelector(
+                                                ".guarantee-management__badge"
+                                        );
+
+                                if (!badgeElement) {
+                                        return "";
+                                }
+
+                                const badgeClass = Array.from(badgeElement.classList || []).find(
+                                        (cls) => cls.indexOf("guarantee-management__badge--") === 0
+                                );
+
+                                if (badgeClass) {
+                                        return normalizeEstadoClaseValue(
+                                                badgeClass.replace(
+                                                        "guarantee-management__badge--",
+                                                        ""
+                                                )
+                                        );
+                                }
+
+                                return normalizeEstadoClaseValue(
+                                        badgeElement.textContent || badgeElement.innerText || ""
+                                );
+                        })();
+                        const estadoClase = estadoDesdePanel || estadoDesdeBadge;
                         const isCancelled = estadoClase === "cancelada";
                         const toggleAction = (selector) => {
                                 const cache = ensureManagementAction(selector);
