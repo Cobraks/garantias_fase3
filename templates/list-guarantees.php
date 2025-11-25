@@ -1380,6 +1380,7 @@ if (($is_admin_user || $is_director || $is_professional)
             </div>
             <p class="confirm-modal__note" hidden></p>
             <p class="confirm-modal__note confirm-modal__note--notify" hidden></p>
+            <p class="confirm-modal__status" hidden></p>
         </div>
         <div class="confirm-modal__upload" hidden>
             <h3 class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></h3>
