@@ -1440,11 +1440,11 @@
                             <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
                         </div>
                         <div class="clients-table__identity">
+                            ${identityLine || ''}
                             <div class="clients-table__name-row">
                                 <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
                                 <span class="clients-table__presence-label" data-presence-label hidden></span>
                             </div>
-                            ${identityLine || ''}
                         </div>
                     </div>
                 </td>
@@ -1525,11 +1525,11 @@
                             <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
                         </div>
                         <div class="clients-table__identity">
+                            ${identityLine || ''}
                             <div class="clients-table__name-row">
                                 <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
                                 <span class="clients-table__presence-label" data-presence-label hidden></span>
                             </div>
-                            ${identityLine || ''}
                         </div>
                     </div>
                 </div>

@@ -1339,7 +1339,7 @@
     min-width: 0;
 }
 .clients-table__name {
-    font-weight: 600;
+    font-weight: 400;
     color: var(--go-color-111827);
     display: block;
     white-space: nowrap;
@@ -1368,12 +1368,14 @@
     letter-spacing: 0.05em;
     color: #16a34a;
     white-space: nowrap;
+    align-self: flex-end;
 }
 .clients-table__presence-label[hidden] {
     display: none !important;
 }
 .clients-table__company {
     font-size: 0.85rem;
+    font-weight: 600;
     color: var(--go-color-64748b);
     display: block;
     white-space: nowrap;
