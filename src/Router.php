@@ -33,7 +33,7 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
 */
 
         // si no está logueado y no viene a home o register, fuerza raíz:
-        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register', 'login', 'lostpassword', 'resetpassword'], true)) {
+        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register', 'login', 'lostpassword', 'resetpassword', 'verify'], true)) {
             wp_safe_redirect(home_url('/garantias-online/'));
             exit;
         }
@@ -118,6 +118,9 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
                 break;
             case 'register':
                 TemplateLoader::load('register');
+                break;
+            case 'verify':
+                TemplateLoader::load('verify');
                 break;
             case 'account':
                 $account_view = AccountViewModel::for_current_user();
