@@ -11,7 +11,7 @@ class Rewrite
 
     public const SLUG                 = 'garantias-online';
     public const VAR_ENDPOINT         = 'go_endpoint';
-    public const RULES_VERSION        = 6;
+    public const RULES_VERSION        = 7;
     private const OPTION_RULES_VERSION = 'go_rewrite_rules_version';
 
     /**
@@ -69,6 +69,7 @@ class Rewrite
             '/averias/?$'             => 'averias',
             '/mi-cuenta/?$'           => 'account',
             '/clientes/?$'            => 'clientes',
+            '/verificacion/?$'        => 'verify',
         ];
 
         foreach ($map as $regex => $endpoint) {
