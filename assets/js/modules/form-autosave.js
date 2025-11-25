@@ -257,6 +257,7 @@ export default function initAutosave() {
                 draftUuid = urlUuid;
                 localStorage.setItem("go_draft_uuid", draftUuid);
         }
+        let cancelledPlateConfirmed = Boolean(draftId);
         let saving = false;
 
         const navButtons = document.querySelector(".nav-buttons");
@@ -430,6 +431,40 @@ export default function initAutosave() {
                                         loadingTimeoutId = null;
                                 }
                         }
+                }
+        }
+
+        async function fetchLatestDocumentLinks(id) {
+                if (!id) return;
+                try {
+                        const res = await fetch(
+                                `${getRestRoot()}go/v1/guarantees/${id}`,
+                                { headers: { "X-WP-Nonce": getRestNonce() } }
+                        );
+                        if (!res.ok) return;
+                        const detail = await res.json();
+                        const docs = Array.isArray(detail.documents)
+                                ? detail.documents
+                                : [];
+                        const docLinks = docs.reduce((acc, doc) => {
+                                const key =
+                                        typeof doc.key === "string" && doc.key
+                                                ? doc.key
+                                                : "";
+                                const url =
+                                        typeof doc.url === "string" && doc.url
+                                                ? doc.url
+                                                : "";
+                                if (key && url) {
+                                        acc[key] = url;
+                                }
+                                return acc;
+                        }, {});
+                        if (Object.keys(docLinks).length > 0) {
+                                updateSuccessDocuments(docLinks);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] fetchLatestDocumentLinks error", err);
                 }
         }
 
@@ -1688,6 +1723,9 @@ export default function initAutosave() {
                                 newLink.href = nuevaUrl;
                         }
                 }
+                if (draftId) {
+                        fetchLatestDocumentLinks(draftId);
+                }
                 const pay = successBlock.querySelector(".form-success__payment");
                 if (pay) {
                         const transfer = pay.querySelector(".form-success__transfer");
@@ -1887,8 +1925,31 @@ export default function initAutosave() {
                 launchConfetti();
         }
 
+        function requiresCancelledPlateConfirmation() {
+                if (cancelledPlateConfirmed || draftId) return false;
+                const plateInput = document.getElementById("matricula");
+                if (!plateInput) return false;
+                return plateInput.dataset.cancelled === "true";
+        }
+
+        function confirmCancelledPlate() {
+                const plateInput = document.getElementById("matricula");
+                const plateValue = plateInput?.value?.trim().toUpperCase() || "";
+                const message = plateValue
+                        ? `Se archivará la garantía cancelada con matrícula ${plateValue} y se creará una nueva. ¿Quieres continuar?`
+                        : "Se archivará la garantía cancelada y se creará una nueva. ¿Quieres continuar?";
+                return window.confirm(message);
+        }
+
         async function sendAutosave(finalize = false) {
                 if (saving) return;
+                if (requiresCancelledPlateConfirmation()) {
+                        const confirmed = confirmCancelledPlate();
+                        if (!confirmed) {
+                                return;
+                        }
+                        cancelledPlateConfirmed = true;
+                }
                 saving = true;
 
                 console.log("[AUTOSAVE] Triggered", { draftId, finalize });
@@ -2196,6 +2257,14 @@ export default function initAutosave() {
                                 draftUuid = json.uuid;
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
+                        }
+                        if (json.trashed_cancelled_id) {
+                                cancelledPlateConfirmed = true;
+                                const plateInput = document.getElementById("matricula");
+                                if (plateInput) {
+                                        plateInput.dataset.cancelled = "false";
+                                        delete plateInput.dataset.cancelledId;
+                                }
                         }
                         if (!finalize && json.template_url) {
                                 loadStaticPdf(json.template_url).catch((err) => {
