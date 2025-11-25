@@ -1380,7 +1380,6 @@ if (($is_admin_user || $is_director || $is_professional)
             </div>
             <p class="confirm-modal__note" hidden></p>
             <p class="confirm-modal__note confirm-modal__note--notify" hidden></p>
-            <p class="confirm-modal__status" hidden></p>
         </div>
         <div class="confirm-modal__upload" hidden>
             <h3 class="confirm-modal__upload-title"><?php esc_html_e('Adjuntar justificante de pago', 'garantias-online-360vo'); ?></h3>
@@ -1414,6 +1413,7 @@ if (($is_admin_user || $is_director || $is_professional)
             />
             <span class="confirm-modal__checkbox-label confirm-modal__checkbox-label--notify"><?php esc_html_e('Informar al cliente de la cancelación.', 'garantias-online-360vo'); ?></span>
         </label>
+        <p class="confirm-modal__status" hidden></p>
         <div class="confirm-modal__actions">
             <button type="button" class="confirm-modal__btn confirm-modal__btn--cancel"><?php esc_html_e('Cancelar', 'garantias-online-360vo'); ?></button>
             <button type="button" class="confirm-modal__btn confirm-modal__btn--confirm" disabled></button>
