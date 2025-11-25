@@ -1,5 +1,36 @@
 # Historial de cambios
 
+## 6.0.0 - 2025-11-25
+- Añadida fecha de contratación
+- Añadido detalle de facturación (desglose de recargos y descuentos en la propia garantía)
+- Añadida antigüedad en los datos del vehículo.
+- Añadido color rojo para datos del vehículo y detalles técnicos que tengan suplementos
+- Pequeños cambios de estilos y estructura
+- Añadido panel de gestión de garantía
+    - Añadido sistema de notas
+    - Añadido Cancelar garantía, y estado “cancelada”
+    - Añadido al panel botón para eliminar la garantía
+    - Añadido botón para editar en panel de administración WordPress.
+- Validación más agresiva para correo y teléfono del cliente
+- Ofertas de precio fijo desde panel administración clientes
+- Cambios en el panel de clientes
+    - Ahora aparece el nombre de la empresa primero
+    - Cuando no han subido imagen de perfil, ahora tenemos Avatar de iniciales.
+- Registros: Añadida pág de verificación independiente para los casos en que los clientes hayan cerrado la pestaña, o no lo hayan hecho a tiempo.  Ahora pueden volver a solicitar el código de validación (tengo que repasar los estilos de esto, es posible que haya alguna inconsistencia).
+- Formulario: Eliminado el molesto mensaje de Google Chrome pidiendo que si quiere guardar los datos de contacto (dirección, correo etc).
+
+## 5.9.1
+- Corregido mensaje de error cuando antigüedad supera / está por debajo del límite establecido
+- Arreglados mensajes de error cuando no hay garantías disponibles:
+    - Antigüedad mínima, antigüedad máxima, excede km / no llega a km.
+    - Mensaje genérico si, por el motivo que sea, no hay garantías disponibles.
+- Añadido indicador en clientes cuando un cliente se encuentra Online. Si un cliente interactúa con la página, aparece el estado Online. Si en 2 minutos no ha hecho nada, se quita el estado online.
+- Cuando un particular o profesional crea una nueva garantía, podía tardar hasta 5 minutos en mostrarse para los admin / comeciales / directores comerciales / gestores de garantías. Ahora, en el momento en el que se crea, ya aparece tras actualizar
+- Además, ahora aprece en tiempo real, no hace falta actualizar la página.
+- Notificación cuando una garantía ha sido inicalizada
+- Arreglado toast de notificaciones cuando el header está escondido.
+
+
 ## Referencia interna: patrones sospechosos para validaciones de contacto
 
 ### Correos (parte local antes de @)
