@@ -4689,6 +4689,7 @@ const ADD_DOC_KEY = "add-document";
 
                         toggleAction('[data-management-action="cancel-for-nonpayment"]');
                         toggleAction('[data-management-action="certificate-error"]');
+                        toggleAction('[data-management-action="edit-wordpress"]');
                 }
 
                 function formatDateIsoLocal(value) {
