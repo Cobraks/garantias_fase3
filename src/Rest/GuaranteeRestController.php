@@ -939,6 +939,38 @@ class GuaranteeRestController
         }
     }
 
+    private static function prewarm_cancelled_certificate(int $post_id, string $cancel_date = ''): void
+    {
+        $existing_hash = get_post_meta($post_id, self::CANCELLED_CERTIFICATE_HASH_META, true);
+        if ($existing_hash) {
+            return;
+        }
+
+        $original_hash = get_post_meta($post_id, 'documentacion_certificado_hash', true);
+        if (!$original_hash) {
+            return;
+        }
+
+        $original_binary = PrivateDocsManager::retrieve($original_hash, 'pdf');
+        if (!$original_binary) {
+            return;
+        }
+
+        $formatted_date = $cancel_date !== ''
+            ? self::format_cancellation_date($cancel_date)
+            : self::format_cancellation_date(self::get_cancellation_date($post_id));
+
+        $overlay_binary = self::build_cancelled_certificate_overlay($original_binary, $formatted_date);
+        if (!$overlay_binary) {
+            return;
+        }
+
+        $new_hash = PrivateDocsManager::store($overlay_binary, 'pdf');
+        if ($new_hash) {
+            update_post_meta($post_id, self::CANCELLED_CERTIFICATE_HASH_META, $new_hash);
+        }
+    }
+
     private static function load_public_document_binary(array $document)
     {
         $attachment_id = isset($document['attachment_id']) ? (int) $document['attachment_id'] : 0;
@@ -1561,12 +1593,28 @@ class GuaranteeRestController
     {
         $plan = self::resolve_contracted_plan($id);
         $matricula = get_post_meta($id, 'datos_vehiculo_matricula', true);
+        $matricula_slug = get_post_meta($id, 'estado_garantia_matricula_slug', true);
 
         return [
             'plan'      => is_string($plan['label']) ? $plan['label'] : '',
             'plan_id'   => (int) ($plan['id'] ?? 0),
             'matricula' => is_string($matricula) ? $matricula : '',
         ];
+    }
+
+    private static function build_cancelled_plate_slug($plate)
+    {
+        $normalized_plate = is_string($plate) ? strtoupper(trim($plate)) : '';
+        if ($normalized_plate === '') {
+            return '';
+        }
+
+        $suffix = '-CANCELADA';
+        if (str_ends_with($normalized_plate, $suffix)) {
+            return $normalized_plate;
+        }
+
+        return $normalized_plate . $suffix;
     }
 
     private static function resolve_contracted_plan($post_id)
@@ -2949,10 +2997,28 @@ class GuaranteeRestController
             $args = [
                 'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
                 'post_status'    => ['draft', 'publish', 'pending', 'future'],
-                'meta_key'       => 'datos_vehiculo_matricula',
-                'meta_value'     => $matricula,
                 'fields'         => 'ids',
                 'posts_per_page' => 1,
+                'meta_query'     => [
+                    'relation' => 'AND',
+                    [
+                        'key'     => 'datos_vehiculo_matricula',
+                        'value'   => $matricula,
+                        'compare' => '=',
+                    ],
+                    [
+                        'relation' => 'OR',
+                        [
+                            'key'     => 'estado_garantia_estado_contratacion',
+                            'compare' => 'NOT EXISTS',
+                        ],
+                        [
+                            'key'     => 'estado_garantia_estado_contratacion',
+                            'value'   => 'cancelada',
+                            'compare' => '!=',
+                        ],
+                    ],
+                ],
             ];
             if ($post_id) {
                 $args['post__not_in'] = [$post_id];
@@ -3393,14 +3459,30 @@ class GuaranteeRestController
             $context_payment_method = (string) get_post_meta($post_id, 'garantia_contratada_metodo_pago', true);
         }
 
+        if ($post_id) {
+            $plate_for_slug = $matricula !== ''
+                ? $matricula
+                : (string) get_post_meta($post_id, 'datos_vehiculo_matricula', true);
+            if ($new_contract_state === 'cancelada') {
+                $cancel_slug = self::build_cancelled_plate_slug($plate_for_slug);
+                if ($cancel_slug !== '') {
+                    update_post_meta($post_id, 'estado_garantia_matricula_slug', $cancel_slug);
+                }
+            } else {
+                delete_post_meta($post_id, 'estado_garantia_matricula_slug');
+            }
+        }
+
         $just_cancelled = $new_contract_state === 'cancelada' && $previous_contract_state !== 'cancelada';
         if ($just_cancelled) {
             $cancellation_context = [
                 'reason'       => $estado['motivo_cancelacion'] ?? '',
                 'other_reason' => $estado['otra_causa'] ?? '',
                 'vendor_id'    => $context_vendor_id,
+                'cancel_date'  => $estado['fecha_cancelacion'] ?? '',
             ];
             self::log_cancellation_event($post_id, $cancellation_context);
+            self::prewarm_cancelled_certificate($post_id, $estado['fecha_cancelacion'] ?? '');
         }
 
         $should_stamp_contract_date = in_array($new_contract_state, ['activada', 'pendiente_pago'], true);
@@ -4933,6 +5015,12 @@ class GuaranteeRestController
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
 
+        $matricula_slug = $matricula_slug !== ''
+            ? $matricula_slug
+            : ($estado === 'cancelada'
+                ? self::build_cancelled_plate_slug($matricula)
+                : $matricula);
+
         $fecha_cancelacion_raw = get_post_meta($id, 'estado_garantia_fecha_cancelacion', true);
         $fecha_cancelacion_fmt = '';
         if (is_string($fecha_cancelacion_raw) && $fecha_cancelacion_raw !== '') {
@@ -5063,6 +5151,19 @@ class GuaranteeRestController
             ? sanitize_key($email_details['source'])
             : 'registration';
         $avatar_vendedor = $vendor_id ? get_avatar_url($vendor_id, ['size' => 96]) : '';
+        $vendor_letters = $vendor_id
+            ? self::get_avatar_letters($vendor_id)
+            : [
+                'initials'       => '',
+                'palette'        => [
+                    'bg'        => '',
+                    'bg_dark'   => '',
+                    'text'      => '',
+                    'text_dark' => '',
+                ],
+                'force_initials' => false,
+            ];
+        $avatar_vendedor_placeholder = $vendor_id ? self::get_avatar_placeholder($vendor_id) : '';
         $vendedor_url   = $vendor_id ? get_edit_user_link($vendor_id) : '#';
         $vendor_slug = '';
         $vendor_profile_url = '';
@@ -5137,6 +5238,7 @@ class GuaranteeRestController
             'id' => $id,
             'uuid' => $uuid,
             'matricula' => $matricula ?: '-',
+            'matricula_slug' => $matricula_slug ?: ($matricula ?: '-'),
             'marca_modelo' => $marca_modelo ?: '-',
             'marca' => $marca ?: '',
             'modelo' => $modelo ?: '',
@@ -5199,6 +5301,10 @@ class GuaranteeRestController
             'email_vendedor_registro' => $email_registro,
             'email_vendedor_source' => $email_source,
             'avatar_vendedor' => $avatar_vendedor ?: '',
+            'avatar_vendedor_placeholder' => $avatar_vendedor_placeholder,
+            'avatar_vendedor_initials' => $vendor_letters['initials'],
+            'avatar_vendedor_palette' => $vendor_letters['palette'],
+            'avatar_vendedor_force_initials' => $vendor_letters['force_initials'],
             'vendedor_url' => $vendedor_url,
             'vendor_slug' => $vendor_slug,
             'vendor_profile_url' => $vendor_profile_url,
@@ -5824,6 +5930,7 @@ class GuaranteeRestController
             $data[] = [
                 'id'         => $post_id,
                 'mat'        => $detail_with_urls['matricula'],
+                'mat_slug'   => $detail_with_urls['matricula_slug'] ?? $detail_with_urls['matricula'],
                 'marca'      => $detail_with_urls['marca_modelo'],
                 'desde'      => $detail_with_urls['desde'],
                 'hasta'      => $detail_with_urls['hasta'],
@@ -6603,6 +6710,67 @@ class GuaranteeRestController
         if ($post_type === \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
             self::invalidate_guarantee_list_cache((int) $post_id);
         }
+    }
+
+    private static function get_avatar_letters(int $user_id): array
+    {
+        $defaults = [
+            'initials'       => '',
+            'palette'        => [
+                'bg'        => '',
+                'bg_dark'   => '',
+                'text'      => '',
+                'text_dark' => '',
+            ],
+            'force_initials' => false,
+        ];
+
+        if ($user_id <= 0 || ! function_exists('get_field')) {
+            return $defaults;
+        }
+
+        $data = get_field('letras_avatar', 'user_' . $user_id);
+        if (! is_array($data) || empty($data)) {
+            return $defaults;
+        }
+
+        $initials = isset($data['iniciales']) ? sanitize_text_field((string) $data['iniciales']) : '';
+        $palette  = [
+            'bg'        => self::sanitize_color_value($data['fondo'] ?? ''),
+            'bg_dark'   => self::sanitize_color_value($data['fondo_dark'] ?? ''),
+            'text'      => self::sanitize_color_value($data['texto'] ?? ''),
+            'text_dark' => self::sanitize_color_value($data['texto_dark'] ?? ''),
+        ];
+
+        $has_palette = $palette['bg'] !== '' && $palette['bg_dark'] !== '' && $palette['text'] !== '' && $palette['text_dark'] !== '';
+
+        return [
+            'initials'       => $initials,
+            'palette'        => $has_palette ? $palette : $defaults['palette'],
+            'force_initials' => ! empty($data['mostrar_aunque_tenga_foto_de_perfil']),
+        ];
+    }
+
+    private static function sanitize_color_value($value): string
+    {
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '') {
+            return '';
+        }
+
+        return sanitize_text_field($value);
+    }
+
+    private static function get_avatar_placeholder(int $user_id): string
+    {
+        if ($user_id <= 0) {
+            return '';
+        }
+
+        return esc_url_raw((string) get_avatar_url($user_id, [
+            'size'          => 96,
+            'force_default' => true,
+        ]));
     }
 
     private static function get_list_cache_generation(): int
