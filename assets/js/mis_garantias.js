@@ -3750,13 +3750,42 @@ const ADD_DOC_KEY = "add-document";
                         const uuid = context.uuid || detail.uuid || "";
                         const originalLabel = confirmBtn?.textContent?.trim() || "Cancelar garantía";
 
-                        const setConfirmLabel = (text, disabled) => {
+                        const modal = confirmBtn?.closest(".confirm-modal") || null;
+                        const statusMessage = modal?.querySelector(".confirm-modal__status") || null;
+                        let confirmSpinner = null;
+
+                        const setStatusMessage = (text) => {
+                                if (!statusMessage) return;
+                                if (text) {
+                                        statusMessage.textContent = text;
+                                        statusMessage.hidden = false;
+                                } else {
+                                        statusMessage.textContent = "";
+                                        statusMessage.hidden = true;
+                                }
+                        };
+
+                        const setConfirmLabel = (text, disabled, showSpinner = false) => {
                                 if (!confirmBtn) return;
                                 confirmBtn.textContent = text;
                                 confirmBtn.disabled = Boolean(disabled);
+
+                                if (showSpinner) {
+                                        if (!confirmSpinner) {
+                                                confirmSpinner = document.createElement("span");
+                                                confirmSpinner.className = "guarantee-detail__btn-spinner";
+                                                confirmSpinner.setAttribute("aria-hidden", "true");
+                                        }
+                                        if (confirmSpinner.parentNode !== confirmBtn) {
+                                                confirmBtn.insertBefore(confirmSpinner, confirmBtn.firstChild);
+                                        }
+                                } else if (confirmSpinner && confirmSpinner.parentNode === confirmBtn) {
+                                        confirmSpinner.remove();
+                                }
                         };
 
-                        setConfirmLabel("Cancelando garantía", true);
+                        setStatusMessage("Espera por favor, esto puede tardar unos segundos.");
+                        setConfirmLabel("Cancelando garantía", true, true);
 
                         const todayIso = formatDateIsoLocal(new Date());
                         const cancelReasons = resolveCancelReasons(context);
@@ -3875,6 +3904,7 @@ const ADD_DOC_KEY = "add-document";
                                         }
 
                                         setConfirmLabel("Garantía cancelada", true);
+                                        setStatusMessage("");
                                         pendingConfirmContext = null;
                                         window.setTimeout(() => {
                                                 closeModal();
@@ -3890,6 +3920,7 @@ const ADD_DOC_KEY = "add-document";
                                                 showDetailToast(targetPanel, message);
                                         }
                                         setConfirmLabel(originalLabel, false);
+                                        setStatusMessage("");
                                         pendingConfirmContext = null;
                                         closeModal();
                                 });
