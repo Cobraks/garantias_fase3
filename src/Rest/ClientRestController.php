@@ -1741,9 +1741,19 @@ class ClientRestController
         $registered    = self::format_registered($user_data['registered'] ?? $user->user_registered);
 
         $profile_image = $user_data['profile_image']['url'] ?? '';
-        $avatar_url    = $profile_image !== ''
-            ? $profile_image
-            : ($user_data['avatar_url'] ?? get_avatar_url($user->ID));
+        $avatar_url    = self::pick_avatar_url($profile_image, $user_data['avatar_url'] ?? '', (int) $user->ID);
+        $avatar_letters = self::get_avatar_letters((int) $user->ID);
+
+        $settings_group = function_exists('get_field') ? get_field('ajustes_usuarios', 'user_' . $user->ID) : [];
+        $featured_flag  = false;
+        if (is_array($settings_group) && isset($settings_group['cliente_destacado'])) {
+            $featured_flag = (bool) $settings_group['cliente_destacado'];
+        }
+
+        if (! $featured_flag) {
+            $meta_flag = get_user_meta($user->ID, 'ajustes_usuarios_cliente_destacado', true);
+            $featured_flag = ! empty($meta_flag);
+        }
 
         $sales_channel = self::resolve_sales_channel($user_data['company']['type'] ?? [], $user);
         $offers        = self::get_active_offers((int) $user->ID);
@@ -1788,8 +1798,12 @@ class ClientRestController
             'slug'      => sanitize_user($user->user_nicename !== '' ? $user->user_nicename : $user->user_login, true),
             'nicename'  => sanitize_user($user->user_nicename, true),
             'profile' => [
-                'avatar'   => esc_url_raw($avatar_url),
-                'initials' => self::initials($personal_name !== '' ? $personal_name : $company_name),
+                'avatar'               => esc_url_raw($avatar_url),
+                'avatar_placeholder'   => esc_url_raw(self::get_avatar_placeholder((int) $user->ID)),
+                'initials'             => $avatar_letters['initials'],
+                'avatar_palette'       => $avatar_letters['palette'],
+                'force_initials'       => $avatar_letters['force_initials'],
+                'featured'             => $featured_flag,
             ],
             'name'       => [
                 'personal' => $personal_name,
@@ -2585,6 +2599,123 @@ class ClientRestController
         }
 
         return $formatted;
+    }
+
+    private static function get_avatar_letters(int $user_id): array
+    {
+        $defaults = [
+            'initials'        => '',
+            'palette'         => [
+                'bg'       => '',
+                'bg_dark'  => '',
+                'text'     => '',
+                'text_dark'=> '',
+            ],
+            'force_initials'  => false,
+        ];
+
+        if ($user_id <= 0 || ! function_exists('get_field')) {
+            return $defaults;
+        }
+
+        $data = get_field('letras_avatar', 'user_' . $user_id);
+        if (! is_array($data) || empty($data)) {
+            return $defaults;
+        }
+
+        $initials = isset($data['iniciales']) ? self::clean_text((string) $data['iniciales']) : '';
+        $palette  = [
+            'bg'        => self::sanitize_color_value($data['fondo'] ?? ''),
+            'bg_dark'   => self::sanitize_color_value($data['fondo_dark'] ?? ''),
+            'text'      => self::sanitize_color_value($data['texto'] ?? ''),
+            'text_dark' => self::sanitize_color_value($data['texto_dark'] ?? ''),
+        ];
+
+        $has_palette = $palette['bg'] !== '' && $palette['bg_dark'] !== '' && $palette['text'] !== '' && $palette['text_dark'] !== '';
+
+        return [
+            'initials'       => $initials,
+            'palette'        => $has_palette ? $palette : $defaults['palette'],
+            'force_initials' => ! empty($data['mostrar_aunque_tenga_foto_de_perfil']),
+        ];
+    }
+
+    private static function sanitize_color_value($value): string
+    {
+        $value = is_string($value) ? trim($value) : '';
+        if ($value === '') {
+            return '';
+        }
+
+        // Accept rgba()/rgb()/hex strings and sanitize to plain text.
+        return sanitize_text_field($value);
+    }
+
+    private static function get_avatar_placeholder(int $user_id): string
+    {
+        if ($user_id <= 0) {
+            return '';
+        }
+
+        return esc_url_raw((string) get_avatar_url($user_id, [
+            'size'          => 96,
+            'force_default' => true,
+        ]));
+    }
+
+    private static function pick_avatar_url(string $profile_image, string $fallback_avatar, int $user_id): string
+    {
+        $candidates = [];
+
+        if ($profile_image !== '') {
+            $candidates[] = $profile_image;
+        }
+
+        if ($fallback_avatar !== '') {
+            $candidates[] = $fallback_avatar;
+        }
+
+        if ($user_id > 0) {
+            $candidates[] = get_avatar_url($user_id);
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate_url = esc_url_raw((string) $candidate);
+            if ($candidate_url !== '' && ! self::is_placeholder_avatar_url($candidate_url)) {
+                return $candidate_url;
+            }
+        }
+
+        return '';
+    }
+
+    private static function is_placeholder_avatar_url(string $url): bool
+    {
+        $parsed = wp_parse_url($url);
+
+        if (empty($parsed['host'])) {
+            return false;
+        }
+
+        $host = strtolower((string) $parsed['host']);
+        if (strpos($host, 'gravatar.com') === false) {
+            return false;
+        }
+
+        if (empty($parsed['query'])) {
+            return false;
+        }
+
+        parse_str((string) $parsed['query'], $params);
+        $default = strtolower((string) ($params['d'] ?? $params['default'] ?? ''));
+
+        if ($default === '') {
+            return false;
+        }
+
+        $placeholders = ['mm', 'mp', 'mysteryman', 'identicon', 'retro', 'monsterid', 'wavatar', 'robohash', 'blank'];
+
+        return in_array($default, $placeholders, true);
     }
 
     private static function initials(string $name): string
