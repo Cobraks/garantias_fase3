@@ -1292,16 +1292,23 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: var(--client-surface);
-    color: var(--go-color-0f172a);
+}
+
+.clients-table__initials {
+    background: var(--avatar-bg, var(--client-surface));
+    color: var(--avatar-color, var(--go-color-0f172a));
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 600;
     font-size: 0.9rem;
     text-transform: uppercase;
-    border: 2px solid var(--client-avatar-border);
+    border: 2px solid var(--avatar-border, var(--client-avatar-border));
     box-shadow: 0 6px 14px rgba(var(--go-color-0f172a-rgb), 0.12);
+}
+:root[data-theme='dark'] .clients-table__initials {
+    background: var(--avatar-bg-dark, var(--avatar-bg, var(--client-surface)));
+    color: var(--avatar-color-dark, var(--avatar-color, #f4f4f5));
 }
 .clients-table__avatar-wrapper {
     flex-shrink: 0;
@@ -1313,6 +1320,10 @@
 .clients-table__avatar {
     object-fit: cover;
     border-radius: 50%;
+    display: block;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 .clients-table__client {
     display: flex;
@@ -1332,7 +1343,7 @@
     min-width: 0;
 }
 .clients-table__name {
-    font-weight: 600;
+    font-weight: 400;
     color: var(--go-color-111827);
     display: block;
     white-space: nowrap;
@@ -1361,12 +1372,14 @@
     letter-spacing: 0.05em;
     color: #16a34a;
     white-space: nowrap;
+    align-self: flex-end;
 }
 .clients-table__presence-label[hidden] {
     display: none !important;
 }
 .clients-table__company {
     font-size: 0.85rem;
+    font-weight: 600;
     color: var(--go-color-64748b);
     display: block;
     white-space: nowrap;
