@@ -2226,16 +2226,10 @@ class GuaranteeRestController
             ], 200);
         }
 
-        $trashed = wp_trash_post($post_id);
-        if ($trashed === false || is_wp_error($trashed)) {
-            $error_message = $trashed instanceof WP_Error
-                ? $trashed->get_error_message()
-                : __('No se pudo enviar la garantía a la papelera.', 'garantias-online-360vo');
-            return new WP_Error('trash_failed', $error_message, ['status' => 500]);
+        $trash_error = self::trash_guarantee_post($post_id);
+        if (is_wp_error($trash_error)) {
+            return $trash_error;
         }
-
-        delete_transient('go_gdetail_' . $post_id);
-        self::clear_list_transients($post_id, null, true);
 
         return new WP_REST_Response([
             'success' => true,
@@ -2918,6 +2912,7 @@ class GuaranteeRestController
         $pending_payment_event   = null;
         $payment_method          = '';
         $previous_cobro          = 0;
+        $trashed_cancelled_id    = 0;
 
         error_log('[AUTOSAVE] Incoming: ' . wp_json_encode(['id' => $post_id, 'uuid' => $uuid, 'data' => $data]));
 
@@ -2978,20 +2973,18 @@ class GuaranteeRestController
         }
 
         if ($matricula) {
-            $args = [
-                'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-                'post_status'    => ['draft', 'publish', 'pending', 'future'],
-                'meta_key'       => 'datos_vehiculo_matricula',
-                'meta_value'     => $matricula,
-                'fields'         => 'ids',
-                'posts_per_page' => 1,
-            ];
-            if ($post_id) {
-                $args['post__not_in'] = [$post_id];
-            }
-            $existing = get_posts($args);
-            if (!empty($existing)) {
+            $conflicts = self::find_plate_conflicts($matricula, $post_id);
+
+            if ($conflicts['blocking']) {
                 return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
+            }
+
+            if ($conflicts['cancelled'] && $conflicts['cancelled'] !== $post_id) {
+                $trash_error = self::trash_guarantee_post($conflicts['cancelled']);
+                if (is_wp_error($trash_error)) {
+                    return $trash_error;
+                }
+                $trashed_cancelled_id = (int) $conflicts['cancelled'];
             }
         }
 
@@ -3585,6 +3578,10 @@ class GuaranteeRestController
             'firma_sello'      => $firma_sello,
             'notify_url'       => set_url_scheme($notify_url, $scheme),
         ];
+
+        if ($trashed_cancelled_id > 0) {
+            $response['trashed_cancelled_id'] = $trashed_cancelled_id;
+        }
 
         $response['detail'] = self::get_detail_data($post_id, true);
 
@@ -4810,6 +4807,65 @@ class GuaranteeRestController
         return $cached;
     }
 
+    private static function find_plate_conflicts(string $matricula, int $exclude_post_id = 0): array
+    {
+        $args = [
+            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['draft', 'publish', 'pending', 'future', 'trash'],
+            'meta_key'       => 'datos_vehiculo_matricula',
+            'meta_value'     => $matricula,
+            'fields'         => 'ids',
+            'posts_per_page' => -1,
+        ];
+
+        if ($exclude_post_id > 0) {
+            $args['post__not_in'] = [$exclude_post_id];
+        }
+
+        $conflicts = [
+            'blocking'  => null,
+            'cancelled' => null,
+        ];
+
+        $existing = get_posts($args);
+        foreach ($existing as $post_id) {
+            $status = get_post_status($post_id);
+            if ($status === 'trash') {
+                continue;
+            }
+
+            $contract_state = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
+            if ($contract_state === 'cancelada') {
+                if ($conflicts['cancelled'] === null) {
+                    $conflicts['cancelled'] = (int) $post_id;
+                }
+                continue;
+            }
+
+            $conflicts['blocking'] = (int) $post_id;
+            break;
+        }
+
+        return $conflicts;
+    }
+
+    private static function trash_guarantee_post(int $post_id)
+    {
+        $trashed = wp_trash_post($post_id);
+        if ($trashed === false || is_wp_error($trashed)) {
+            $error_message = $trashed instanceof WP_Error
+                ? $trashed->get_error_message()
+                : __('No se pudo enviar la garantía a la papelera.', 'garantias-online-360vo');
+
+            return new WP_Error('trash_failed', $error_message, ['status' => 500]);
+        }
+
+        delete_transient('go_gdetail_' . $post_id);
+        self::clear_list_transients($post_id, null, true);
+
+        return null;
+    }
+
     public static function check_plate($request)
     {
         $matricula = isset($request['matricula']) ? sanitize_text_field($request['matricula']) : '';
@@ -4837,23 +4893,19 @@ class GuaranteeRestController
             }
         }
 
-        $args = [
-            'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => ['draft', 'publish', 'pending', 'future'],
-            'meta_key'       => 'datos_vehiculo_matricula',
-            'meta_value'     => $matricula,
-            'fields'         => 'ids',
-            'posts_per_page' => 1,
-        ];
-        if ($post_id) {
-            $args['post__not_in'] = [$post_id];
-        }
-        $existing = get_posts($args);
-        if (!empty($existing)) {
+        $conflicts = self::find_plate_conflicts($matricula, $post_id);
+
+        if ($conflicts['blocking']) {
             return new WP_Error('duplicate_plate', __('Ya existe una garantía para este vehículo', 'garantias-online-360vo'), ['status' => 409]);
         }
 
-        return rest_ensure_response(['exists' => false]);
+        $response = ['exists' => false];
+        if ($conflicts['cancelled']) {
+            $response['cancelled_match'] = true;
+            $response['cancelled_id']    = $conflicts['cancelled'];
+        }
+
+        return rest_ensure_response($response);
     }
 
     /**

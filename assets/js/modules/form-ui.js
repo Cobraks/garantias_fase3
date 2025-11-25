@@ -85,10 +85,41 @@ function handleDateInputs() {
  * Crea un párrafo de mensaje de info dentro de un contenedor dado
  */
 function createInfoMessage(container) {
-	const message = document.createElement("p");
-	message.classList.add("form__info-message");
-	container.appendChild(message);
-	return message;
+        const message = document.createElement("p");
+        message.classList.add("form__info-message");
+        container.appendChild(message);
+        return message;
+}
+
+/**
+ * Fuerza la desactivación del autocompletado del navegador en los campos sensibles
+ * para evitar que Chrome muestre el diálogo de guardar dirección con datos de terceros.
+ */
+function disableAddressAutocomplete() {
+        const form = document.getElementById("form-garantia");
+        if (!form) return;
+
+        form.autocomplete = "off";
+
+        const fieldsToDisable = [
+                "nombre_apellidos",
+                "dni",
+                "telefono",
+                "correo",
+                "direccion",
+                "localidad",
+                "provincia",
+                "codigo_postal",
+        ];
+
+        fieldsToDisable.forEach((id) => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                input.setAttribute("autocomplete", "new-password");
+                input.setAttribute("autocorrect", "off");
+                input.setAttribute("autocapitalize", "off");
+                input.setAttribute("spellcheck", "false");
+        });
 }
 
 /**
@@ -96,6 +127,7 @@ function createInfoMessage(container) {
  */
 function init() {
         setupClearButtons();
+        disableAddressAutocomplete();
         setTodayForGarantia();
         handleDateInputs();
 
