@@ -19,6 +19,7 @@ class RegisterRestController
     private const ROUTE_CREATE  = '/register';
     private const ROUTE_VERIFY  = '/register/verify';
     private const ROUTE_RESEND  = '/register/resend';
+    private const ROUTE_STATUS  = '/register/verification';
 
     public static function register_routes(): void
     {
@@ -68,6 +69,25 @@ class RegisterRestController
                 'methods'             => WP_REST_Server::CREATABLE,
                 'callback'            => [__CLASS__, 'resend_code'],
                 'permission_callback' => '__return_true',
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            self::ROUTE_STATUS,
+            [
+                'methods'             => WP_REST_Server::READABLE,
+                'callback'            => [__CLASS__, 'get_verification'],
+                'permission_callback' => '__return_true',
+                'args'                => [
+                    'email' => [
+                        'required'          => true,
+                        'sanitize_callback' => 'sanitize_email',
+                        'validate_callback' => function ($value) {
+                            return is_string($value) && is_email($value);
+                        },
+                    ],
+                ],
             ]
         );
     }
@@ -120,6 +140,19 @@ class RegisterRestController
         $token   = isset($params['token']) ? (string) $params['token'] : '';
 
         $result = $service->resend($token);
+        if ($result instanceof WP_Error) {
+            return self::error_response($result);
+        }
+
+        return new WP_REST_Response($result, 200);
+    }
+
+    public static function get_verification(WP_REST_Request $request)
+    {
+        $service = new RegistrationService();
+        $email   = (string) $request->get_param('email');
+
+        $result = $service->get_verification_context($email);
         if ($result instanceof WP_Error) {
             return self::error_response($result);
         }

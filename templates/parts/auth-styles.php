@@ -398,6 +398,18 @@
             gap: clamp(1rem, 2.8vh, 1.5rem);
         }
 
+        .verification-cta-buttons {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+
+        .verification-cta-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
         .form-row {
             display: flex;
             flex-direction: column;
@@ -819,6 +831,10 @@
                 flex-direction: row;
                 justify-content: space-between;
                 align-items: center;
+            }
+
+            .verification-cta-buttons .btn {
+                width: auto;
             }
 
             .form-link {
