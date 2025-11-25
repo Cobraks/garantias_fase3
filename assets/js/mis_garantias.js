@@ -4657,9 +4657,9 @@ const ADD_DOC_KEY = "add-document";
                         if (!managementActionsList) {
                                 return;
                         }
-                        const estadoClase =
-                                (panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "")
-                                        .toLowerCase();
+                        const estadoClaseRaw =
+                                panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || "";
+                        const estadoClase = normalizeEstadoClase(estadoClaseRaw || "");
                         const isCancelled = estadoClase === "cancelada";
                         const toggleAction = (selector) => {
                                 const cache = ensureManagementAction(selector);
@@ -4689,6 +4689,7 @@ const ADD_DOC_KEY = "add-document";
 
                         toggleAction('[data-management-action="cancel-for-nonpayment"]');
                         toggleAction('[data-management-action="certificate-error"]');
+                        toggleAction('[data-management-action="edit-wordpress"]');
                 }
 
                 function formatDateIsoLocal(value) {
