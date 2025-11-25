@@ -1220,12 +1220,21 @@
             return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
         }
 
+        function normalizeAvatarUrl(url) {
+            if (typeof url !== 'string') {
+                return '';
+            }
+
+            return url.replace(/&amp;/gi, '&').trim();
+        }
+
         function isPlaceholderAvatarUrl(url) {
-            if (!url || typeof url !== 'string') {
+            const normalizedUrl = normalizeAvatarUrl(url);
+            if (!normalizedUrl) {
                 return false;
             }
             try {
-                const parsed = new URL(url, window.location.origin);
+                const parsed = new URL(normalizedUrl, window.location.origin);
                 const host = parsed.hostname.toLowerCase();
                 if (!host.includes('gravatar.com')) {
                     return false;
@@ -1243,7 +1252,7 @@
 
         function renderAvatar(profile, altText, initialsSource = '') {
             const safeProfile = profile && typeof profile === 'object' ? profile : {};
-            const avatarUrl = typeof safeProfile.avatar === 'string' ? safeProfile.avatar.trim() : '';
+            const avatarUrl = normalizeAvatarUrl(typeof safeProfile.avatar === 'string' ? safeProfile.avatar : '');
             const initialsSeed = (typeof initialsSource === 'string' ? initialsSource : '').trim();
             const fallbackSeed = initialsSeed || altText || safeProfile.seed || safeProfile.id || '';
             const hasValidAvatar = avatarUrl !== '' && !isPlaceholderAvatarUrl(avatarUrl);
