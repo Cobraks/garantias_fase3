@@ -240,11 +240,33 @@ class PushMessageFactory
         $reason = isset($context['reason']) ? sanitize_text_field((string) $context['reason']) : '';
 
         $title = __('Garantía cancelada', 'garantias-online-360vo');
-        $body = $plate !== '' && $reason !== ''
-            ? sprintf(__('Se ha cancelado la garantía %1$s por %2$s.', 'garantias-online-360vo'), $plate, $reason)
-            : __('Se ha cancelado una garantía.', 'garantias-online-360vo');
+        $body_parts = [];
+
+        if ($actor_name !== '') {
+            $body_parts[] = $plate !== ''
+                ? sprintf(
+                    /* translators: 1: actor name, 2: car plate */
+                    __('%1$s ha cancelado la garantía %2$s.', 'garantias-online-360vo'),
+                    $actor_name,
+                    $plate
+                )
+                : sprintf(
+                    /* translators: %s actor name */
+                    __('%s ha cancelado una garantía.', 'garantias-online-360vo'),
+                    $actor_name
+                );
+        } else {
+            $body_parts[] = $plate !== ''
+                ? sprintf(__('Se ha cancelado la garantía %s.', 'garantias-online-360vo'), $plate)
+                : __('Se ha cancelado una garantía.', 'garantias-online-360vo');
+        }
+
+        $body = implode(' ', $body_parts);
 
         $meta = [];
+        if ($plate !== '') {
+            $meta[] = $this->meta_entry(__('Matrícula', 'garantias-online-360vo'), $plate);
+        }
         if ($actor_name !== '') {
             $meta[] = $this->meta_entry(__('Cancelada por', 'garantias-online-360vo'), $actor_name);
         }
@@ -252,13 +274,16 @@ class PushMessageFactory
             $meta[] = $this->meta_entry(__('Motivo', 'garantias-online-360vo'), $reason);
         }
 
+        $guarantee_id = isset($record['guarantee_id']) ? (int) $record['guarantee_id'] : 0;
+        $context['vehicle_plate'] = $plate;
+
         return [
             'title' => $title,
             'body'  => $body,
-            'link'  => $this->resolve_guarantee_link($plate),
+            'link'  => $this->build_guarantee_link($guarantee_id, $context),
             'icon'      => Svg::data_uri('cancel_guarantee'),
             'icon_slug' => 'cancel_guarantee',
-            'tone'      => 'warning',
+            'tone'      => 'danger',
             'meta'      => $meta,
             'category'  => 'guarantees',
             'context'   => [
