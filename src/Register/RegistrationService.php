@@ -340,6 +340,51 @@ class RegistrationService
     }
 
     /**
+     * Obtiene el contexto de verificación para un usuario pendiente a partir del email.
+     *
+     * @return array<string, mixed>|WP_Error
+     */
+    public function get_verification_context(string $email)
+    {
+        $email = sanitize_email($email);
+        if (! is_email($email)) {
+            return new WP_Error('go_verify_invalid_email', __('Introduce un correo electrónico válido.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $user = get_user_by('email', $email);
+        if (! $user instanceof WP_User) {
+            return new WP_Error('go_verify_unknown', __('No hemos encontrado ninguna cuenta pendiente de verificación.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $user_id = (int) $user->ID;
+        if (! RegistrationMeta::is_verification_required($user_id)) {
+            return new WP_Error('go_verify_not_pending', __('Esta cuenta ya está verificada. Inicia sesión para continuar.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $token = get_user_meta($user_id, RegistrationMeta::TOKEN, true);
+        $token = is_string($token) ? $token : '';
+        if ($token === '') {
+            return new WP_Error('go_verify_unknown', __('No hemos encontrado ninguna solicitud pendiente. Inicia el registro de nuevo.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $expires = (int) get_user_meta($user_id, RegistrationMeta::EXPIRES, true);
+        $last_sent = (int) get_user_meta($user_id, RegistrationMeta::RESEND_LAST, true);
+        $resend_in = 0;
+        if ($last_sent && (time() - $last_sent) < self::RESEND_COOLDOWN) {
+            $resend_in = self::RESEND_COOLDOWN - (time() - $last_sent);
+        }
+
+        return [
+            'status'              => 'pending_verification',
+            'token'               => $token,
+            'email'               => $user->user_email,
+            'expires_at'          => $expires ? gmdate('c', $expires) : '',
+            'expires_in'          => $expires ? max(0, $expires - time()) : 0,
+            'resend_available_in' => $resend_in,
+        ];
+    }
+
+    /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>|WP_Error
      */
@@ -556,6 +601,8 @@ class RegistrationService
             if (! empty($uploads['avatar']['id'])) {
                 update_field('profile_image', $uploads['avatar']['id'], $scope);
             }
+
+            $this->persist_avatar_letters($user_id, $data);
         }
 
         update_user_meta($user_id, 'datos_empresa_tipo_profesional', $data['channel']);
@@ -806,6 +853,176 @@ class RegistrationService
         $group['gestion_sepa'] = $gestion_sepa;
 
         update_field('gestion_pagos', $group, $scope);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function persist_avatar_letters(int $user_id, array $data): void
+    {
+        if (! function_exists('update_field')) {
+            return;
+        }
+
+        $scope    = 'user_' . $user_id;
+        $initials = $this->build_initials($data);
+        $palette  = $this->build_palette_from_email($data['email'] ?? '');
+
+        if ($initials === '' && empty(array_filter($palette))) {
+            return;
+        }
+
+        $payload = [
+            'iniciales'                          => $initials,
+            'fondo'                              => $palette['bg'] ?? '',
+            'fondo_dark'                         => $palette['bg_dark'] ?? '',
+            'texto'                              => $palette['text'] ?? '',
+            'texto_dark'                         => $palette['text_dark'] ?? '',
+            'mostrar_aunque_tenga_foto_de_perfil'=> 0,
+        ];
+
+        update_field('letras_avatar', $payload, $scope);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function build_initials(array $data): string
+    {
+        $role = isset($data['role']) ? (string) $data['role'] : '';
+
+        if ($role === 'go_particular') {
+            return $this->initials_from_personal(
+                (string) ($data['first_name'] ?? ''),
+                (string) ($data['last_name'] ?? '')
+            );
+        }
+
+        $company = '';
+        if (isset($data['company']['trade_name'])) {
+            $company = (string) $data['company']['trade_name'];
+        }
+
+        return $this->initials_from_company($company);
+    }
+
+    private function initials_from_personal(string $first_name, string $last_name): string
+    {
+        $first = trim($first_name);
+        $last  = trim($last_name);
+
+        if ($first === '' && $last === '') {
+            return '';
+        }
+
+        $initials = '';
+        if ($first !== '') {
+            $initials .= mb_strtoupper(mb_substr($first, 0, 1));
+        }
+
+        if ($last !== '') {
+            $initials .= mb_strtoupper(mb_substr($last, 0, 1));
+        } elseif (mb_strlen($first) > 1) {
+            $initials .= mb_strtoupper(mb_substr($first, 1, 1));
+        }
+
+        return mb_substr($initials, 0, 2);
+    }
+
+    private function initials_from_company(string $name): string
+    {
+        $name  = trim(preg_replace('/\s+/', ' ', $name) ?? '');
+        $parts = $name === '' ? [] : explode(' ', $name);
+
+        if (empty($parts)) {
+            return '';
+        }
+
+        if (count($parts) === 1) {
+            return mb_strtoupper(mb_substr($parts[0], 0, 2));
+        }
+
+        $first  = $parts[0];
+        $second = $parts[1] ?? '';
+
+        if (mb_strlen($first) === 2) {
+            return mb_strtoupper($first);
+        }
+
+        if ($second !== '' && preg_match('/^\d/', $second)) {
+            return mb_strtoupper(mb_substr($first, 0, 2));
+        }
+
+        $initials = mb_strtoupper(mb_substr($first, 0, 1));
+        if ($second !== '') {
+            $initials .= mb_strtoupper(mb_substr($second, 0, 1));
+        }
+
+        return mb_substr($initials, 0, 2);
+    }
+
+    /**
+     * @return array{bg:string,bg_dark:string,text:string,text_dark:string}
+     */
+    private function build_palette_from_email(string $email): array
+    {
+        $email = trim($email);
+        if ($email === '') {
+            return [
+                'bg'       => '',
+                'bg_dark'  => '',
+                'text'     => '',
+                'text_dark'=> '',
+            ];
+        }
+
+        $hash = $this->string_to_hash($email);
+        $hue  = abs($hash % 360);
+
+        return [
+            'bg'        => $this->hsl_to_rgb_string($hue, 65, 85),
+            'text'      => $this->hsl_to_rgb_string($hue, 80, 25),
+            'bg_dark'   => $this->hsl_to_rgb_string($hue, 50, 30),
+            'text_dark' => $this->hsl_to_rgb_string($hue, 70, 90),
+        ];
+    }
+
+    private function string_to_hash(string $value): int
+    {
+        $hash = 0;
+        $len  = mb_strlen($value);
+
+        for ($i = 0; $i < $len; $i++) {
+            $char  = mb_ord(mb_substr($value, $i, 1));
+            $hash  = $char + (($hash << 5) - $hash);
+            $hash |= 0;
+        }
+
+        return $hash;
+    }
+
+    private function hsl_to_rgb_string(int $h, int $s, int $l): string
+    {
+        $h = $h % 360;
+        $s = max(0, min(100, $s)) / 100;
+        $l = max(0, min(100, $l)) / 100;
+
+        $k = static function (int $n, float $h): float {
+            return fmod($n + $h / 30, 12);
+        };
+
+        $a = $s * min($l, 1 - $l);
+
+        $f = static function (int $n) use ($l, $a, $k, $h): float {
+            $component = $l - $a * max(-1, min($k($n, $h) - 3, min(9 - $k($n, $h), 1)));
+            return round(255 * $component);
+        };
+
+        $r = (int) $f(0);
+        $g = (int) $f(8);
+        $b = (int) $f(4);
+
+        return sprintf('rgb(%d,%d,%d)', $r, $g, $b);
     }
 
     /**

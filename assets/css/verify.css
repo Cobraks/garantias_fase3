@@ -1,0 +1,192 @@
+.verify-page .login-card__layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1.5rem, 4vw, 2rem);
+}
+
+@media (min-width: 960px) {
+    .verify-page .login-card__layout {
+        grid-template-columns: 1.05fr 1.1fr;
+        align-items: start;
+    }
+}
+
+.verify-grid {
+    display: grid;
+    gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+    .verify-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.verify-panel {
+    background: var(--auth-field-bg);
+    border: 1px solid var(--auth-field-border);
+    border-radius: 16px;
+    padding: clamp(1.25rem, 3vw, 1.75rem);
+    box-shadow: 0 12px 28px -22px rgba(15, 23, 42, 0.4);
+    display: grid;
+    gap: 0.9rem;
+}
+
+.verify-panel__header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.verify-panel__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: var(--auth-field-bg);
+    background: linear-gradient(135deg, var(--auth-accent) 0%, var(--auth-accent-dark) 100%);
+}
+
+.verify-panel__eyebrow {
+    margin: 0;
+    font-size: 0.82rem;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--auth-muted);
+    font-weight: 600;
+}
+
+.verify-panel__title {
+    margin: 0.15rem 0 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--auth-field-text);
+}
+
+.verify-panel__description {
+    margin: 0;
+    color: var(--auth-muted);
+    line-height: 1.45;
+}
+
+.verify-panel__actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.verify-panel--code .verification-message {
+    margin-top: -0.25rem;
+}
+
+.verify-panel--code .verification-hint {
+    color: var(--auth-muted);
+}
+
+.verify-panel--code .verification-success {
+    border-top: 1px solid var(--auth-field-border);
+    padding-top: 1rem;
+    margin-top: 0.75rem;
+}
+
+.verify-panel--code .verification-success__cta {
+    margin-top: 0.75rem;
+}
+
+.verify-panel--lookup .form-row {
+    margin-bottom: 0.25rem;
+}
+
+.verify-panel--lookup .btn {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .verify-panel--lookup .btn {
+        width: auto;
+    }
+}
+
+.verify-page .verification-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.verify-page .verification-message {
+    border-radius: 10px;
+    padding: 0.65rem 0.75rem;
+    margin: 0.25rem 0 0;
+}
+
+.verify-page .verification-message--success {
+    background: rgba(16, 185, 129, 0.12);
+    color: #065f46;
+}
+
+.verify-page .verification-message--error {
+    background: rgba(239, 68, 68, 0.12);
+    color: #991b1b;
+}
+
+.verify-page .verification-message--info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+}
+
+.verify-page .verification-hint {
+    display: block;
+    margin: 0.25rem 0 0;
+}
+
+.verify-page .verification-message[hidden],
+.verify-page #verification-expiry[hidden] {
+    display: none !important;
+}
+
+.verify-page #verification-success[hidden] {
+    display: none;
+}
+
+.verify-page #verification-block[data-state='verified'] .verification-actions,
+.verify-page #verification-block[data-state='verified'] .input-container,
+.verify-page #verification-block[data-state='verified'] .verification-hint,
+.verify-page #verification-block[data-state='verified'] #verification-message,
+.verify-page #verification-block[data-state='verified'] #verification-expiry {
+    display: none;
+}
+
+.verify-page #verification-block[data-state='verified'] .verification-success {
+    display: block;
+}
+
+.verify-page #verify-step-label[data-state='expired'] {
+    color: #b91c1c;
+}
+
+:root[data-theme='dark'] .verify-panel {
+    background: var(--auth-surface-contrast, #1d1f26);
+    box-shadow: none;
+}
+
+:root[data-theme='dark'] .verify-panel__description,
+:root[data-theme='dark'] .verify-panel__eyebrow {
+    color: var(--auth-muted);
+}
+
+:root[data-theme='dark'] .verify-page .verification-message--success {
+    background: rgba(34, 197, 94, 0.12);
+    color: #befae0;
+}
+
+:root[data-theme='dark'] .verify-page .verification-message--error {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fecdd3;
+}
+
+:root[data-theme='dark'] .verify-page .verification-message--info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #c7d2fe;
+}
