@@ -8643,7 +8643,15 @@ const ADD_DOC_KEY = "add-document";
 				if (!res.ok) throw `HTTP ${res.status}`;
 				totalPosts = +res.headers.get("X-WP-Total") || 0;
 				totalPages = +res.headers.get("X-WP-TotalPages") || 1;
-                                const { data } = await res.json();
+                                const responseText = await res.text();
+                                let parsed;
+                                try {
+                                        parsed = JSON.parse(responseText);
+                                } catch (parseErr) {
+                                        console.error("❌ Error parseando respuesta de garantías:", parseErr, responseText);
+                                        throw new Error("Respuesta no es JSON válido");
+                                }
+                                const { data } = parsed;
 
                                 const esNuevaBusqueda = page === 1;
                                 const now = Date.now();
