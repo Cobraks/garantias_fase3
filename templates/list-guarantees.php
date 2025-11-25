@@ -1098,7 +1098,8 @@ if (($is_admin_user || $is_director || $is_professional)
                             <div class="management-actions__list" role="list">
                                 <button
                                     type="button"
-                                    class="management-actions__item management-actions__item--primary"
+                                    class="management-actions__item management-actions__item--primary management-actions__item--disabled"
+                                    disabled
                                     data-management-action="certificate-error">
                                     <span class="management-actions__icon" aria-hidden="true">
                                         <?php echo Svg::icon('edit_guarantee'); ?>
@@ -1106,18 +1107,6 @@ if (($is_admin_user || $is_director || $is_professional)
                                     <span class="management-actions__copy">
                                         <strong><?php esc_html_e('Corregir datos', 'garantias-online-360vo'); ?></strong>
                                         <span class="management-actions__description"><?php esc_html_e('Actualizar información del certificado', 'garantias-online-360vo'); ?></span>
-                                    </span>
-                                </button>
-                                <button
-                                    type="button"
-                                    class="management-actions__item"
-                                    data-management-action="cancel-for-nonpayment">
-                                    <span class="management-actions__icon" aria-hidden="true">
-                                        <?php echo Svg::icon('cancel_guarantee'); ?>
-                                    </span>
-                                    <span class="management-actions__copy">
-                                        <strong><?php esc_html_e('Cancelar garantía', 'garantias-online-360vo'); ?></strong>
-                                        <span class="management-actions__description"><?php esc_html_e('Anular por falta de pago o solicitud del cliente', 'garantias-online-360vo'); ?></span>
                                     </span>
                                 </button>
                                 <button
@@ -1152,13 +1141,25 @@ if (($is_admin_user || $is_director || $is_professional)
                                 <button
                                     type="button"
                                     class="management-actions__item management-actions__item--danger"
+                                    data-management-action="cancel-for-nonpayment">
+                                    <span class="management-actions__icon" aria-hidden="true">
+                                        <?php echo Svg::icon('cancel_guarantee'); ?>
+                                    </span>
+                                    <span class="management-actions__copy">
+                                        <strong><?php esc_html_e('Cancelar garantía', 'garantias-online-360vo'); ?></strong>
+                                        <span class="management-actions__description"><?php esc_html_e('Desactivar y registrar la cancelación', 'garantias-online-360vo'); ?></span>
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="management-actions__item management-actions__item--danger"
                                     data-management-action="delete-guarantee">
                                     <span class="management-actions__icon" aria-hidden="true">
                                         <?php echo Svg::icon('delete'); ?>
                                     </span>
                                     <span class="management-actions__copy">
                                         <strong><?php esc_html_e('Eliminar garantía', 'garantias-online-360vo'); ?></strong>
-                                        <span class="management-actions__description"><?php esc_html_e('Eliminar permanentemente del sistema', 'garantias-online-360vo'); ?></span>
+                                        <span class="management-actions__description"><?php esc_html_e('Enviar garantía a la papelera', 'garantias-online-360vo'); ?></span>
                                     </span>
                                 </button>
                             </div>
@@ -1318,14 +1319,15 @@ if (($is_admin_user || $is_director || $is_professional)
             </ul>
         </div>
 
-        <div class="pdf-modal__body">
-            <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
-            <div class="pdf-modal__spinner" aria-hidden="true">
-                <div class="spinner"></div>
-            </div>
-            <div class="pdf-modal__upload" hidden>
-                <div class="pdf-modal__upload-inner">
-                    <h3><?php esc_html_e('Añadir documento', 'garantias-online-360vo'); ?></h3>
+            <div class="pdf-modal__body">
+                <iframe class="pdf-modal__iframe" src="" title="<?php esc_attr_e('Vista previa de documento', 'garantias-online-360vo'); ?>"></iframe>
+                <div class="pdf-modal__spinner" aria-hidden="true">
+                    <div class="spinner"></div>
+                    <p class="pdf-modal__spinner-text"><?php esc_html_e('Espera por favor.', 'garantias-online-360vo'); ?></p>
+                </div>
+                <div class="pdf-modal__upload" hidden>
+                    <div class="pdf-modal__upload-inner">
+                        <h3><?php esc_html_e('Añadir documento', 'garantias-online-360vo'); ?></h3>
                     <p><?php esc_html_e('Aquí el sistema para subir documentación.', 'garantias-online-360vo'); ?></p>
                 </div>
             </div>
