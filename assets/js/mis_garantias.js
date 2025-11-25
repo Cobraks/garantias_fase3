@@ -3043,53 +3043,6 @@ const ADD_DOC_KEY = "add-document";
                         dispatchNotificationEvent(detail);
                 }
 
-                function notifyGuaranteeCancelled(context = {}) {
-                        if (!notificationsRoot) {
-                                return;
-                        }
-                        const matricula = formatNotificationMetaText(context.matricula);
-                        const reason = formatNotificationMetaText(context.reason);
-                        const userName = formatNotificationMetaText(context.userName);
-
-                        const meta = [];
-                        if (matricula) {
-                                meta.push({ label: "Matrícula", text: matricula });
-                        }
-
-                        const safePlate = matricula ? escapeHtml(matricula) : "";
-                        const displayPlate = safePlate;
-                        const actor =
-                                userName ||
-                                currentUserName ||
-                                resolveCurrentUserNameFromConfig(goConfig) ||
-                                "Un usuario";
-                        const reasonText = reason || "-";
-
-                        const bodyParts = [
-                                displayPlate
-                                        ? `${actor} ha cancelado la garantía ${displayPlate}.`
-                                        : `${actor} ha cancelado una garantía.`,
-                        ];
-
-                        if (reasonText) {
-                                bodyParts.push(`Motivo: ${reasonText}.`);
-                        }
-
-                        const detail = {
-                                id: Date.now(),
-                                title: "Garantía cancelada",
-                                body: bodyParts.join(" "),
-                                icon_slug: "delete",
-                                icon_svg: deleteNotificationIcon,
-                                badge: "Garantías",
-                                tone: "warning",
-                                meta,
-                                created_at: new Date().toISOString(),
-                        };
-
-                        dispatchNotificationEvent(detail);
-                }
-
                 function parseDisplayDate(value) {
                         if (typeof value !== "string") {
                                 return null;
@@ -3894,21 +3847,32 @@ const ADD_DOC_KEY = "add-document";
                                                 syncPdfModalDocs(targetPanel);
                                                 updateManagementHeaderFromDetail(targetPanel);
                                                 syncManagementActionsAvailability(targetPanel);
-                                                showDetailToast(targetPanel, "Garantía cancelada.");
-                                        }
+                                showDetailToast(targetPanel, "Garantía cancelada.");
+                        }
 
-                                        const cancellationReasonText = resolveCancellationReasonText(
-                                                data?.estado_garantia || {},
-                                                cancelReasons.reason,
-                                                cancelReasons.other
-                                        );
-                                        notifyGuaranteeCancelled({
-                                                id,
-                                                matricula: data.matricula || rowData.matricula || "",
-                                                plan: data.plan || rowData.plan || "",
-                                                reason: cancellationReasonText,
-                                                userName: currentUserName,
-                                        });
+                                        if (
+                                                typeof window !== "undefined" &&
+                                                typeof window.dispatchEvent === "function"
+                                        ) {
+                                                try {
+                                                        console.log(
+                                                                "[GO360][cancel] Notificación de cancelación registrada, refrescando panel",
+                                                                {
+                                                                        id,
+                                                                        plate:
+                                                                                data.matricula ||
+                                                                                rowData.matricula ||
+                                                                                "",
+                                                                        reason: cancelReasons.reason || "",
+                                                                }
+                                                        );
+                                                } catch (logError) {
+                                                        // noop
+                                                }
+                                                window.dispatchEvent(
+                                                        new CustomEvent("go360:notifications:refresh")
+                                                );
+                                        }
 
                                         setConfirmLabel("Garantía cancelada", true);
                                         pendingConfirmContext = null;
@@ -4138,9 +4102,18 @@ const ADD_DOC_KEY = "add-document";
                                         notifyNoteEl.textContent = "";
                                         notifyNoteEl.hidden = true;
                                 }
+                                if (notifyCheckboxWrapper) {
+                                        notifyCheckboxWrapper.classList.remove(
+                                                "confirm-modal__checkbox--disabled"
+                                        );
+                                }
+                                if (notifyCheckboxInput) {
+                                        notifyCheckboxInput.disabled = false;
+                                }
                                 if (cancelFields) {
                                         cancelFields.hidden = true;
                                 }
+                                modal.classList.remove("confirm-modal--requires-reason");
                                 if (cancelOtherField) {
                                         cancelOtherField.hidden = true;
                                 }
@@ -4214,6 +4187,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (cancelFields) {
                                         cancelFields.hidden = !requiresReason;
                                 }
+                                modal.classList.toggle("confirm-modal--requires-reason", requiresReason);
                                 if (cancelOtherField) {
                                         cancelOtherField.hidden = true;
                                 }
@@ -4243,12 +4217,20 @@ const ADD_DOC_KEY = "add-document";
                                         checkboxInput.checked = false;
                                 }
                                 const showNotify = Boolean(cfg.enableNotify);
+                                const notifyDisabled = Boolean(cfg.notifyDisabled);
                                 notifyNoteText = typeof cfg.notifyNote === "string" ? cfg.notifyNote : "";
                                 if (notifyCheckboxWrapper) {
                                         notifyCheckboxWrapper.hidden = !showNotify;
+                                        notifyCheckboxWrapper.classList.toggle(
+                                                "confirm-modal__checkbox--disabled",
+                                                showNotify && notifyDisabled
+                                        );
                                 }
                                 if (notifyCheckboxInput) {
-                                        notifyCheckboxInput.checked = Boolean(cfg.notifyChecked);
+                                        notifyCheckboxInput.disabled = notifyDisabled;
+                                        notifyCheckboxInput.checked = notifyDisabled
+                                                ? false
+                                                : Boolean(cfg.notifyChecked);
                                 }
                                 applyNotifyLabel(cfg.notifyLabel || "");
                                 updateNotifyNote();
@@ -5439,6 +5421,7 @@ const ADD_DOC_KEY = "add-document";
                                                         reasonOptions: cancelReasons,
                                                         reasonPlaceholder: "Selecciona un motivo",
                                                         enableNotify: true,
+                                                        notifyDisabled: true,
                                                         notifyLabel:
                                                                 "Informar al cliente de la cancelación.",
                                                         notifyNote: `Se enviará un correo a ${companyForNote} indicando que la garantía ha sido cancelada.`,
@@ -6430,11 +6413,92 @@ const ADD_DOC_KEY = "add-document";
                         return tbody.querySelector(selector);
                 }
 
-                function getCardInitials(value) {
-                        if (value === null || value === undefined) {
+                const AVATAR_COLOR_PALETTE = [
+                        { bg: "#2563eb", fg: "#f8fafc" },
+                        { bg: "#1d4ed8", fg: "#f8fafc" },
+                        { bg: "#0ea5e9", fg: "#0b1021" },
+                        { bg: "#0f766e", fg: "#ecfeff" },
+                        { bg: "#22c55e", fg: "#052e16" },
+                        { bg: "#eab308", fg: "#0f172a" },
+                        { bg: "#f97316", fg: "#0f172a" },
+                        { bg: "#db2777", fg: "#fff7fb" },
+                        { bg: "#7c3aed", fg: "#f4f1ff" },
+                        { bg: "#f43f5e", fg: "#fff1f2" },
+                ];
+
+                function hashAvatarSeed(value) {
+                        const input = typeof value === "string" ? value.trim() : value != null ? String(value) : "";
+                        if (!input) {
+                                return 0;
+                        }
+                        let hash = 0;
+                        for (let i = 0; i < input.length; i += 1) {
+                                hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+                        }
+                        return hash;
+                }
+
+                function normalizeHex(hex) {
+                        const sanitized = (hex || "").toString().trim().replace("#", "");
+                        if (sanitized.length === 3) {
+                                return sanitized
+                                        .split("")
+                                        .map((ch) => ch + ch)
+                                        .join("");
+                        }
+                        if (sanitized.length === 6) {
+                                return sanitized;
+                        }
+                        return "";
+                }
+
+                function lightenHexColor(hex, percent) {
+                        const normalized = normalizeHex(hex);
+                        if (!normalized) {
+                                return hex;
+                        }
+                        const amount = Number.isFinite(percent) ? percent : 15;
+                        const [r, g, b] = [0, 2, 4].map((idx) => parseInt(normalized.slice(idx, idx + 2), 16));
+                        const toChannel = (channel) => {
+                                const next = Math.round(channel + ((255 - channel) * amount) / 100);
+                                return Math.max(0, Math.min(255, next));
+                        };
+                        const [nr, ng, nb] = [toChannel(r), toChannel(g), toChannel(b)];
+                        return `#${nr.toString(16).padStart(2, "0")}${ng.toString(16).padStart(2, "0")}${nb
+                                .toString(16)
+                                .padStart(2, "0")}`;
+                }
+
+                function pickAvatarPalette(seed) {
+                        if (!seed) return null;
+                        const index = hashAvatarSeed(seed) % AVATAR_COLOR_PALETTE.length;
+                        const entry = AVATAR_COLOR_PALETTE[index];
+                        return {
+                                bg: entry.bg,
+                                fg: entry.fg,
+                                border: lightenHexColor(entry.bg, 18),
+                        };
+                }
+
+                function extractAvatarPalette(raw) {
+                        if (!raw || typeof raw !== "object") {
+                                return null;
+                        }
+                        const bg = typeof raw.bg === "string" ? raw.bg.trim() : "";
+                        const bgDark = typeof raw.bg_dark === "string" ? raw.bg_dark.trim() : "";
+                        const text = typeof raw.text === "string" ? raw.text.trim() : "";
+                        const textDark = typeof raw.text_dark === "string" ? raw.text_dark.trim() : "";
+                        if (bg === "" || bgDark === "" || text === "" || textDark === "") {
+                                return null;
+                        }
+                        return { bg, bgDark, text, textDark };
+                }
+
+                function buildInitialsFromName(raw) {
+                        if (!raw || typeof raw !== "string") {
                                 return "";
                         }
-                        const normalized = String(value).trim();
+                        const normalized = raw.trim();
                         if (!normalized) {
                                 return "";
                         }
@@ -6442,8 +6506,29 @@ const ADD_DOC_KEY = "add-document";
                         if (words.length === 0) {
                                 return "";
                         }
-                        const initials = words.slice(0, 2).map((word) => word.charAt(0));
-                        return initials.join("").toUpperCase();
+                        if (words.length === 1) {
+                                return words[0].slice(0, 2).toUpperCase();
+                        }
+                        const [first, second] = words;
+                        if (first.length === 2) {
+                                return first.slice(0, 2).toUpperCase();
+                        }
+                        if (second && /^\d/.test(second)) {
+                                return (first.slice(0, 2) || first.charAt(0)).toUpperCase();
+                        }
+                        return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
+                }
+
+                function normalizeAvatarUrl(url) {
+                        if (typeof url !== "string") {
+                                return "";
+                        }
+
+                        return url.replace(/&amp;/gi, "&").trim();
+                }
+
+                function getCardInitials(value) {
+                        return buildInitialsFromName(value);
                 }
 
                 function formatCardDateLabel(iso) {
@@ -9256,6 +9341,37 @@ const ADD_DOC_KEY = "add-document";
         return Number.isNaN(fallback.getTime()) ? null : fallback;
     };
 
+    const resolveDetailAccent = (estadoClaseValue) => {
+        const theme =
+            document.documentElement?.getAttribute("data-theme") === "dark"
+                ? "dark"
+                : "light";
+        const palette = {
+            light: {
+                activada: "#065f46",
+                "pendiente-pago": "#92400e",
+                "validacion-pendiente": "#1e40af",
+                "pend-cobro": "#1e40af",
+                "sin-finalizar": "#1f2937",
+                "expira-pronto": "#92400e",
+                expirada: "#991b1b",
+                cancelada: "#991b1b",
+            },
+            dark: {
+                activada: "#6ee7b7",
+                "pendiente-pago": "#fcd34d",
+                "validacion-pendiente": "#93c5fd",
+                "pend-cobro": "#93c5fd",
+                "sin-finalizar": "#1f2937",
+                "expira-pronto": "#fcd34d",
+                expirada: "#fca5a5",
+                cancelada: "#fca5a5",
+            },
+        };
+        const paletteForTheme = palette[theme] || palette.light;
+        return paletteForTheme?.[estadoClaseValue] || "";
+    };
+
     const computeVehicleAgeYears = (value) => {
         const parsed = parseVehicleDate(value);
         if (!parsed) return null;
@@ -9351,6 +9467,12 @@ const ADD_DOC_KEY = "add-document";
     const isPendientePago = estadoClase === "pendiente-pago";
     const isValidacionPendiente = estadoClase === "validacion-pendiente";
     const isCancelada = estadoClase === "cancelada";
+    const detailAccent = resolveDetailAccent(estadoClase);
+    const headerAccentStyle = detailAccent
+        ? ` style="--guarantee-detail-accent:${detailAccent}"`
+        : "";
+    const hideDetailSections =
+        isCancelada && (isParticular || isProfesional);
     const canShowReportBtn = estadoClase === "activada";
     const badgeClase = `guarantee-detail__badge guarantee-detail__badge--${estadoClase}`;
     const metodoPago = (
@@ -9450,11 +9572,45 @@ const ADD_DOC_KEY = "add-document";
         : vendorContactLabel;
     const vendorAvatarUrl =
         data.avatar_vendedor ?? rowData.avatar_vendedor ?? "";
-    const vendorAvatarWrapper = vendorAvatarUrl
-        ? `<div class="vendor-card__avatar-wrapper"><img src="${escapeAttr(
-              vendorAvatarUrl
-          )}" alt="" class="vendor-card__avatar"></div>`
-        : `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--icon"><span class="vendor-card__avatar vendor-card__avatar--icon">${userIcon}</span></div>`;
+    const vendorAvatarPlaceholder =
+        data.avatar_vendedor_placeholder ?? rowData.avatar_vendedor_placeholder ?? "";
+    const vendorInitialSource = vendorCompanyName || vendorContactName || vendorContactDisplay || pickField("matricula", "");
+    const vendorPalette = extractAvatarPalette(
+        (data.avatar_vendedor_palette ?? rowData.avatar_vendedor_palette) || null
+    );
+    const vendorForceInitials = Boolean(
+        data.avatar_vendedor_force_initials ?? rowData.avatar_vendedor_force_initials
+    );
+    const vendorStoredInitials = typeof data.avatar_vendedor_initials === "string"
+        ? data.avatar_vendedor_initials
+        : typeof rowData.avatar_vendedor_initials === "string"
+            ? rowData.avatar_vendedor_initials
+            : "";
+    const vendorInitials = vendorStoredInitials
+        || (vendorForceInitials ? buildInitialsFromName(vendorInitialSource) : "");
+    const vendorShouldShowInitials = vendorForceInitials || (vendorPalette && vendorInitials !== "");
+    let vendorAvatarWrapper = "";
+
+    if (vendorShouldShowInitials && vendorInitials !== "") {
+        const vendorStyles = [];
+        if (vendorPalette) {
+            vendorStyles.push(`--avatar-bg:${vendorPalette.bg}`);
+            vendorStyles.push(`--avatar-color:${vendorPalette.text}`);
+            vendorStyles.push(`--avatar-bg-dark:${vendorPalette.bgDark}`);
+            vendorStyles.push(`--avatar-color-dark:${vendorPalette.textDark}`);
+        }
+        const vendorStyleAttr = vendorStyles.length ? ` style="${vendorStyles.join(";")};"` : "";
+        vendorAvatarWrapper = `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--initials"${vendorStyleAttr}><span class="vendor-card__avatar vendor-card__avatar--initials">${escapeHtml(vendorInitials)}</span></div>`;
+    } else {
+        const vendorDisplayAvatar = normalizeAvatarUrl(vendorAvatarUrl || vendorAvatarPlaceholder);
+        vendorAvatarWrapper = vendorDisplayAvatar
+            ? `<div class="vendor-card__avatar-wrapper"><img src="${escapeAttr(
+                  vendorDisplayAvatar
+              )}" alt="" class="vendor-card__avatar"></div>`
+            : `<div class="vendor-card__avatar-wrapper vendor-card__avatar-wrapper--initials"><span class="vendor-card__avatar vendor-card__avatar--initials">${escapeHtml(
+                  buildInitialsFromName(vendorInitialSource) || "--"
+              )}</span></div>`;
+    }
     const vendorActionsHtml = renderFastActions(
         data.telefono_vendedor ?? rowData.telefono_vendedor,
         data.email_vendedor ?? rowData.email_vendedor
@@ -9663,7 +9819,7 @@ const ADD_DOC_KEY = "add-document";
               `${docsListHtml}` +
           `</section>`;
     const hasBuyerInfo = buyerFields.every((field) => isFilled(pickField(field, "")));
-    const vehicleSectionHtml = isCancelada
+    const vehicleSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section">` +
               `<h3>Datos del vehículo</h3>` +
@@ -9678,7 +9834,7 @@ const ADD_DOC_KEY = "add-document";
                   `<li class="detail__item"><strong>Precio venta:</strong> ${pickField("precio_venta", "-")} €</li>` +
               `</ul>` +
           `</section>`;
-    const technicalSectionHtml = isCancelada
+    const technicalSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section">` +
               `<h3>Detalles técnicos</h3>` +
@@ -9690,7 +9846,7 @@ const ADD_DOC_KEY = "add-document";
                   `<li class="detail__item"><strong>Cilindrada:</strong> ${pickField("cilindrada", "-")} CC</li>` +
               `</ul>` +
           `</section>`;
-    const customerSectionHtml = isCancelada
+    const customerSectionHtml = hideDetailSections
         ? ""
         : `<section class="detail__section detail__section--datos_cliente">`
               + `<h3>Datos del cliente</h3>`
@@ -10164,7 +10320,7 @@ const ADD_DOC_KEY = "add-document";
     if (isSinFinalizar) {
         return `
                 <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
+                <div class="guarantee-detail__header"${headerAccentStyle}>
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${coverageHtml}
                         <div><p class="detail__alert-section">Completa los datos pendientes para tramitar la garantía</p></div>
@@ -10210,9 +10366,9 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
+                ${docsSectionHtml}
                 ${vehicleSectionHtml}
                 ${technicalSectionHtml}
-                ${docsSectionHtml}
                 ${customerSectionHtml}
                 ${sinFinalActionsHtml}
         </div>`;
@@ -10434,7 +10590,7 @@ const ADD_DOC_KEY = "add-document";
     })();
         return `
         <div class="guarantee-detail__inner">
-                <div class="guarantee-detail__header">
+                <div class="guarantee-detail__header"${headerAccentStyle}>
                         <h2>Garantía ${pickField("matricula")}</h2>
                         ${planTitleHtml}
                         ${coverageHtml}
@@ -10480,9 +10636,9 @@ const ADD_DOC_KEY = "add-document";
                                 </div>
                         </section>`
                         : ""}
+                ${docsSectionHtml}
                 ${vehicleSectionHtml}
                 ${technicalSectionHtml}
-                ${docsSectionHtml}
                 ${customerSectionHtml}
                 ${actionsHtml}
                 ${deleteActionHtml}
