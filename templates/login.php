@@ -129,6 +129,12 @@ switch ($error_code) {
             $password_error_message = __('Introduce tu contraseña.', 'garantias-online-360vo');
         }
         break;
+    case 'unverified':
+        $global_error_message = __(
+            'Tu cuenta está pendiente de verificación. Introduce el código que te enviamos o solicita uno nuevo para activarla.',
+            'garantias-online-360vo'
+        );
+        break;
     case 'generic':
         $global_error_message = __('No hemos podido iniciar sesión. Inténtalo de nuevo.', 'garantias-online-360vo');
         break;
@@ -142,6 +148,11 @@ $email_error_id    = $email_error_message !== '' ? 'user_login-error' : '';
 $password_error_id = $password_error_message !== '' ? 'user_pass-error' : '';
 $email_container_class = 'input-container' . ($email_error_message !== '' ? ' is-error' : '');
 $password_container_class = 'input-container' . ($password_error_message !== '' ? ' is-error' : '');
+$verification_url = home_url('/garantias-online/verificacion/');
+if ($email_prefill !== '') {
+    $verification_url = add_query_arg('email', $email_prefill, $verification_url);
+}
+$verification_code_url = $verification_url . '#verification-block';
 ?>
 
 <main class="register-page login-page">
@@ -199,6 +210,18 @@ $password_container_class = 'input-container' . ($password_error_message !== '' 
                         <div class="form-alert" role="alert">
                             <?php echo esc_html($global_error_message); ?>
                         </div>
+                        <?php if ($error_code === 'unverified') : ?>
+                            <div class="verification-cta-buttons">
+                                <a class="btn btn-secondary" href="<?php echo esc_url($verification_url); ?>">
+                                    <span class="btn__icon" aria-hidden="true"><?php echo Svg::icon('refresh'); ?></span>
+                                    <span><?php esc_html_e('Solicitar nuevo código', 'garantias-online-360vo'); ?></span>
+                                </a>
+                                <a class="btn btn-primary" href="<?php echo esc_url($verification_code_url); ?>">
+                                    <span class="btn__icon" aria-hidden="true"><?php echo Svg::icon('done'); ?></span>
+                                    <span><?php esc_html_e('Introducir el código', 'garantias-online-360vo'); ?></span>
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     <?php endif; ?>
 
                     <form
