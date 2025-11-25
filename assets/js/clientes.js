@@ -1126,19 +1126,186 @@
             }
         }
 
-        function renderAvatar(profile, altText) {
-            if (!profile || typeof profile !== 'object') {
-                return '<span class="clients-table__initials"></span>';
+        const AVATAR_COLOR_PALETTE = [
+            { bg: '#2563eb', fg: '#f8fafc' },
+            { bg: '#1d4ed8', fg: '#f8fafc' },
+            { bg: '#0ea5e9', fg: '#0b1021' },
+            { bg: '#0f766e', fg: '#ecfeff' },
+            { bg: '#22c55e', fg: '#052e16' },
+            { bg: '#eab308', fg: '#0f172a' },
+            { bg: '#f97316', fg: '#0f172a' },
+            { bg: '#db2777', fg: '#fff7fb' },
+            { bg: '#7c3aed', fg: '#f4f1ff' },
+            { bg: '#f43f5e', fg: '#fff1f2' },
+        ];
+
+        function hashAvatarSeed(value) {
+            const input = typeof value === 'string' ? value.trim() : value != null ? String(value) : '';
+            if (!input) {
+                return 0;
+            }
+            let hash = 0;
+            for (let i = 0; i < input.length; i += 1) {
+                hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+            }
+            return hash;
+        }
+
+        function normalizeHex(hex) {
+            const sanitized = (hex || '').toString().trim().replace('#', '');
+            if (sanitized.length === 3) {
+                return sanitized
+                    .split('')
+                    .map((ch) => ch + ch)
+                    .join('');
+            }
+            if (sanitized.length === 6) {
+                return sanitized;
+            }
+            return '';
+        }
+
+        function lightenHexColor(hex, percent) {
+            const normalized = normalizeHex(hex);
+            if (!normalized) {
+                return hex;
+            }
+            const amount = Number.isFinite(percent) ? percent : 15;
+            const [r, g, b] = [0, 2, 4].map((idx) => parseInt(normalized.slice(idx, idx + 2), 16));
+            const toChannel = (channel) => {
+                const next = Math.round(channel + ((255 - channel) * amount) / 100);
+                return Math.max(0, Math.min(255, next));
+            };
+            const [nr, ng, nb] = [toChannel(r), toChannel(g), toChannel(b)];
+            return `#${nr.toString(16).padStart(2, '0')}${ng
+                .toString(16)
+                .padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+        }
+
+        function pickAvatarPalette(seed) {
+            if (!seed) {
+                return null;
+            }
+            const index = hashAvatarSeed(seed) % AVATAR_COLOR_PALETTE.length;
+            const entry = AVATAR_COLOR_PALETTE[index];
+            return {
+                bg: entry.bg,
+                fg: entry.fg,
+                border: lightenHexColor(entry.bg, 18),
+            };
+        }
+
+        function buildInitialsFromName(raw) {
+            if (!raw || typeof raw !== 'string') {
+                return '';
+            }
+            const normalized = raw.trim();
+            if (!normalized) {
+                return '';
+            }
+            const words = normalized.split(/\s+/).filter(Boolean);
+            if (words.length === 0) {
+                return '';
+            }
+            if (words.length === 1) {
+                return words[0].slice(0, 2).toUpperCase();
+            }
+            const [first, second] = words;
+            if (first.length === 2) {
+                return first.slice(0, 2).toUpperCase();
+            }
+            if (second && /^\d/.test(second)) {
+                return (first.slice(0, 2) || first.charAt(0)).toUpperCase();
+            }
+            return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
+        }
+
+        function normalizeAvatarUrl(url) {
+            if (typeof url !== 'string') {
+                return '';
             }
 
-            const avatarUrl = typeof profile.avatar === 'string' ? profile.avatar.trim() : '';
-            const initials = typeof profile.initials === 'string' ? profile.initials.trim() : '';
+            return url.replace(/&amp;/gi, '&').trim();
+        }
 
-            if (avatarUrl !== '') {
-                return `<img src="${escapeAttribute(avatarUrl)}" alt="${escapeAttribute(altText)}" class="clients-table__avatar">`;
+        function isPlaceholderAvatarUrl(url) {
+            const normalizedUrl = normalizeAvatarUrl(url);
+            if (!normalizedUrl) {
+                return false;
+            }
+            try {
+                const parsed = new URL(normalizedUrl, window.location.origin);
+                const host = parsed.hostname.toLowerCase();
+                if (!host.includes('gravatar.com')) {
+                    return false;
+                }
+                const defaultParam = (parsed.searchParams.get('d') || parsed.searchParams.get('default') || '').toLowerCase();
+                if (defaultParam === '') {
+                    return false;
+                }
+                const defaults = new Set(['mm', 'mp', 'mysteryman', 'identicon', 'retro', 'monsterid', 'wavatar', 'robohash', 'blank']);
+                return defaults.has(defaultParam);
+            } catch (_e) {
+                return false;
+            }
+        }
+
+        function extractAvatarPalette(raw) {
+            if (!raw || typeof raw !== 'object') {
+                return null;
+            }
+            const bg = typeof raw.bg === 'string' ? raw.bg.trim() : '';
+            const bgDark = typeof raw.bg_dark === 'string' ? raw.bg_dark.trim() : '';
+            const text = typeof raw.text === 'string' ? raw.text.trim() : '';
+            const textDark = typeof raw.text_dark === 'string' ? raw.text_dark.trim() : '';
+            if (bg === '' || bgDark === '' || text === '' || textDark === '') {
+                return null;
+            }
+            return { bg, bgDark, text, textDark };
+        }
+
+        function renderAvatar(profile, altText, initialsSource = '') {
+            const safeProfile = profile && typeof profile === 'object' ? profile : {};
+            const avatarUrl = normalizeAvatarUrl(typeof safeProfile.avatar === 'string' ? safeProfile.avatar : '');
+            const placeholderUrl = normalizeAvatarUrl(
+                typeof safeProfile.avatar_placeholder === 'string'
+                    ? safeProfile.avatar_placeholder
+                    : typeof safeProfile.placeholder === 'string'
+                        ? safeProfile.placeholder
+                        : ''
+            );
+            const initialsSeed = (typeof initialsSource === 'string' ? initialsSource : '').trim();
+            const storedInitials = typeof safeProfile.initials === 'string' ? safeProfile.initials.trim() : '';
+            const palette = extractAvatarPalette(safeProfile.avatar_palette || safeProfile.palette);
+            const hasPalette = Boolean(palette);
+            const forceInitials = Boolean(
+                safeProfile.force_initials
+                || safeProfile.forceInitials
+                || safeProfile.show_initials_even_with_photo
+            );
+            const initialsFallback = (initialsSeed || altText || '').trim();
+            const initials = storedInitials || (forceInitials ? buildInitialsFromName(initialsFallback) : '');
+            const shouldUseInitials = forceInitials || (hasPalette && initials !== '');
+
+            if (shouldUseInitials && initials !== '') {
+                const styles = [];
+                if (palette) {
+                    styles.push(`--avatar-bg:${palette.bg}`);
+                    styles.push(`--avatar-color:${palette.text}`);
+                    styles.push(`--avatar-bg-dark:${palette.bgDark}`);
+                    styles.push(`--avatar-color-dark:${palette.textDark}`);
+                }
+                const styleAttr = styles.length ? ` style="${styles.join(';')};"` : '';
+                return `<span class="clients-table__initials"${styleAttr}>${escapeHtml(initials)}</span>`;
             }
 
-            return `<span class="clients-table__initials">${escapeHtml(initials)}</span>`;
+            const fallbackAvatar = avatarUrl || placeholderUrl;
+            if (fallbackAvatar !== '') {
+                return `<img src="${escapeAttribute(fallbackAvatar)}" alt="${escapeAttribute(altText)}" class="clients-table__avatar">`;
+            }
+
+            const backupInitials = buildInitialsFromName(initialsFallback) || '--';
+            return `<span class="clients-table__initials">${escapeHtml(backupInitials)}</span>`;
         }
 
         function isSpecialFixedOffer(offer) {
@@ -1256,12 +1423,13 @@
 
             registerItemSlugs(item);
 
+            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const displayName = getDisplayName(name);
             const safeName = displayName || name.company || '';
             const fallbackName = safeName !== '' ? safeName : '—';
             const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
-            const avatar = renderAvatar(profile, avatarAlt);
-            const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const initialsSource = companyName !== '' ? companyName : fallbackName;
+            const avatar = renderAvatar(profile, avatarAlt, initialsSource);
             const channelLabel = normalizeSalesChannelLabel(salesChannel);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
@@ -1306,11 +1474,11 @@
                             <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
                         </div>
                         <div class="clients-table__identity">
+                            ${identityLine || ''}
                             <div class="clients-table__name-row">
                                 <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
                                 <span class="clients-table__presence-label" data-presence-label hidden></span>
                             </div>
-                            ${identityLine || ''}
                         </div>
                     </div>
                 </td>
@@ -1357,8 +1525,9 @@
             const safeName = displayName || name.company || '';
             const fallbackName = safeName !== '' ? safeName : '—';
             const avatarAlt = safeName !== '' ? safeName : (strings.client || 'Cliente');
-            const avatar = renderAvatar(profile, avatarAlt);
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
+            const initialsSource = companyName !== '' ? companyName : fallbackName;
+            const avatar = renderAvatar(profile, avatarAlt, initialsSource);
             const channelLabel = normalizeSalesChannelLabel(salesChannel);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
@@ -1390,11 +1559,11 @@
                             <span class="clients-table__presence-indicator" data-presence-indicator aria-hidden="true" hidden></span>
                         </div>
                         <div class="clients-table__identity">
+                            ${identityLine || ''}
                             <div class="clients-table__name-row">
                                 <span class="clients-table__name">${escapeHtml(fallbackName)}</span>
                                 <span class="clients-table__presence-label" data-presence-label hidden></span>
                             </div>
-                            ${identityLine || ''}
                         </div>
                     </div>
                 </div>
@@ -2777,9 +2946,35 @@
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
-            const avatar = item.profile && item.profile.avatar
-                ? `<img src="${escapeAttribute(item.profile.avatar)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`
-                : `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(item.profile?.initials || '')}</span>`;
+            const detailPalette = extractAvatarPalette(item.profile?.avatar_palette || null);
+            const detailPlaceholder = normalizeAvatarUrl(
+                typeof item.profile?.avatar_placeholder === 'string' ? item.profile.avatar_placeholder : ''
+            );
+            const detailForceInitials = Boolean(item.profile?.force_initials || item.profile?.forceInitials);
+            const detailInitialsStored = typeof item.profile?.initials === 'string'
+                ? item.profile.initials.trim()
+                : '';
+            const detailInitials = detailInitialsStored || (detailForceInitials ? buildInitialsFromName(avatarAlt) : '');
+            const detailShouldInitials = detailForceInitials || (detailPalette && detailInitials !== '');
+            const detailAvatarUrl = normalizeAvatarUrl(typeof item.profile?.avatar === 'string' ? item.profile.avatar : '');
+            const detailAvatarImage = detailAvatarUrl || detailPlaceholder;
+            let avatar = '';
+
+            if (detailShouldInitials && detailInitials !== '') {
+                const detailStyles = [];
+                if (detailPalette) {
+                    detailStyles.push(`--avatar-bg:${detailPalette.bg}`);
+                    detailStyles.push(`--avatar-color:${detailPalette.text}`);
+                    detailStyles.push(`--avatar-bg-dark:${detailPalette.bgDark}`);
+                    detailStyles.push(`--avatar-color-dark:${detailPalette.textDark}`);
+                }
+                const detailStyleAttr = detailStyles.length ? ` style="${detailStyles.join(';')};"` : '';
+                avatar = `<span class="client-detail__avatar client-detail__avatar--initials"${detailStyleAttr}>${escapeHtml(detailInitials)}</span>`;
+            } else if (detailAvatarImage !== '') {
+                avatar = `<img src="${escapeAttribute(detailAvatarImage)}" alt="${escapeAttribute(avatarAlt)}" class="client-detail__avatar">`;
+            } else {
+                avatar = `<span class="client-detail__avatar client-detail__avatar--initials">${escapeHtml(buildInitialsFromName(avatarAlt) || '--')}</span>`;
+            }
 
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const companyLegalName = typeof company.legal_name === 'string' ? company.legal_name.trim() : '';
