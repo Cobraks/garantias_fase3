@@ -379,6 +379,10 @@ class AuthController
             return 'missing';
         }
 
+        if ($code === 'go_email_not_verified') {
+            return 'unverified';
+        }
+
         return 'generic';
     }
 
