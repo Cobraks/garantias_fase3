@@ -90,7 +90,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
         </div>
     </div>
     <!-- Contenido del Formulario -->
-    <form id="form-garantia" class="form">
+    <form id="form-garantia" class="form" autocomplete="off">
         <fieldset id="datos-vehiculo" class="form__tab-content form__tab-content--active">
             <legend style="display:none" class="form__legend">Datos del Vehículo</legend>
             <fieldset class="form__sub-fieldset">
@@ -238,49 +238,49 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <legend class="form__nested-legend">Datos del cliente</legend>
                 <div class="form__wrapper-inputs form__wrapper-inputs--large">
                     <div class="form__input-container">
-                        <input id="nombre_apellidos" class="form__input" type="text" placeholder=" " required />
+                        <input id="nombre_apellidos" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="nombre_apellidos" class="form__placeholder">Nombre y apellidos</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="dni" class="form__input" type="text" placeholder=" " required />
+                        <input id="dni" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="dni" class="form__placeholder">DNI / NIE o NIF</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="telefono" class="form__input" type="text" placeholder=" " required />
+                        <input id="telefono" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="telefono" class="form__placeholder">Teléfono</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container">
-                        <input id="correo" class="form__input" type="text" placeholder=" " required />
+                        <input id="correo" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="correo" class="form__placeholder">Correo electrónico</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container ">
-                        <input id="direccion" class="form__input" type="text" placeholder=" " required />
+                        <input id="direccion" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="direccion" class="form__placeholder">Dirección</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="localidad" class="form__input" type="text" placeholder=" " required />
+                        <input id="localidad" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="localidad" class="form__placeholder">Localidad</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container">
-                        <select id="provincia" class="form__select" required>
+                        <select id="provincia" class="form__select" required autocomplete="off">
                             <?php /* Hacer condicional por si es de otra ciudad, poner por defecto selected de esa ciudad*/ ?>
                             <option value="Álava">Álava</option>
                             <option value="Albacete">Albacete</option>
@@ -337,7 +337,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <label for="provincia" class="form__placeholder--select">Provincia*</label>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="codigo_postal" class="form__input" type="text" placeholder=" " required />
+                        <input id="codigo_postal" class="form__input" type="text" placeholder=" " required autocomplete="off" />
                         <label for="codigo_postal" class="form__placeholder">Código Postal</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>

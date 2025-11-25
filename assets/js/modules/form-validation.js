@@ -33,6 +33,8 @@ async function checkDuplicateMatricula(input) {
         const value = input.value.trim().toUpperCase();
         if (!validateMatriculaField(input, false, false)) {
                 input.dataset.duplicate = "pending";
+                input.dataset.cancelled = "false";
+                delete input.dataset.cancelledId;
                 updateNextButtonState();
                 return;
         }
@@ -42,6 +44,8 @@ async function checkDuplicateMatricula(input) {
         const controller = new AbortController();
         plateCheckAbort = controller;
         input.dataset.duplicate = "pending";
+        input.dataset.cancelled = "false";
+        delete input.dataset.cancelledId;
         updateNextButtonState();
         const current = value;
         try {
@@ -57,11 +61,32 @@ async function checkDuplicateMatricula(input) {
                 );
                 if (controller.signal.aborted) return;
                 if (input.value.trim().toUpperCase() !== current) return;
+                let cancelledMatch = false;
+                let cancelledId = "";
+                if (res.ok) {
+                        try {
+                                const json = await res.json();
+                                cancelledMatch = Boolean(json?.cancelled_match);
+                                if (cancelledMatch && json?.cancelled_id) {
+                                        cancelledId = String(json.cancelled_id);
+                                }
+                        } catch (parseError) {
+                                console.debug("[checkDuplicateMatricula] parse response", parseError);
+                        }
+                }
                 if (res.status === 409) {
                         setError(input, "Ya existe una garantía para este vehículo");
                         input.dataset.duplicate = "true";
+                        input.dataset.cancelled = "false";
+                        delete input.dataset.cancelledId;
                 } else {
                         input.dataset.duplicate = "false";
+                        input.dataset.cancelled = cancelledMatch ? "true" : "false";
+                        if (cancelledMatch && cancelledId) {
+                                input.dataset.cancelledId = cancelledId;
+                        } else {
+                                delete input.dataset.cancelledId;
+                        }
                         clearError(input);
                 }
         } catch (e) {
