@@ -129,6 +129,12 @@ switch ($error_code) {
             $password_error_message = __('Introduce tu contraseña.', 'garantias-online-360vo');
         }
         break;
+    case 'unverified':
+        $global_error_message = __(
+            'Tu cuenta está pendiente de verificación. Revisa tu correo para introducir el código o solicita uno nuevo desde el registro.',
+            'garantias-online-360vo'
+        );
+        break;
     case 'generic':
         $global_error_message = __('No hemos podido iniciar sesión. Inténtalo de nuevo.', 'garantias-online-360vo');
         break;
