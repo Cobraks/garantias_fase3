@@ -1741,9 +1741,7 @@ class ClientRestController
         $registered    = self::format_registered($user_data['registered'] ?? $user->user_registered);
 
         $profile_image = $user_data['profile_image']['url'] ?? '';
-        $avatar_url    = $profile_image !== ''
-            ? $profile_image
-            : ($user_data['avatar_url'] ?? get_avatar_url($user->ID));
+        $avatar_url    = self::pick_avatar_url($profile_image, $user_data['avatar_url'] ?? '', (int) $user->ID);
 
         $sales_channel = self::resolve_sales_channel($user_data['company']['type'] ?? [], $user);
         $offers        = self::get_active_offers((int) $user->ID);
@@ -2585,6 +2583,61 @@ class ClientRestController
         }
 
         return $formatted;
+    }
+
+    private static function pick_avatar_url(string $profile_image, string $fallback_avatar, int $user_id): string
+    {
+        $candidates = [];
+
+        if ($profile_image !== '') {
+            $candidates[] = $profile_image;
+        }
+
+        if ($fallback_avatar !== '') {
+            $candidates[] = $fallback_avatar;
+        }
+
+        if ($user_id > 0) {
+            $candidates[] = get_avatar_url($user_id);
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate_url = esc_url_raw((string) $candidate);
+            if ($candidate_url !== '' && ! self::is_placeholder_avatar_url($candidate_url)) {
+                return $candidate_url;
+            }
+        }
+
+        return '';
+    }
+
+    private static function is_placeholder_avatar_url(string $url): bool
+    {
+        $parsed = wp_parse_url($url);
+
+        if (empty($parsed['host'])) {
+            return false;
+        }
+
+        $host = strtolower((string) $parsed['host']);
+        if (strpos($host, 'gravatar.com') === false) {
+            return false;
+        }
+
+        if (empty($parsed['query'])) {
+            return false;
+        }
+
+        parse_str((string) $parsed['query'], $params);
+        $default = strtolower((string) ($params['d'] ?? $params['default'] ?? ''));
+
+        if ($default === '') {
+            return false;
+        }
+
+        $placeholders = ['mm', 'mp', 'mysteryman', 'identicon', 'retro', 'monsterid', 'wavatar', 'robohash', 'blank'];
+
+        return in_array($default, $placeholders, true);
     }
 
     private static function initials(string $name): string
