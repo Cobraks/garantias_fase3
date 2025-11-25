@@ -4410,6 +4410,18 @@ tr.guarantees-table__row:not(.selected):hover td,
     flex-wrap: wrap;
 }
 
+.confirm-modal__status {
+    width: 100%;
+    margin: 6px 0 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--go-color-555555);
+}
+
+.confirm-modal__status[hidden] {
+    display: none;
+}
+
 .confirm-modal__btn {
     padding: 10px 20px;
     border-radius: 5px;
@@ -4435,6 +4447,9 @@ tr.guarantees-table__row:not(.selected):hover td,
     background-color: var(--go-color-007bff);
     color: var(--text-inverse);
     border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .confirm-modal__btn--confirm:hover,
