@@ -3351,9 +3351,10 @@ class GuaranteeRestController
         $metodo_pago = is_array($metodo_pago_raw)
             ? ($metodo_pago_raw['value'] ?? '')
             : $metodo_pago_raw;
-        $desde   = get_post_meta($id, 'estado_garantia_inicio', true);
-        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado  = get_post_meta($id, 'estado_garantia_estado_contratacion', true);
+        $raw_desde = get_post_meta($id, 'estado_garantia_inicio', true);
+        $desde   = self::resolve_effective_start_date((int) $id, (string) $estado, $raw_desde);
+        $hasta   = get_post_meta($id, 'estado_garantia_finalizacion', true);
         $estado_labels = [
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'validacion_pendiente' => __('Validación pendiente', 'garantias-online-360vo'),
@@ -3892,6 +3893,22 @@ class GuaranteeRestController
             }
         }
 
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
+            $author_scope = !empty($combined_vendor_ids) ? $combined_vendor_ids : $user_profesional_ids;
+            if (empty($author_scope) && !empty($vendor_type_ids)) {
+                $author_scope = $vendor_type_ids;
+            }
+            if (empty($author_scope) && !empty($commercial_vendor_ids)) {
+                $author_scope = $commercial_vendor_ids;
+            }
+            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
+                return $id > 0;
+            }));
+            if (!empty($author_scope)) {
+                $args['author__in'] = $author_scope;
+            }
+        }
+
         $q = new WP_Query($args);
 
         $data = [];
@@ -3979,7 +3996,12 @@ class GuaranteeRestController
         }
 
         $meta_query = [];
-        if (!current_user_can('manage_options')) {
+        $current_user_obj = wp_get_current_user();
+        $current_user_roles = $current_user_obj instanceof \WP_User ? (array) $current_user_obj->roles : [];
+        $is_director = in_array('go_director_comercial', $current_user_roles, true);
+        $is_garantias_role = in_array('go_garantias', $current_user_roles, true);
+
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
             $user_profesional_ids = [$current_user];
             $users_asignados = get_users([
                 'role'    => 'go_profesional',
@@ -4004,7 +4026,7 @@ class GuaranteeRestController
 
         $args = [
             'post_type'      => \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE,
-            'post_status'    => 'publish',
+            'post_status'    => ['draft', 'publish', 'pending', 'future'],
             'fields'         => 'ids',
             'posts_per_page' => -1,
         ];
@@ -4016,9 +4038,20 @@ class GuaranteeRestController
             }
         }
 
+        if (!current_user_can('manage_options') && ! $is_director && ! $is_garantias_role) {
+            $author_scope = isset($user_profesional_ids) ? $user_profesional_ids : [];
+            $author_scope = array_values(array_filter(array_map('intval', (array) $author_scope), function ($id) {
+                return $id > 0;
+            }));
+            if (!empty($author_scope)) {
+                $args['author__in'] = $author_scope;
+            }
+        }
+
         $q = new WP_Query($args);
 
         $estados = [];
+        $estado_counts = [];
         $plan_ids = [];
         $channels_map = [];
         $vendor_ids = [];
@@ -4028,6 +4061,10 @@ class GuaranteeRestController
             $e = get_post_meta($post_id, 'estado_garantia_estado_contratacion', true);
             if ($e) {
                 $estados[] = $e;
+                if (! isset($estado_counts[$e])) {
+                    $estado_counts[$e] = 0;
+                }
+                $estado_counts[$e]++;
             }
             $pid = get_post_meta($post_id, 'garantia_contratada_garantia', true);
             if ($pid) {
@@ -4047,8 +4084,9 @@ class GuaranteeRestController
             }
 
             $start_raw = get_post_meta($post_id, 'estado_garantia_inicio', true);
-            if ($start_raw) {
-                $timestamp = strtotime($start_raw);
+            $effective_start = self::resolve_effective_start_date((int) $post_id, (string) $e, $start_raw);
+            if ($effective_start !== '') {
+                $timestamp = strtotime($effective_start);
                 if ($timestamp !== false) {
                     $year_value = (int) gmdate('Y', $timestamp);
                     $month_value = (int) gmdate('n', $timestamp);
@@ -4072,12 +4110,25 @@ class GuaranteeRestController
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
-        $estados = array_map(function ($e) use ($estado_labels) {
+        $estados = array_map(function ($e) use ($estado_labels, $estado_counts) {
             return [
                 'value' => $e,
                 'label' => $estado_labels[$e] ?? $e,
+                'count' => $estado_counts[$e] ?? 0,
             ];
         }, $estados);
+
+        $estado_values = array_map(function ($entry) {
+            return $entry['value'] ?? '';
+        }, $estados);
+        $sin_finalizar_count = $estado_counts['sin_finalizar'] ?? 0;
+        if ($sin_finalizar_count > 0 && ! in_array('sin_finalizar', $estado_values, true)) {
+            $estados[] = [
+                'value' => 'sin_finalizar',
+                'label' => $estado_labels['sin_finalizar'],
+                'count' => $sin_finalizar_count,
+            ];
+        }
 
         $has_revision_option = false;
         $has_collect_option = false;
@@ -4092,6 +4143,7 @@ class GuaranteeRestController
             $estados[] = [
                 'value' => 'pendiente_revision',
                 'label' => __('Verificar/cobrar', 'garantias-online-360vo'),
+                'count' => $estado_counts['pendiente_revision'] ?? 0,
             ];
         }
 
@@ -4106,6 +4158,7 @@ class GuaranteeRestController
             $estados[] = [
                 'value' => 'pendiente_cobro',
                 'label' => __('Pend. Domiciliación', 'garantias-online-360vo'),
+                'count' => $estado_counts['pendiente_cobro'] ?? 0,
             ];
         }
 
@@ -4286,6 +4339,29 @@ class GuaranteeRestController
         set_transient($cache_key, $response, 300);
 
         return $response;
+    }
+
+    private static function resolve_effective_start_date(int $post_id, string $estado, $raw_start): string
+    {
+        $start = is_string($raw_start) ? trim($raw_start) : '';
+        if ($start !== '' && $start !== '0000-00-00') {
+            return $start;
+        }
+
+        if ($estado !== 'sin_finalizar') {
+            return '';
+        }
+
+        if ($post_id <= 0) {
+            return '';
+        }
+
+        $created = get_post_time('Y-m-d', false, $post_id, false);
+        if (is_string($created) && $created !== '') {
+            return $created;
+        }
+
+        return '';
     }
 
     private static function resolve_sort_config(string $order_by, string $order): array
