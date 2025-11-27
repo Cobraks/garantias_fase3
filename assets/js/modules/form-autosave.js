@@ -86,6 +86,14 @@ function buildListadoDescuentosRecargos(normalizePriceFn) {
         return rows;
 }
 
+function buildCoverageLabel(garantia = {}) {
+        const planName = garantia?.plan_display_name || garantia?.nivel_garantia || "";
+        const months = garantia?.meses_contratados;
+        const monthsLabel = months ? ` ${months} meses` : "";
+
+        return planName ? `Cobertura ${planName}${monthsLabel}` : "";
+}
+
 function normalizeChannel(value) {
         if (!value) return "";
         const key = String(value).toLowerCase();
@@ -267,11 +275,20 @@ export default function initAutosave() {
         const nextBtn = document.getElementById("form_next_btn");
         let latestDocLinks = {};
         let latestCertificateUrl = "";
+        let latestProformaUrl = "";
         let postFinalizePromise = null;
         let loadingTimeoutId = null;
         let latestSignatureStatus = null;
 
         const certificateState = {
+                currentSignature: null,
+                currentPromise: null,
+                pendingArgs: null,
+                lastResolvedSignature: null,
+                lastResolvedUrl: "",
+        };
+
+        const proformaState = {
                 currentSignature: null,
                 currentPromise: null,
                 pendingArgs: null,
@@ -416,6 +433,9 @@ export default function initAutosave() {
         function updateSuccessDocuments(docLinks = {}) {
                 if (docLinks.certificate) {
                         latestCertificateUrl = docLinks.certificate;
+                }
+                if (docLinks.proforma) {
+                        latestProformaUrl = docLinks.proforma;
                 }
                 refreshDocumentLinks(docLinks, { reset: false });
                 if (successBlock) {
@@ -966,6 +986,545 @@ export default function initAutosave() {
                 return { url, signature: signature || "" };
         }
 
+        function computeProformaSignature(rawArgs = {}) {
+                const { templateUrl, items, coverageLabel } = normalizeProformaArgs(rawArgs);
+
+                if (!templateUrl || !items || items.length === 0) {
+                        return "";
+                }
+
+                const payload = { templateUrl, items, coverageLabel };
+
+                return encodeSignaturePayload(payload);
+        }
+
+        function startProformaGeneration(argsWithSignature) {
+                proformaState.currentSignature = argsWithSignature.signature;
+                console.log("[AUTOSAVE] proforma generation start", {
+                        draftId: argsWithSignature.draftId,
+                        signature: argsWithSignature.signature,
+                });
+
+                proformaState.currentPromise = generateProformaAndUpload(argsWithSignature)
+                        .then((result) => {
+                                const nextArgs = proformaState.pendingArgs;
+                                proformaState.pendingArgs = null;
+                                if (result) {
+                                        proformaState.lastResolvedSignature =
+                                                result.signature || argsWithSignature.signature;
+                                        proformaState.lastResolvedUrl = result.url || "";
+                                }
+                                if (result?.url) {
+                                        latestProformaUrl = result.url;
+                                        updateSuccessDocuments({ proforma: result.url });
+                                }
+                                if (nextArgs && nextArgs.signature !== result?.signature) {
+                                        console.log("[AUTOSAVE] proforma regeneration queued", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startProformaGeneration(nextArgs);
+                                }
+                                return result;
+                        })
+                        .catch((err) => {
+                                console.error("[AUTOSAVE] proforma generation error", err);
+                                const nextArgs = proformaState.pendingArgs;
+                                proformaState.pendingArgs = null;
+                                if (nextArgs) {
+                                        console.log("[AUTOSAVE] retrying proforma generation", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startProformaGeneration(nextArgs);
+                                }
+                                return null;
+                        })
+                        .finally(() => {
+                                if (!proformaState.pendingArgs) {
+                                        proformaState.currentPromise = null;
+                                        proformaState.currentSignature = null;
+                                }
+                        });
+
+                return proformaState.currentPromise;
+        }
+
+        function queueProformaGeneration(rawArgs) {
+                const signature = computeProformaSignature(rawArgs);
+                if (!signature) {
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
+                if (
+                        proformaState.lastResolvedSignature === signature &&
+                        (proformaState.lastResolvedUrl || latestProformaUrl)
+                ) {
+                        return Promise.resolve({
+                                url: proformaState.lastResolvedUrl || latestProformaUrl || "",
+                                signature,
+                        });
+                }
+
+                const argsWithSignature = { ...rawArgs, signature };
+
+                if (!proformaState.currentPromise) {
+                        proformaState.pendingArgs = null;
+                        return startProformaGeneration(argsWithSignature);
+                }
+
+                if (proformaState.currentSignature === signature) {
+                        return proformaState.currentPromise;
+                }
+
+                proformaState.pendingArgs = argsWithSignature;
+                return proformaState.currentPromise;
+        }
+
+        function normalizeProformaArgs(rawArgs = {}) {
+                const normalized = { ...rawArgs };
+                const items = Array.isArray(rawArgs.items) ? rawArgs.items : [];
+                const normalizedItems = items
+                        .map((item) => ({
+                                concepto:
+                                        typeof item.concepto === "string"
+                                                ? item.concepto.trim()
+                                                : item.concepto || "",
+                                valor: item.valor,
+                                destacado: Boolean(item.destacado),
+                        }))
+                        .filter((item) => {
+                                const hasConcept =
+                                        item.concepto !== undefined && item.concepto !== null
+                                                ? String(item.concepto).trim() !== ""
+                                                : false;
+                                const numericValor =
+                                        item.valor === 0 || item.valor === "0"
+                                                ? 0
+                                                : Number(item.valor);
+                                const hasValor =
+                                        item.valor === 0 || item.valor === "0"
+                                                ? true
+                                                : Number.isFinite(numericValor);
+                                return hasConcept || hasValor;
+                        })
+                        .map((item) => {
+                                const valorNumber = Number(item.valor);
+                                return {
+                                        concepto: String(item.concepto || "").trim(),
+                                        valor: Number.isFinite(valorNumber) ? valorNumber : "",
+                                        destacado: Boolean(item.destacado),
+                                };
+                        });
+
+                normalized.items = normalizedItems;
+                normalized.templateUrl = typeof normalized.templateUrl === "string"
+                        ? normalized.templateUrl
+                        : "";
+                normalized.coverageLabel = typeof rawArgs.coverageLabel === "string"
+                        ? rawArgs.coverageLabel.trim()
+                        : "";
+
+                return normalized;
+        }
+
+        function scheduleProformaGeneration(rawArgs, { immediate = false } = {}) {
+                const args = normalizeProformaArgs(rawArgs);
+                const task = () => queueProformaGeneration(args);
+                if (immediate) {
+                        return task();
+                }
+
+                return new Promise((resolve, reject) => {
+                        const runner = () => {
+                                task().then(resolve).catch(reject);
+                        };
+
+                        if (typeof window.requestIdleCallback === "function") {
+                                window.requestIdleCallback(
+                                        () => {
+                                                runner();
+                                        },
+                                        { timeout: 1000 }
+                                );
+                        } else {
+                                window.setTimeout(runner, 0);
+                        }
+                });
+        }
+
+        async function generateProformaAndUpload({
+                draftId,
+                templateUrl,
+                items,
+                coverageLabel: rawCoverageLabel,
+                signature,
+        }) {
+                if (!draftId || !templateUrl || !Array.isArray(items) || items.length === 0) {
+                        return { url: latestProformaUrl || "", signature: signature || "" };
+                }
+
+                console.log("[AUTOSAVE] generateProformaAndUpload:start", {
+                        draftId,
+                        templateUrl,
+                        rows: items.length,
+                        signature,
+                });
+
+                const pdfBytes = await loadStaticPdf(templateUrl, { cache: true });
+                if (!pdfBytes) {
+                        return { url: latestProformaUrl || "", signature: signature || "" };
+                }
+
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                await import("../fontkit.umd.min.js");
+                pdfDoc.registerFontkit(globalThis.fontkit);
+                const form = pdfDoc.getForm();
+                const page = pdfDoc.getPages()[0];
+
+                const fontUrl = new URL("../../fonts/RobotoMono-Regular.ttf", import.meta.url);
+                const boldFontUrl = new URL("../../fonts/RobotoMono-Bold.ttf", import.meta.url);
+                const robotoBytes = await loadStaticPdf(fontUrl.href, {
+                        cache: true,
+                        cacheKey: "font:roboto-mono",
+                });
+                const robotoBoldBytes = await loadStaticPdf(boldFontUrl.href, {
+                        cache: true,
+                        cacheKey: "font:roboto-mono-bold",
+                });
+                const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                const robotoMonoBold = await pdfDoc.embedFont(robotoBoldBytes);
+
+                const numberFormatter = new Intl.NumberFormat("es-ES", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                });
+
+                const splitIntoLines = (text, maxWidth, font, size, maxLines = 2) => {
+                        if (!text) return [];
+                        const words = text.split(/\s+/).filter(Boolean);
+                        const lines = [];
+                        let current = "";
+
+                        for (const word of words) {
+                                const tentative = current ? `${current} ${word}` : word;
+                                if (font.widthOfTextAtSize(tentative, size) <= maxWidth) {
+                                        current = tentative;
+                                } else if (!current) {
+                                        // force break long word
+                                        lines.push(tentative);
+                                        if (lines.length === maxLines) break;
+                                        current = "";
+                                } else {
+                                        lines.push(current);
+                                        if (lines.length === maxLines) {
+                                                current = "";
+                                                break;
+                                        }
+                                        current = word;
+                                }
+                        }
+
+                        if (current && lines.length < maxLines) {
+                                lines.push(current);
+                        }
+
+                        return lines;
+                };
+
+                const resolveRect = (fieldName) => {
+                        try {
+                                const field = form.getTextField(fieldName);
+                                const widgets = field?.acroField?.getWidgets?.() || [];
+                                if (widgets.length) {
+                                        const rect = widgets[0].getRectangle();
+                                        if (
+                                                typeof rect?.x === "number" &&
+                                                typeof rect?.y === "number" &&
+                                                typeof rect?.width === "number" &&
+                                                typeof rect?.height === "number"
+                                        ) {
+                                                return rect;
+                                        }
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Missing proforma anchor", fieldName, err);
+                        }
+                        return null;
+                };
+
+		const conceptoRect = resolveRect("concepto_1");
+		const importeRect = resolveRect("importe_1");
+		const mmToPt = (mm) => (mm * 72) / 25.4;
+		const totalHighlightSvgPath =
+			"M232.5,34.5c-9.2-0.9-19-0.3-28.2,0.7c-12.7,1.4-25.5,1.5-38.3,1.5c-13.4,0-26.8,0.3-40.2-0.4  C90,34.4,53.6,32.7,17.7,36.8l-3.5-24.2h3.5c35.9-4.1,72.3-2.4,108.2-0.5c13.4,0.7,26.8,0.4,40.2,0.4c12.8,0,25.6-0.1,38.3-1.5  c9.2-1,21-2,30.3-1.2L232.5,34.5z";
+
+                const coverageLabel = (rawCoverageLabel || "").trim();
+                const defaultRowHeight = mmToPt(12.7);
+		const rowHeight =
+				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
+		const fontSize = 10;
+		const borderThickness = 0.35;
+
+		const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
+                        const concepto = (item.concepto || "").trim();
+                        const valor = item.valor;
+                        return concepto || valor === 0 || Number.isFinite(Number(valor));
+                });
+                const jitter = (value, variance) => value + (Math.random() * 2 - 1) * variance;
+                const hasBaseImponible = preparedItems.some(
+                        (item = {}) => (item.concepto || "").trim().toLowerCase() === "base imponible"
+                );
+                if (!hasBaseImponible && preparedItems.length >= 2) {
+                        const ivaIndex = preparedItems.length - 2;
+                        const totalIndex = preparedItems.length - 1;
+                        const ivaValor = preparedItems[ivaIndex]?.valor;
+                        const totalValor = preparedItems[totalIndex]?.valor;
+                        if (Number.isFinite(ivaValor) && Number.isFinite(totalValor)) {
+                                preparedItems.splice(ivaIndex, 0, {
+                                        concepto: "Base imponible",
+                                        valor: totalValor - ivaValor,
+                                        destacado: false,
+                                });
+                        }
+                }
+
+                const conceptoPadding = mmToPt(5);
+                const importePadding = mmToPt(5);
+                const conceptoCellLeft = conceptoRect?.x ?? 40;
+                const conceptoX = conceptoCellLeft + conceptoPadding;
+                const conceptoRight = conceptoRect
+                        ? conceptoRect.x + conceptoRect.width
+                        : importeRect
+                        ? importeRect.x - 12
+                        : conceptoX + 200;
+                const startY = conceptoRect?.y ?? importeRect?.y ?? page.getHeight() - 120;
+                const importeRight = importeRect
+                        ? importeRect.x + importeRect.width
+                        : page.getWidth() - 60;
+                let currentY = startY;
+                const minY = 20;
+
+                const lastIndex = preparedItems.length - 1;
+                const penultimateIndex = Math.max(0, lastIndex - 1);
+
+                const baseImponibleIndex = preparedItems.findIndex(
+                        (item) => (item.concepto || "").trim() === "Base imponible"
+                );
+
+                let rowsDrawn = 0;
+
+                const conceptoMaxWidth = conceptoRight - conceptoCellLeft - conceptoPadding * 2;
+
+                for (let index = 0; index < preparedItems.length; index += 1) {
+                        const item = preparedItems[index];
+                        if (currentY < minY) {
+                                break;
+                        }
+                        const baseLineGap = 2;
+                        const coverageNudge = 1;
+                        const textSize = fontSize;
+
+                        let concepto = (item.concepto || "").trim();
+                        const rawValor = item.valor;
+                        const valor = rawValor === 0 ? 0 : Number(rawValor);
+                        const hasValor = rawValor === 0 || Number.isFinite(valor);
+                        const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
+                        const isBaseImponible = index === baseImponibleIndex;
+                        const isOddRow = rowsDrawn % 2 === 1;
+                        const isLast = index === lastIndex;
+                        const isPenultimate = index === penultimateIndex;
+                        const alignRight = isLast || isPenultimate || isBaseImponible;
+                        const useBold = isLast;
+                        const textFont = useBold ? robotoMonoBold : robotoMono;
+                        const textColor = isLast
+                                ? PDFLib.rgb(0.8, 0, 0)
+                                : PDFLib.rgb(0, 0, 0);
+                        const isFirstRowWithCoverage = index === 0 && coverageLabel;
+                        if (isFirstRowWithCoverage) {
+                                concepto = `${coverageLabel} · ${concepto}`.trim();
+                        }
+                        const conceptoLines = concepto
+                                ? splitIntoLines(
+                                          concepto,
+                                          Math.max(10, conceptoMaxWidth),
+                                          textFont,
+                                          textSize
+                                  )
+                                : [];
+                        const conceptBlockHeight =
+                                conceptoLines.length > 0
+                                        ? conceptoLines.length * textSize +
+                                          (conceptoLines.length - 1) * baseLineGap
+                                        : 0;
+                        const blockOffset = (rowHeight - conceptBlockHeight) / 2;
+                        const conceptoBaseY =
+                                currentY + blockOffset + (conceptoLines.length > 0 ? conceptBlockHeight - textSize : 0);
+                        const conceptoYStart = conceptoBaseY + (isFirstRowWithCoverage ? coverageNudge : 0);
+                        const importeY = currentY + (rowHeight - textSize) / 2;
+
+                        if (isLast) {
+                                concepto = "TOTAL";
+                                conceptoLines.length = 0;
+                                conceptoLines.push(concepto);
+                        }
+
+                        if (isOddRow) {
+                                page.drawRectangle({
+                                        x: conceptoCellLeft,
+                                        y: currentY,
+                                        width: importeRight - conceptoCellLeft,
+                                        height: rowHeight,
+                                        color: PDFLib.rgb(0.995, 0.995, 0.995),
+                                });
+                        }
+
+                        if (conceptoLines.length > 0) {
+                                conceptoLines.forEach((line, lineIndex) => {
+                                        const width = textFont.widthOfTextAtSize(line, textSize);
+                                        const x = alignRight
+                                                ? conceptoRight - conceptoPadding - width
+                                                : conceptoX;
+                                        const y =
+                                                conceptoYStart - lineIndex * (textSize + baseLineGap);
+                                        page.drawText(line, {
+                                                x,
+                                                y,
+                                                size: textSize,
+                                                font: textFont,
+                                                color: textColor,
+                                        });
+                                });
+                        }
+
+                        if (importe) {
+                                const width = textFont.widthOfTextAtSize(importe, textSize);
+                                const targetX = importeRight - importePadding - width;
+                                page.drawText(importe, {
+                                        x: targetX,
+                                        y: importeY,
+                                        size: textSize,
+                                        font: textFont,
+                                        color: textColor,
+                                });
+                        }
+
+                        if (isLast) {
+                                const svgViewWidth = 241.4;
+                                const svgViewHeight = 48.7;
+                                const extraRight = mmToPt(3);
+                                const rowWidth = importeRight - conceptoCellLeft;
+                                const targetWidth = rowWidth + extraRight;
+                                const maxHeight = rowHeight * 0.9;
+                                const scale = Math.min(
+                                        targetWidth / svgViewWidth,
+                                        maxHeight / svgViewHeight
+                                );
+                                const scaledWidth = svgViewWidth * scale;
+                                const scaledHeight = svgViewHeight * scale;
+                                const rowBottom = currentY;
+                                const highlightX = importeRight - scaledWidth + extraRight;
+                                const highlightY =
+                                        rowBottom + (rowHeight - scaledHeight) / 2;
+
+                                page.drawSvgPath(totalHighlightSvgPath, {
+                                        x: highlightX,
+                                        y: highlightY,
+                                        scale,
+                                        color: PDFLib.rgb(1, 1, 0),
+                                        opacity: 0.7,
+                                });
+                        }
+
+                        if (!isLast) {
+                                const isBorderBeforeBase =
+                                        baseImponibleIndex > 0 && index === baseImponibleIndex - 1;
+                                const lineColor = isBorderBeforeBase
+                                        ? PDFLib.rgb(0, 0, 0)
+                                        : PDFLib.rgb(0.5, 0.5, 0.5);
+                                page.drawLine({
+                                        start: { x: conceptoCellLeft, y: currentY },
+                                        end: { x: importeRight, y: currentY },
+                                        thickness: borderThickness,
+                                        color: lineColor,
+                                        dashArray: isBorderBeforeBase ? undefined : [3, 3],
+                                        dashPhase: isBorderBeforeBase ? undefined : 0,
+                                });
+                        }
+
+                        rowsDrawn += 1;
+
+                        currentY -= rowHeight;
+                }
+
+                if (rowsDrawn > 0) {
+                        const tableTopY = startY + rowHeight;
+                        const tableBottomY = currentY + rowHeight;
+                        const strokeColor = PDFLib.rgb(0, 0, 0);
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: tableBottomY },
+                                end: { x: conceptoCellLeft, y: tableTopY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
+                        page.drawLine({
+                                start: { x: importeRight, y: tableBottomY },
+                                end: { x: importeRight, y: tableTopY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: tableBottomY },
+                                end: { x: importeRight, y: tableBottomY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
+                }
+
+                try {
+                        form.removeField("concepto_1");
+                } catch (err) {
+                        // ignore
+                }
+                try {
+                        form.removeField("importe_1");
+                } catch (err) {
+                        // ignore
+                }
+                form.flatten();
+
+                const filled = await pdfDoc.save();
+                const uploadRes = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/${draftId}/proforma`,
+                        {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                        "X-Go360-Proforma-Signature": signature || "",
+                                },
+                                body: filled,
+                        }
+                );
+                const uploadJson = await uploadRes.json();
+                console.log("[AUTOSAVE] Proforma upload response", {
+                        status: uploadRes.status,
+                        ok: uploadRes.ok,
+                        body: uploadJson,
+                });
+                if (!uploadRes.ok) {
+                        throw new Error(uploadJson?.message || "proforma_upload_failed");
+                }
+
+                const url = uploadJson.proforma_url || "";
+                if (url) {
+                        console.log("[AUTOSAVE] proforma uploaded", {
+                                draftId,
+                                url,
+                        });
+                } else {
+                        console.warn("[AUTOSAVE] proforma upload missing URL", uploadJson);
+                }
+                return { url, signature: signature || "" };
+        }
+
         async function triggerPostFinalizeTasks({
                 draftId,
                 draftUuid,
@@ -975,10 +1534,12 @@ export default function initAutosave() {
                 garantia,
                 estadoGarantia,
                 firmaSello,
+                proformaArgs,
         }) {
                 const docLinks = {
                         condicionado: responseJson.condicionado_url || "",
                         cobertura: responseJson.cobertura_url || "",
+                        proforma: responseJson.proforma_url || "",
                 };
 
                 if (docLinks.condicionado || docLinks.cobertura) {
@@ -1008,6 +1569,29 @@ export default function initAutosave() {
                                 .catch((err) => {
                                         console.error("[AUTOSAVE] certificate finalize error", err);
                                         markDocumentError();
+                                });
+                }
+
+                const normalizedProformaArgs = proformaArgs || {
+                        draftId,
+                        templateUrl: responseJson.proforma_template_url || "",
+                        items: [],
+                        coverageLabel: buildCoverageLabel(garantia),
+                };
+
+                if (
+                        normalizedProformaArgs.templateUrl &&
+                        Array.isArray(normalizedProformaArgs.items) &&
+                        normalizedProformaArgs.items.length > 0
+                ) {
+                        scheduleProformaGeneration(normalizedProformaArgs, { immediate: false })
+                                .then((result) => {
+                                        if (result?.url) {
+                                                updateSuccessDocuments({ proforma: result.url });
+                                        }
+                                })
+                                .catch((err) => {
+                                        console.error("[AUTOSAVE] proforma finalize error", err);
                                 });
                 }
         }
@@ -2286,6 +2870,15 @@ export default function initAutosave() {
                                   }
                                 : null;
 
+                        const proformaArgs = json.proforma_template_url
+                                ? {
+                                          draftId,
+                                          templateUrl: json.proforma_template_url,
+                                          items: listadoDescuentosRecargos,
+                                          coverageLabel: buildCoverageLabel(garantia),
+                                  }
+                                : null;
+
                         if (!finalize && certificateArgs) {
                                 scheduleCertificateGeneration(certificateArgs, {
                                         immediate: true,
@@ -2294,11 +2887,20 @@ export default function initAutosave() {
                                 });
                         }
 
+                        if (!finalize && proformaArgs && listadoDescuentosRecargos.length > 0) {
+                                scheduleProformaGeneration(proformaArgs, {
+                                        immediate: true,
+                                }).catch((err) => {
+                                        console.error("[AUTOSAVE] proforma queue error", err);
+                                });
+                        }
+
                         if (finalize) {
                                 const docLinks = {
                                         certificate: latestCertificateUrl || "",
                                         condicionado: json.condicionado_url || "",
                                         cobertura: json.cobertura_url || "",
+                                        proforma: latestProformaUrl || json.proforma_url || "",
                                 };
                                 const extras = {
                                         transferIban:
@@ -2333,6 +2935,7 @@ export default function initAutosave() {
                                         garantia,
                                         estadoGarantia: payload.estado_garantia || {},
                                         firmaSello,
+                                        proformaArgs,
                                 });
                                 if (json.notify_url && draftUuid) {
                                         triggerContractNotice(json.notify_url, draftUuid);
