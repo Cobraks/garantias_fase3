@@ -1374,30 +1374,6 @@ export default function initAutosave() {
                                 });
                         }
 
-                        if (isLast) {
-                                const highlightPaddingX = mmToPt(1.5);
-                                const highlightPaddingY = mmToPt(0.8);
-                                const highlightHeight = Math.max(
-                                        rowHeight - highlightPaddingY * 2,
-                                        rowHeight * 0.55
-                                );
-                                const highlightY = currentY + (rowHeight - highlightHeight) / 2;
-                                const highlightColor = PDFLib.rgb(1, 0.95, 0.55);
-                                const leftX = conceptoCellLeft + highlightPaddingX;
-                                const rightX = importeRight - highlightPaddingX;
-                                const topY = highlightY + highlightHeight;
-                                const bottomY = highlightY;
-                                const variance = mmToPt(0.6);
-                                const path = `M ${jitter(leftX, variance)} ${jitter(bottomY, variance)} ` +
-                                        `L ${jitter(rightX, variance)} ${jitter(bottomY, variance)} ` +
-                                        `L ${jitter(rightX, variance)} ${jitter(topY, variance)} ` +
-                                        `L ${jitter(leftX, variance)} ${jitter(topY, variance)} Z`;
-                                page.drawSvgPath(path, {
-                                        color: highlightColor,
-                                        opacity: 0.35,
-                                });
-                        }
-
                         if (conceptoLines.length > 0) {
                                 conceptoLines.forEach((line, lineIndex) => {
                                         const width = textFont.widthOfTextAtSize(line, textSize);
@@ -1425,6 +1401,30 @@ export default function initAutosave() {
                                         size: textSize,
                                         font: textFont,
                                         color: textColor,
+                                });
+                        }
+
+                        if (isLast) {
+                                const highlightPaddingX = mmToPt(1.5);
+                                const highlightPaddingY = mmToPt(0.8);
+                                const highlightHeight = Math.max(
+                                        rowHeight - highlightPaddingY * 2,
+                                        rowHeight * 0.55
+                                );
+                                const highlightY = currentY + (rowHeight - highlightHeight) / 2;
+                                const highlightColor = PDFLib.rgb(1, 0.95, 0.55);
+                                const leftX = conceptoCellLeft + highlightPaddingX;
+                                const rightX = importeRight - highlightPaddingX;
+                                const topY = highlightY + highlightHeight;
+                                const bottomY = highlightY;
+                                const variance = mmToPt(0.6);
+                                const path = `M ${jitter(leftX, variance)} ${jitter(bottomY, variance)} ` +
+                                        `L ${jitter(rightX, variance)} ${jitter(bottomY, variance)} ` +
+                                        `L ${jitter(rightX, variance)} ${jitter(topY, variance)} ` +
+                                        `L ${jitter(leftX, variance)} ${jitter(topY, variance)} Z`;
+                                page.drawSvgPath(path, {
+                                        color: highlightColor,
+                                        opacity: 0.38,
                                 });
                         }
 
