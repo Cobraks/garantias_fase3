@@ -4415,7 +4415,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     margin: 6px 0 0;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--go-color-555555);
+    color: var(--go-color-dc2626);
 }
 
 .confirm-modal__status[hidden] {
@@ -6731,7 +6731,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     .guarantee-detail__inner {
         overflow: visible;
         gap: var(--spacing-4);
-        padding-bottom: var(--spacing-6);
+        padding-bottom: var(--spacing-9);
     }
 
     .guarantee-detail__header h2 {
