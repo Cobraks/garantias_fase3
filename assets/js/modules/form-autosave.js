@@ -1169,11 +1169,17 @@ export default function initAutosave() {
                 const page = pdfDoc.getPages()[0];
 
                 const fontUrl = new URL("../../fonts/RobotoMono-Regular.ttf", import.meta.url);
+                const boldFontUrl = new URL("../../fonts/RobotoMono-Bold.ttf", import.meta.url);
                 const robotoBytes = await loadStaticPdf(fontUrl.href, {
                         cache: true,
                         cacheKey: "font:roboto-mono",
                 });
+                const robotoBoldBytes = await loadStaticPdf(boldFontUrl.href, {
+                        cache: true,
+                        cacheKey: "font:roboto-mono-bold",
+                });
                 const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                const robotoMonoBold = await pdfDoc.embedFont(robotoBoldBytes);
 
                 const numberFormatter = new Intl.NumberFormat("es-ES", {
                         minimumFractionDigits: 2,
@@ -1204,11 +1210,17 @@ export default function initAutosave() {
                 const conceptoRect = resolveRect("concepto_1");
                 const importeRect = resolveRect("importe_1");
                 const mmToPt = (mm) => (mm * 72) / 25.4;
-                const defaultRowHeight = mmToPt(12.533);
+                const defaultRowHeight = mmToPt(12.7);
                 const rowHeight =
                         (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
                 const fontSize = 10;
+                const fontSizeLarge = 12;
                 const conceptoX = conceptoRect?.x ?? 40;
+                const conceptoRight = conceptoRect
+                        ? conceptoRect.x + conceptoRect.width
+                        : importeRect
+                        ? importeRect.x - 12
+                        : conceptoX + 200;
                 const startY = conceptoRect?.y ?? importeRect?.y ?? page.getHeight() - 120;
                 const importeRight = importeRect
                         ? importeRect.x + importeRect.width
@@ -1216,8 +1228,13 @@ export default function initAutosave() {
                 let currentY = startY;
                 const minY = 20;
                 const importePadding = 2;
+                const conceptoPadding = 2;
 
-                for (const item of items) {
+                const lastIndex = items.length - 1;
+                const penultimateIndex = Math.max(0, lastIndex - 1);
+
+                for (let index = 0; index < items.length; index += 1) {
+                        const item = items[index];
                         if (currentY < minY) {
                                 break;
                         }
@@ -1225,26 +1242,46 @@ export default function initAutosave() {
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
-                        const importe = hasValor ? numberFormatter.format(valor) : "";
-                        const textY = currentY + (rowHeight - fontSize) / 2;
+                        const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
+                        const isHighlighted = index === lastIndex || index === penultimateIndex;
+                        const isLast = index === lastIndex;
+                        const textFont = isHighlighted ? robotoMonoBold : robotoMono;
+                        const textSize = isLast ? fontSizeLarge : fontSize;
+                        const textY = currentY + (rowHeight - textSize) / 2;
 
                         if (concepto) {
+                                const conceptoWidth = textFont.widthOfTextAtSize(
+                                        concepto,
+                                        textSize
+                                );
+                                const alignRight = isHighlighted;
+                                const x = alignRight
+                                        ? conceptoRight - conceptoPadding - conceptoWidth
+                                        : conceptoX;
                                 page.drawText(concepto, {
-                                        x: conceptoX,
+                                        x,
                                         y: textY,
-                                        size: fontSize,
-                                        font: robotoMono,
+                                        size: textSize,
+                                        font: textFont,
                                 });
                         }
 
                         if (importe) {
-                                const width = robotoMono.widthOfTextAtSize(importe, fontSize);
+                                const width = textFont.widthOfTextAtSize(importe, textSize);
                                 const targetX = importeRight - importePadding - width;
                                 page.drawText(importe, {
                                         x: targetX,
                                         y: textY,
-                                        size: fontSize,
-                                        font: robotoMono,
+                                        size: textSize,
+                                        font: textFont,
+                                });
+                        }
+
+                        if (!isLast) {
+                                page.drawLine({
+                                        start: { x: conceptoX, y: currentY },
+                                        end: { x: importeRight, y: currentY },
+                                        thickness: 0.5,
                                 });
                         }
 
