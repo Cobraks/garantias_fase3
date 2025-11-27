@@ -1215,7 +1215,28 @@ export default function initAutosave() {
                         (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
                 const fontSize = 10;
                 const fontSizeLarge = 12;
-                const conceptoX = conceptoRect?.x ?? 40;
+                const borderThickness = 0.35;
+                const boxThickness = 1;
+
+                const preparedItems = Array.isArray(items) ? [...items] : [];
+                if (preparedItems.length >= 2) {
+                        const ivaIndex = preparedItems.length - 2;
+                        const totalIndex = preparedItems.length - 1;
+                        const ivaValor = preparedItems[ivaIndex]?.valor;
+                        const totalValor = preparedItems[totalIndex]?.valor;
+                        if (Number.isFinite(ivaValor) && Number.isFinite(totalValor)) {
+                                preparedItems.splice(ivaIndex, 0, {
+                                        concepto: "Base imponible",
+                                        valor: totalValor - ivaValor,
+                                        destacado: false,
+                                });
+                        }
+                }
+
+                const conceptoPadding = mmToPt(5);
+                const importePadding = mmToPt(5);
+                const conceptoCellLeft = conceptoRect?.x ?? 40;
+                const conceptoX = conceptoCellLeft + conceptoPadding;
                 const conceptoRight = conceptoRect
                         ? conceptoRect.x + conceptoRect.width
                         : importeRect
@@ -1227,14 +1248,12 @@ export default function initAutosave() {
                         : page.getWidth() - 60;
                 let currentY = startY;
                 const minY = 20;
-                const importePadding = 2;
-                const conceptoPadding = 2;
 
-                const lastIndex = items.length - 1;
+                const lastIndex = preparedItems.length - 1;
                 const penultimateIndex = Math.max(0, lastIndex - 1);
 
-                for (let index = 0; index < items.length; index += 1) {
-                        const item = items[index];
+                for (let index = 0; index < preparedItems.length; index += 1) {
+                        const item = preparedItems[index];
                         if (currentY < minY) {
                                 break;
                         }
@@ -1248,6 +1267,9 @@ export default function initAutosave() {
                         const textFont = isHighlighted ? robotoMonoBold : robotoMono;
                         const textSize = isLast ? fontSizeLarge : fontSize;
                         const textY = currentY + (rowHeight - textSize) / 2;
+                        const textColor = isLast
+                                ? PDFLib.rgb(0.8, 0, 0)
+                                : PDFLib.rgb(0, 0, 0);
 
                         if (concepto) {
                                 const conceptoWidth = textFont.widthOfTextAtSize(
@@ -1263,6 +1285,7 @@ export default function initAutosave() {
                                         y: textY,
                                         size: textSize,
                                         font: textFont,
+                                        color: textColor,
                                 });
                         }
 
@@ -1274,14 +1297,37 @@ export default function initAutosave() {
                                         y: textY,
                                         size: textSize,
                                         font: textFont,
+                                        color: textColor,
                                 });
                         }
 
+                        const rowTopY = currentY + rowHeight;
                         if (!isLast) {
                                 page.drawLine({
-                                        start: { x: conceptoX, y: currentY },
+                                        start: { x: conceptoCellLeft, y: currentY },
                                         end: { x: importeRight, y: currentY },
-                                        thickness: 0.5,
+                                        thickness: borderThickness,
+                                        color: PDFLib.rgb(0.2, 0.2, 0.2),
+                                });
+                        }
+
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: currentY },
+                                end: { x: conceptoCellLeft, y: rowTopY },
+                                thickness: boxThickness,
+                        });
+
+                        page.drawLine({
+                                start: { x: importeRight, y: currentY },
+                                end: { x: importeRight, y: rowTopY },
+                                thickness: boxThickness,
+                        });
+
+                        if (isLast) {
+                                page.drawLine({
+                                        start: { x: conceptoCellLeft, y: currentY },
+                                        end: { x: importeRight, y: currentY },
+                                        thickness: boxThickness,
                                 });
                         }
 
