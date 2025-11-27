@@ -511,7 +511,7 @@
       persistVerificationState();
     };
 
-    const loadVerificationContext = async (email) => {
+    const loadVerificationContext = async (email, { showOnSuccess = true, silent = false } = {}) => {
       const targetEmail = (email || '').trim();
       if (!targetEmail || !EMAIL_REGEX.test(targetEmail)) {
         return false;
@@ -524,7 +524,7 @@
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok || !payload || payload.status !== 'pending_verification' || !payload.token) {
-          if (payload && payload.code === 'go_verify_not_pending' && payload.message) {
+          if (!silent && payload && payload.code === 'go_verify_not_pending' && payload.message) {
             setRegisterError(payload.message);
           }
           return false;
@@ -540,7 +540,9 @@
         };
 
         persistVerificationState();
-        showVerificationStep();
+        if (showOnSuccess) {
+          showVerificationStep();
+        }
         return true;
       } catch (error) {
         console.error('[register] loadVerificationContext error', error);
@@ -3143,7 +3145,21 @@
 
     const hasPendingVerification = restoreVerificationState();
     if (hasPendingVerification) {
-      showVerificationStep();
+      loadVerificationContext(state.verification.email, { showOnSuccess: false, silent: true })
+        .then((valid) => {
+          if (valid) {
+            showVerificationStep();
+          } else {
+            clearVerificationState();
+            showCurrentStep();
+            updateProgress();
+          }
+        })
+        .catch(() => {
+          clearVerificationState();
+          showCurrentStep();
+          updateProgress();
+        });
     } else {
       showCurrentStep();
       updateProgress();
