@@ -86,6 +86,14 @@ function buildListadoDescuentosRecargos(normalizePriceFn) {
         return rows;
 }
 
+function buildCoverageLabel(garantia = {}) {
+        const planName = garantia?.plan_display_name || garantia?.nivel_garantia || "";
+        const months = garantia?.meses_contratados;
+        const monthsLabel = months ? ` ${months} meses` : "";
+
+        return planName ? `Cobertura ${planName}${monthsLabel}` : "";
+}
+
 function normalizeChannel(value) {
         if (!value) return "";
         const key = String(value).toLowerCase();
@@ -979,13 +987,13 @@ export default function initAutosave() {
         }
 
         function computeProformaSignature(rawArgs = {}) {
-                const { templateUrl, items } = normalizeProformaArgs(rawArgs);
+                const { templateUrl, items, coverageLabel } = normalizeProformaArgs(rawArgs);
 
                 if (!templateUrl || !items || items.length === 0) {
                         return "";
                 }
 
-                const payload = { templateUrl, items };
+                const payload = { templateUrl, items, coverageLabel };
 
                 return encodeSignaturePayload(payload);
         }
@@ -1111,6 +1119,9 @@ export default function initAutosave() {
                 normalized.templateUrl = typeof normalized.templateUrl === "string"
                         ? normalized.templateUrl
                         : "";
+                normalized.coverageLabel = typeof rawArgs.coverageLabel === "string"
+                        ? rawArgs.coverageLabel.trim()
+                        : "";
 
                 return normalized;
         }
@@ -1144,6 +1155,7 @@ export default function initAutosave() {
                 draftId,
                 templateUrl,
                 items,
+                coverageLabel: rawCoverageLabel,
                 signature,
         }) {
                 if (!draftId || !templateUrl || !Array.isArray(items) || items.length === 0) {
@@ -1210,10 +1222,12 @@ export default function initAutosave() {
                 const conceptoRect = resolveRect("concepto_1");
                 const importeRect = resolveRect("importe_1");
                 const mmToPt = (mm) => (mm * 72) / 25.4;
+                const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
                 const rowHeight =
                         (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
                 const fontSize = 10;
+                const coverageFontSize = fontSize + 1;
                 const borderThickness = 0.35;
                 const boxThickness = 1;
 
@@ -1275,6 +1289,32 @@ export default function initAutosave() {
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
+                        const isFirstRowWithCoverage = index === 0 && coverageLabel;
+                        const baseLineGap = 2;
+                        const coverageBlockHeight = isFirstRowWithCoverage
+                                ? coverageFontSize + baseLineGap + textSize
+                                : textSize;
+                        const paddingTop = isFirstRowWithCoverage
+                                ? Math.max(0, (rowHeight - coverageBlockHeight) / 2)
+                                : (rowHeight - textSize) / 2;
+                        const rowTopY = currentY + rowHeight;
+                        const coverageY = isFirstRowWithCoverage
+                                ? rowTopY - paddingTop - coverageFontSize
+                                : null;
+                        const conceptoY = isFirstRowWithCoverage
+                                ? coverageY - baseLineGap - textSize
+                                : textY;
+                        const importeY = conceptoY;
+
+                        if (isFirstRowWithCoverage) {
+                                page.drawText(coverageLabel, {
+                                        x: conceptoX,
+                                        y: coverageY,
+                                        size: coverageFontSize,
+                                        font: robotoMonoBold,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                });
+                        }
 
                         if (concepto) {
                                 const conceptoWidth = textFont.widthOfTextAtSize(
@@ -1287,7 +1327,7 @@ export default function initAutosave() {
                                         : conceptoX;
                                 page.drawText(concepto, {
                                         x,
-                                        y: textY,
+                                        y: conceptoY,
                                         size: textSize,
                                         font: textFont,
                                         color: textColor,
@@ -1299,7 +1339,7 @@ export default function initAutosave() {
                                 const targetX = importeRight - importePadding - width;
                                 page.drawText(importe, {
                                         x: targetX,
-                                        y: textY,
+                                        y: importeY,
                                         size: textSize,
                                         font: textFont,
                                         color: textColor,
@@ -1443,6 +1483,7 @@ export default function initAutosave() {
                         draftId,
                         templateUrl: responseJson.proforma_template_url || "",
                         items: [],
+                        coverageLabel: buildCoverageLabel(garantia),
                 };
 
                 if (
@@ -2741,6 +2782,7 @@ export default function initAutosave() {
                                           draftId,
                                           templateUrl: json.proforma_template_url,
                                           items: listadoDescuentosRecargos,
+                                          coverageLabel: buildCoverageLabel(garantia),
                                   }
                                 : null;
 
