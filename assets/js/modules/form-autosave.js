@@ -1346,7 +1346,6 @@ export default function initAutosave() {
                                 });
                         }
 
-                        const rowTopY = currentY + rowHeight;
                         if (!isLast) {
                                 const isBorderBeforeBase =
                                         baseImponibleIndex > 0 && index === baseImponibleIndex - 1;
