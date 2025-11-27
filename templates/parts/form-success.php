@@ -60,6 +60,10 @@ use GarantiasOnline360VO\Svg;
             <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
             <span class="document-card__title"></span>
         </a>
+        <a href="#" class="document-card" data-doc="proforma" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
     </div>
     <div class="form-success__actions">
         <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
