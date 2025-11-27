@@ -1393,13 +1393,13 @@ export default function initAutosave() {
                                 const rowBottom = currentY;
                                 const highlightX = importeRight - scaledWidth + extraRight;
                                 const highlightY =
-                                        rowBottom + rowHeight + (rowHeight - scaledHeight) / 2;
+                                        rowBottom + rowHeight + (rowHeight - scaledHeight) / 2 - 13.6;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
                                         y: highlightY,
                                         scale,
-                                        color: PDFLib.rgb(1, 1, 0),
+                                        color: PDFLib.rgb(0.96078, 0.91373, 0.28627),
                                         opacity: 0.7,
                                 });
                         }
