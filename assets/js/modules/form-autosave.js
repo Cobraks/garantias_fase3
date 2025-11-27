@@ -1216,7 +1216,6 @@ export default function initAutosave() {
                 const fontSize = 10;
                 const borderThickness = 0.35;
                 const boxThickness = 1;
-                const borderRadius = mmToPt(1.5);
 
                 const preparedItems = Array.isArray(items) ? [...items] : [];
                 if (preparedItems.length >= 2) {
@@ -1324,30 +1323,22 @@ export default function initAutosave() {
                                 });
                         }
 
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: currentY },
+                                end: { x: conceptoCellLeft, y: rowTopY },
+                                thickness: boxThickness,
+                        });
+
+                        page.drawLine({
+                                start: { x: importeRight, y: currentY },
+                                end: { x: importeRight, y: rowTopY },
+                                thickness: boxThickness,
+                        });
+
                         if (isLast) {
-                                const width = importeRight - conceptoCellLeft;
-                                const radius = Math.min(borderRadius, rowHeight / 2, width / 2);
-                                const roundedPath = `M ${conceptoCellLeft} ${rowTopY} H ${
-                                        conceptoCellLeft + width
-                                } V ${currentY + radius} A ${radius} ${radius} 0 0 1 ${
-                                        conceptoCellLeft + width - radius
-                                } ${currentY} H ${conceptoCellLeft + radius} A ${radius} ${radius} 0 0 1 ${
-                                        conceptoCellLeft
-                                } ${currentY + radius} V ${rowTopY} Z`;
-                                page.drawSvgPath(roundedPath, {
-                                        borderColor: PDFLib.rgb(0, 0, 0),
-                                        borderWidth: boxThickness,
-                                });
-                        } else {
                                 page.drawLine({
                                         start: { x: conceptoCellLeft, y: currentY },
-                                        end: { x: conceptoCellLeft, y: rowTopY },
-                                        thickness: boxThickness,
-                                });
-
-                                page.drawLine({
-                                        start: { x: importeRight, y: currentY },
-                                        end: { x: importeRight, y: rowTopY },
+                                        end: { x: importeRight, y: currentY },
                                         thickness: boxThickness,
                                 });
                         }
