@@ -1296,12 +1296,14 @@ export default function initAutosave() {
                         let coverageY = null;
                         let conceptoY = textY;
                         if (isFirstRowWithCoverage) {
+                                const coverageNudge = 1;
                                 const coverageBlockHeight =
                                         coverageFontSize + baseLineGap + textSize;
-                                conceptoY = currentY + (rowHeight - coverageBlockHeight) / 2;
+                                conceptoY =
+                                        currentY + (rowHeight - coverageBlockHeight) / 2 + coverageNudge;
                                 coverageY = conceptoY + textSize + baseLineGap;
                         }
-                        const importeY = conceptoY;
+                        const importeY = isFirstRowWithCoverage ? textY : conceptoY;
 
                         if (isLast) {
                                 concepto = "TOTAL";
