@@ -1198,6 +1198,38 @@ export default function initAutosave() {
                         maximumFractionDigits: 2,
                 });
 
+                const splitIntoLines = (text, maxWidth, font, size, maxLines = 2) => {
+                        if (!text) return [];
+                        const words = text.split(/\s+/).filter(Boolean);
+                        const lines = [];
+                        let current = "";
+
+                        for (const word of words) {
+                                const tentative = current ? `${current} ${word}` : word;
+                                if (font.widthOfTextAtSize(tentative, size) <= maxWidth) {
+                                        current = tentative;
+                                } else if (!current) {
+                                        // force break long word
+                                        lines.push(tentative);
+                                        if (lines.length === maxLines) break;
+                                        current = "";
+                                } else {
+                                        lines.push(current);
+                                        if (lines.length === maxLines) {
+                                                current = "";
+                                                break;
+                                        }
+                                        current = word;
+                                }
+                        }
+
+                        if (current && lines.length < maxLines) {
+                                lines.push(current);
+                        }
+
+                        return lines;
+                };
+
                 const resolveRect = (fieldName) => {
                         try {
                                 const field = form.getTextField(fieldName);
@@ -1227,7 +1259,6 @@ export default function initAutosave() {
                 const rowHeight =
                         (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
                 const fontSize = 10;
-                const coverageFontSize = fontSize + 1;
                 const borderThickness = 0.35;
 
                 const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
@@ -1277,45 +1308,59 @@ export default function initAutosave() {
 
                 let rowsDrawn = 0;
 
+                const conceptoMaxWidth = conceptoRight - conceptoCellLeft - conceptoPadding * 2;
+
                 for (let index = 0; index < preparedItems.length; index += 1) {
                         const item = preparedItems[index];
                         if (currentY < minY) {
                                 break;
                         }
+                        const baseLineGap = 2;
+                        const coverageNudge = 1;
+                        const textSize = fontSize;
+
                         let concepto = (item.concepto || "").trim();
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
                         const isBaseImponible = index === baseImponibleIndex;
-                const isOddRow = rowsDrawn % 2 === 1;
+                        const isOddRow = rowsDrawn % 2 === 1;
                         const isLast = index === lastIndex;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
                         const useBold = isLast;
                         const textFont = useBold ? robotoMonoBold : robotoMono;
-                        const textSize = fontSize;
-                        const textY = currentY + (rowHeight - textSize) / 2;
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
                         const isFirstRowWithCoverage = index === 0 && coverageLabel;
-                        const baseLineGap = 2;
-                        const rowTopY = currentY + rowHeight;
-                        let coverageY = null;
-                        let conceptoY = textY;
                         if (isFirstRowWithCoverage) {
-                                const coverageNudge = 1;
-                                const coverageBlockHeight =
-                                        coverageFontSize + baseLineGap + textSize;
-                                conceptoY =
-                                        currentY + (rowHeight - coverageBlockHeight) / 2 + coverageNudge;
-                                coverageY = conceptoY + textSize + baseLineGap;
+                                concepto = `${coverageLabel} · ${concepto}`.trim();
                         }
-                        const importeY = isFirstRowWithCoverage ? textY : conceptoY;
+                        const conceptoLines = concepto
+                                ? splitIntoLines(
+                                          concepto,
+                                          Math.max(10, conceptoMaxWidth),
+                                          textFont,
+                                          textSize
+                                  )
+                                : [];
+                        const conceptBlockHeight =
+                                conceptoLines.length > 0
+                                        ? conceptoLines.length * textSize +
+                                          (conceptoLines.length - 1) * baseLineGap
+                                        : 0;
+                        const blockOffset = (rowHeight - conceptBlockHeight) / 2;
+                        const conceptoBaseY =
+                                currentY + blockOffset + (conceptoLines.length > 0 ? conceptBlockHeight - textSize : 0);
+                        const conceptoYStart = conceptoBaseY + (isFirstRowWithCoverage ? coverageNudge : 0);
+                        const importeY = currentY + (rowHeight - textSize) / 2;
 
                         if (isLast) {
                                 concepto = "TOTAL";
+                                conceptoLines.length = 0;
+                                conceptoLines.push(concepto);
                         }
 
                         if (isOddRow) {
@@ -1324,34 +1369,25 @@ export default function initAutosave() {
                                         y: currentY,
                                         width: importeRight - conceptoCellLeft,
                                         height: rowHeight,
-                                        color: PDFLib.rgb(0.99, 0.99, 0.99),
+                                        color: PDFLib.rgb(0.995, 0.995, 0.995),
                                 });
                         }
 
-                        if (isFirstRowWithCoverage) {
-                                page.drawText(coverageLabel, {
-                                        x: conceptoX,
-                                        y: coverageY,
-                                        size: coverageFontSize,
-                                        font: robotoMono,
-                                        color: PDFLib.rgb(0, 0, 0),
-                                });
-                        }
-
-                        if (concepto) {
-                                const conceptoWidth = textFont.widthOfTextAtSize(
-                                        concepto,
-                                        textSize
-                                );
-                                const x = alignRight
-                                        ? conceptoRight - conceptoPadding - conceptoWidth
-                                        : conceptoX;
-                                page.drawText(concepto, {
-                                        x,
-                                        y: conceptoY,
-                                        size: textSize,
-                                        font: textFont,
-                                        color: textColor,
+                        if (conceptoLines.length > 0) {
+                                conceptoLines.forEach((line, lineIndex) => {
+                                        const width = textFont.widthOfTextAtSize(line, textSize);
+                                        const x = alignRight
+                                                ? conceptoRight - conceptoPadding - width
+                                                : conceptoX;
+                                        const y =
+                                                conceptoYStart - lineIndex * (textSize + baseLineGap);
+                                        page.drawText(line, {
+                                                x,
+                                                y,
+                                                size: textSize,
+                                                font: textFont,
+                                                color: textColor,
+                                        });
                                 });
                         }
 
@@ -1390,7 +1426,7 @@ export default function initAutosave() {
 
                 if (rowsDrawn > 0) {
                         const tableTopY = startY + rowHeight;
-                        const tableBottomY = currentY;
+                        const tableBottomY = currentY + rowHeight;
                         const strokeColor = PDFLib.rgb(0, 0, 0);
                         page.drawLine({
                                 start: { x: conceptoCellLeft, y: tableBottomY },
