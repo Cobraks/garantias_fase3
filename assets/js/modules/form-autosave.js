@@ -1257,62 +1257,8 @@ export default function initAutosave() {
 		const totalHighlightSvgPath =
 			"M232.5,34.5c-9.2-0.9-19-0.3-28.2,0.7c-12.7,1.4-25.5,1.5-38.3,1.5c-13.4,0-26.8,0.3-40.2-0.4  C90,34.4,53.6,32.7,17.7,36.8l-3.5-24.2h3.5c35.9-4.1,72.3-2.4,108.2-0.5c13.4,0.7,26.8,0.4,40.2,0.4c12.8,0,25.6-0.1,38.3-1.5  c9.2-1,21-2,30.3-1.2L232.5,34.5z";
 
-		const transformSvgPath = (path, { scaleX, scaleY, translateX, translateY }) => {
-			const tokens = path.match(/[a-zA-Z]|-?\d*\.?\d+(?:e[-+]?\d+)?/g);
-			if (!tokens) return path;
-
-			const result = [];
-			let currentCmd = "";
-			let coordIndex = 0;
-			const fmt = (value) => Number.parseFloat(value.toFixed(2));
-
-			tokens.forEach((token) => {
-				if (/^[a-zA-Z]$/.test(token)) {
-					currentCmd = token;
-					coordIndex = 0;
-					result.push(token);
-					return;
-				}
-
-				const isRelative = currentCmd === currentCmd.toLowerCase();
-				const applyTranslateX = isRelative ? 0 : translateX;
-				const applyTranslateY = isRelative ? 0 : translateY;
-				const cmd = currentCmd || "";
-				const isHorizontal = cmd === "H" || cmd === "h";
-				const isVertical = cmd === "V" || cmd === "v";
-				const isArc = cmd === "A" || cmd === "a";
-
-				let num = Number.parseFloat(token);
-				if (Number.isNaN(num)) {
-					result.push(token);
-					return;
-				}
-
-				if (isArc) {
-					if (coordIndex === 0) num = num * scaleX;
-					else if (coordIndex === 1) num = num * scaleY;
-					else if (coordIndex === 5) num = num * scaleX + applyTranslateX;
-					else if (coordIndex === 6) num = num * scaleY + applyTranslateY;
-					// indices 2,3,4 are rotation/flags
-				} else if (isHorizontal) {
-					num = num * scaleX + applyTranslateX;
-				} else if (isVertical) {
-					num = num * scaleY + applyTranslateY;
-				} else {
-					const isX = coordIndex % 2 === 0;
-					num = isX
-						? num * scaleX + applyTranslateX
-						: num * scaleY + applyTranslateY;
-				}
-
-				result.push(fmt(num));
-				coordIndex += 1;
-			});
-
-			return result.join(" ");
-		};
-		const coverageLabel = (rawCoverageLabel || "").trim();
-		const defaultRowHeight = mmToPt(12.7);
+                const coverageLabel = (rawCoverageLabel || "").trim();
+                const defaultRowHeight = mmToPt(12.7);
 		const rowHeight =
 				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
 		const fontSize = 10;
@@ -1466,20 +1412,21 @@ export default function initAutosave() {
                                 const svgViewHeight = 48.7;
                                 const extraRight = mmToPt(3);
                                 const targetWidth = importeRight - conceptoCellLeft + extraRight;
-                                const targetHeight = rowHeight * 0.9;
-                                const scaleX = targetWidth / svgViewWidth;
-                                const scaleY = targetHeight / svgViewHeight;
-                                const translateX = conceptoCellLeft;
-                                const translateY = currentY + (rowHeight - targetHeight) / 2;
-                                const path = transformSvgPath(totalHighlightSvgPath, {
-                                        scaleX,
-                                        scaleY,
-                                        translateX,
-                                        translateY,
-                                });
-                                page.drawSvgPath(path, {
+                                const maxHeight = rowHeight * 0.9;
+                                const scale = Math.min(
+                                        targetWidth / svgViewWidth,
+                                        maxHeight / svgViewHeight
+                                );
+                                const scaledHeight = svgViewHeight * scale;
+                                const highlightX = conceptoCellLeft;
+                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
+
+                                page.drawSvgPath(totalHighlightSvgPath, {
+                                        x: highlightX,
+                                        y: highlightY,
+                                        scale,
                                         color: PDFLib.rgb(1, 0.878, 0.024),
-                                        opacity: 0.48,
+                                        opacity: 0.65,
                                 });
                         }
 
