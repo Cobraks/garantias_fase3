@@ -1268,6 +1268,8 @@ export default function initAutosave() {
                         (item) => (item.concepto || "").trim() === "Base imponible"
                 );
 
+                let rowsDrawn = 0;
+
                 for (let index = 0; index < preparedItems.length; index += 1) {
                         const item = preparedItems[index];
                         if (currentY < minY) {
@@ -1279,7 +1281,7 @@ export default function initAutosave() {
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
                         const isBaseImponible = index === baseImponibleIndex;
-                        const isOddRow = index % 2 === 1;
+                const isOddRow = index % 2 === 0;
                         const isLast = index === lastIndex;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
@@ -1374,7 +1376,33 @@ export default function initAutosave() {
                                 });
                         }
 
+                        rowsDrawn += 1;
+
                         currentY -= rowHeight;
+                }
+
+                if (rowsDrawn > 0) {
+                        const tableTopY = startY + rowHeight;
+                        const tableBottomY = currentY;
+                        const strokeColor = PDFLib.rgb(0, 0, 0);
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: tableBottomY },
+                                end: { x: conceptoCellLeft, y: tableTopY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
+                        page.drawLine({
+                                start: { x: importeRight, y: tableBottomY },
+                                end: { x: importeRight, y: tableTopY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
+                        page.drawLine({
+                                start: { x: conceptoCellLeft, y: tableBottomY },
+                                end: { x: importeRight, y: tableBottomY },
+                                thickness: borderThickness,
+                                color: strokeColor,
+                        });
                 }
 
                 try {
