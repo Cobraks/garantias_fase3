@@ -511,6 +511,43 @@
       persistVerificationState();
     };
 
+    const loadVerificationContext = async (email) => {
+      const targetEmail = (email || '').trim();
+      if (!targetEmail || !EMAIL_REGEX.test(targetEmail)) {
+        return false;
+      }
+
+      try {
+        const url = new URL(buildRestUrl('register/verification'));
+        url.searchParams.set('email', targetEmail);
+        const response = await window.fetch(url.toString(), { credentials: 'same-origin' });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok || !payload || payload.status !== 'pending_verification' || !payload.token) {
+          if (payload && payload.code === 'go_verify_not_pending' && payload.message) {
+            setRegisterError(payload.message);
+          }
+          return false;
+        }
+
+        state.verification = {
+          token: payload.token,
+          email: payload.email || targetEmail,
+          expiresAt: payload.expires_at || payload.expiresAt || '',
+          resendAvailableAt: payload.resend_available_in
+            ? Date.now() + Number(payload.resend_available_in) * 1000
+            : 0,
+        };
+
+        persistVerificationState();
+        showVerificationStep();
+        return true;
+      } catch (error) {
+        console.error('[register] loadVerificationContext error', error);
+        return false;
+      }
+    };
+
     const startResendCountdown = (seconds) => {
       if (!resendBtn || !resendCountdown) return;
       stopResendCountdown();
@@ -2260,11 +2297,25 @@
 
         if (!response.ok || !payload || payload.status !== 'pending_verification') {
           const error = payload && payload.message ? payload.message : 'No se ha podido completar el registro. Inténtalo de nuevo.';
-          if (payload && payload.code === 'go_register_email_exists' && emailField) {
-            setFieldError(emailField, EMAIL_EXISTS_MESSAGE);
-            state.emailStatus = 'exists';
-            goToStep(1);
-          } else {
+          const fallbackEmail = payload && payload.email
+            ? payload.email
+            : (emailField ? emailField.value.trim() : '');
+
+          if (payload && payload.code === 'go_register_email_exists') {
+            const recovered = await loadVerificationContext(fallbackEmail);
+            if (recovered) {
+              return;
+            }
+            if (emailField) {
+              setFieldError(emailField, EMAIL_EXISTS_MESSAGE);
+              state.emailStatus = 'exists';
+              goToStep(1);
+            }
+            return;
+          }
+
+          const recovered = await loadVerificationContext(fallbackEmail);
+          if (!recovered) {
             setRegisterError(error);
           }
           return;
