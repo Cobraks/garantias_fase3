@@ -268,6 +268,7 @@
       sepaEdited: new Set(),
       sepaMandateStatus: 'idle',
       sepaReference: '',
+      skipAutoFocus: false,
       verification: {
         token: '',
         email: '',
@@ -813,6 +814,10 @@
         step.setAttribute('aria-hidden', isActive ? 'false' : 'true');
       });
       window.requestAnimationFrame(() => {
+        if (state.skipAutoFocus) {
+          state.skipAutoFocus = false;
+          return;
+        }
         const activeStep = document.querySelector('.form-step.active');
         if (!activeStep) {
           return;
@@ -1913,30 +1918,42 @@
       }
     };
 
-    const handleChannelSelection = (channel) => {
+    const handleChannelSelection = (channel, { allowStepReset = true } = {}) => {
+      const normalizedChannel = typeof channel === 'string' && channel !== '' ? channel : null;
       const previousChannel = state.selectedChannel;
-      state.selectedChannel = channel;
+      state.selectedChannel = normalizedChannel;
       channelButtons.forEach((button) => {
-        button.classList.toggle('active', button.getAttribute('data-channel') === channel);
+        const buttonChannel = button.getAttribute('data-channel');
+        const isActive = normalizedChannel !== null && buttonChannel === normalizedChannel;
+        button.classList.toggle('active', isActive);
+        button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
       });
       if (companySection) {
-        const showCompany = PROFESSIONAL_CHANNELS.has(channel);
+        const showCompany = normalizedChannel !== null && PROFESSIONAL_CHANNELS.has(normalizedChannel);
         companySection.hidden = !showCompany;
         companySection.setAttribute('aria-hidden', showCompany ? 'false' : 'true');
       }
-      const isIndividual = channel === INDIVIDUAL_CHANNEL;
+      const isIndividual = normalizedChannel === INDIVIDUAL_CHANNEL;
       setStepSequence(isIndividual ? STEP_SEQUENCE_INDIVIDUAL : STEP_SEQUENCE_DEFAULT);
       if (isIndividual) {
         resetStep2Fields();
       }
-      const channelChanged = previousChannel && previousChannel !== channel;
-      if (channelChanged) {
+      const channelChanged = previousChannel !== normalizedChannel;
+      if (channelChanged && previousChannel) {
         state.sepaEdited.clear();
         invalidateSepaMandate();
       }
-      if (channelChanged) {
+      if (channelChanged && allowStepReset) {
         state.currentStep = 1;
+        state.skipAutoFocus = true;
         goToStep(1);
+      }
+      if (!normalizedChannel) {
+        updateSummary();
+        updateStep1ButtonState();
+        updateStep2ButtonState();
+        clearChannelError();
+        return;
       }
       clearChannelError();
       updateStep1ButtonState();
@@ -2442,9 +2459,25 @@
 
     if (channelButtons.length) {
       channelButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const channel = button.getAttribute('data-channel');
+        button.setAttribute('role', 'button');
+        button.setAttribute('tabindex', '0');
+        button.setAttribute('aria-pressed', 'false');
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          const channel = button.getAttribute('data-channel') || '';
+          const isActive = state.selectedChannel === channel;
+          if (isActive) {
+            handleChannelSelection(null);
+            return;
+          }
           handleChannelSelection(channel);
+        });
+        button.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') {
+            return;
+          }
+          event.preventDefault();
+          button.click();
         });
       });
     }
