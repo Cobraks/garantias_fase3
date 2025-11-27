@@ -1274,16 +1274,17 @@ export default function initAutosave() {
                         if (currentY < minY) {
                                 break;
                         }
-                        const concepto = (item.concepto || "").trim();
+                        let concepto = (item.concepto || "").trim();
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
                         const isBaseImponible = index === baseImponibleIndex;
-                        const isHighlighted =
-                                index === lastIndex || index === penultimateIndex || isBaseImponible;
                         const isLast = index === lastIndex;
-                        const textFont = isHighlighted ? robotoMonoBold : robotoMono;
+                        const isPenultimate = index === penultimateIndex;
+                        const alignRight = isLast || isPenultimate || isBaseImponible;
+                        const useBold = isLast;
+                        const textFont = useBold ? robotoMonoBold : robotoMono;
                         const textSize = fontSize;
                         const textY = currentY + (rowHeight - textSize) / 2;
                         const textColor = isLast
@@ -1291,20 +1292,23 @@ export default function initAutosave() {
                                 : PDFLib.rgb(0, 0, 0);
                         const isFirstRowWithCoverage = index === 0 && coverageLabel;
                         const baseLineGap = 2;
-                        const coverageBlockHeight = isFirstRowWithCoverage
-                                ? coverageFontSize + baseLineGap + textSize
-                                : textSize;
-                        const paddingTop = isFirstRowWithCoverage
-                                ? Math.max(0, (rowHeight - coverageBlockHeight) / 2)
-                                : (rowHeight - textSize) / 2;
                         const rowTopY = currentY + rowHeight;
-                        const coverageY = isFirstRowWithCoverage
-                                ? rowTopY - paddingTop - coverageFontSize
-                                : null;
-                        const conceptoY = isFirstRowWithCoverage
-                                ? coverageY - baseLineGap - textSize
-                                : textY;
+                        let coverageY = null;
+                        let conceptoY = textY;
+                        if (isFirstRowWithCoverage) {
+                                coverageY = conceptoY + textSize + baseLineGap;
+                                const coverageTop = coverageY + coverageFontSize;
+                                if (coverageTop > rowTopY) {
+                                        const overflow = coverageTop - rowTopY;
+                                        conceptoY -= overflow;
+                                        coverageY -= overflow;
+                                }
+                        }
                         const importeY = conceptoY;
+
+                        if (isLast) {
+                                concepto = "TOTAL";
+                        }
 
                         if (isFirstRowWithCoverage) {
                                 page.drawText(coverageLabel, {
@@ -1321,7 +1325,6 @@ export default function initAutosave() {
                                         concepto,
                                         textSize
                                 );
-                                const alignRight = isHighlighted;
                                 const x = alignRight
                                         ? conceptoRight - conceptoPadding - conceptoWidth
                                         : conceptoX;
