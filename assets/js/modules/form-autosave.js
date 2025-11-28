@@ -1381,14 +1381,13 @@ export default function initAutosave() {
                                 const svgViewWidth = 196.7;
                                 const svgViewHeight = 25.1;
                                 const extraRight = mmToPt(3);
-                                const rowWidth = importeRight - conceptoCellLeft;
-                                const targetWidth = rowWidth + extraRight;
-                                const maxHeight = rowHeight * 0.7;
-                                const scale = Math.min(targetWidth / svgViewWidth, maxHeight / svgViewHeight);
+                                const targetHeight = mmToPt(6.5);
+                                const scale = targetHeight / svgViewHeight;
                                 const scaledWidth = svgViewWidth * scale;
-                                const scaledHeight = svgViewHeight * scale;
+                                const scaledHeight = targetHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
+                                const highlightCenterY = currentY + rowHeight / 2;
+                                const highlightY = highlightCenterY - scaledHeight / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
