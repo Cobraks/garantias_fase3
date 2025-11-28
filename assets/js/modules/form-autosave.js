@@ -1390,7 +1390,7 @@ export default function initAutosave() {
                                 );
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = svgViewHeight * scale;
-                                const rowBottom = currentY;
+                                const rowBottom = currentY - rowHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
                                 const highlightY = rowBottom + (rowHeight - scaledHeight) / 2;
 
@@ -1399,7 +1399,6 @@ export default function initAutosave() {
                                         y: highlightY,
                                         scale,
                                         color: PDFLib.rgb(0.98039, 0.9451, 0.6),
-                                        opacity: 0.7,
                                 });
                         }
 
