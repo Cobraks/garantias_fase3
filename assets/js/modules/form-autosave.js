@@ -1392,7 +1392,8 @@ export default function initAutosave() {
                                 const scaledHeight = svgViewHeight * scale;
                                 const highlightX = importeRight - scaledWidth + extraRight;
                                 const lastRowBottom = startY - lastIndex * rowHeight;
-                                const highlightY = lastRowBottom + (rowHeight - scaledHeight) / 2;
+                                const highlightY =
+                                        lastRowBottom + rowHeight + (rowHeight - scaledHeight) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
