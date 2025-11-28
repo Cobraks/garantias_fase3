@@ -1381,16 +1381,14 @@ export default function initAutosave() {
                                 const svgViewWidth = 164.47;
                                 const svgViewHeight = 36;
                                 const extraRight = mmToPt(3);
-                                const targetHeight = mmToPt(12.6);
+                                const targetHeight = rowHeight;
                                 const scale = targetHeight / svgViewHeight;
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = targetHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
 
-                                // `currentY` already points to the bottom of the row (PDF coords origin at bottom-left).
-                                // Using `Math.min(currentY, currentY - rowHeight)` shifted the SVG one row below because
-                                // it subtracted an extra `rowHeight`. Keep the anchor at the row bottom instead.
-                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
+                                // Anchor the SVG so its bottom aligns with the row bottom (PDF origin at bottom-left).
+                                const highlightY = currentY;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
