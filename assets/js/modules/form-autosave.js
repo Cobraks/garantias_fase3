@@ -1255,7 +1255,7 @@ export default function initAutosave() {
 		const importeRect = resolveRect("importe_1");
 		const mmToPt = (mm) => (mm * 72) / 25.4;
                 const totalHighlightSvgPath =
-                        "M194.4,22.6c-8.2-0.8-16.8-0.3-25,0.6-11.3,1.3-22.6,1.3-34,1.3-11.9,0-23.8,0.3-35.7-0.3-31.9-1.7-64.2-3.2-96,0.4L0.6,3.1h3.1c31.8-3.6,64.1-2.1,96-0.4C111.7,3.3,123.6,3,135.5,3c11.3,0,22.7-0.1,34-1.3,8.1-0.9,18.7-1.8,26.9-1L194.4,22.6Z";
+                        "M160.3,26.55c-6.71-.67-13.79-.23-20.46.54-9.23,1.07-18.54,1.14-27.82,1.13-9.75-.01-19.48.25-29.22-.29-26.12-1.46-52.59-2.72-78.65.35L1.58,10.04h2.57c26.06-3.06,52.53-1.81,78.65-.35,9.75.54,19.47.28,29.22.29,9.28.01,18.58-.06,27.82-1.13,6.67-.77,15.29-1.54,22-.87l-1.54,18.56Z";
 
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
@@ -1378,16 +1378,18 @@ export default function initAutosave() {
                         }
 
                         if (isLast) {
-                                const svgViewWidth = 196.7;
-                                const svgViewHeight = 25.1;
+                                const svgViewWidth = 164.47;
+                                const svgViewHeight = 36;
                                 const extraRight = mmToPt(3);
                                 const targetHeight = mmToPt(6.5);
                                 const scale = targetHeight / svgViewHeight;
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = targetHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const highlightCenterY = currentY + rowHeight / 2;
-                                const highlightY = highlightCenterY - scaledHeight / 2;
+                                const rowBottom = Math.min(currentY, currentY + rowHeight);
+                                const rowTop = Math.max(currentY, currentY + rowHeight);
+                                const rowSpan = rowTop - rowBottom;
+                                const highlightY = rowBottom + (rowSpan - scaledHeight) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
