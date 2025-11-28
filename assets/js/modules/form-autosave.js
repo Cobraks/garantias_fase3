@@ -1614,7 +1614,8 @@ export default function initAutosave() {
                         const mediumFont =
                                 interMedium || interBold || interRegular || robotoMonoBold || robotoMono;
                         const regularFont = interRegular || robotoMono;
-                        const lineHeight = 12;
+                        const defaultLineHeight = 12;
+                        const firstLineHeight = 16.8;
                         const gapAfterFirst = mmToPt(2);
                         const gapAfterLine = mmToPt(1);
                         const lines = [];
@@ -1627,6 +1628,7 @@ export default function initAutosave() {
                                         text: nameLine,
                                         font: mediumFont,
                                         size: 14,
+                                        lineHeight: firstLineHeight,
                                         gap: gapAfterFirst,
                                 });
                         }
@@ -1636,6 +1638,7 @@ export default function initAutosave() {
                                         text: normalizedVendorInfo.cif,
                                         font: regularFont,
                                         size: 10,
+                                        lineHeight: defaultLineHeight,
                                         gap: gapAfterLine,
                                 });
                         }
@@ -1649,6 +1652,7 @@ export default function initAutosave() {
                                         text: contactParts.join("    "),
                                         font: regularFont,
                                         size: 10,
+                                        lineHeight: defaultLineHeight,
                                         gap: gapAfterLine,
                                 });
                         }
@@ -1677,7 +1681,8 @@ export default function initAutosave() {
                                         text: addressParts.join(", "),
                                         font: regularFont,
                                         size: 10,
-                                        gap: 0,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
                                 });
                         }
 
@@ -1688,7 +1693,11 @@ export default function initAutosave() {
 
                                 for (let i = lines.length - 1; i >= 0; i -= 1) {
                                         cumulativeOffsets[i] = offset;
-                                        const spacing = i === lines.length - 1 ? 0 : lines[i].gap ?? gapAfterLine;
+                                        const lineHeight =
+                                                typeof lines[i].lineHeight === "number"
+                                                        ? lines[i].lineHeight
+                                                        : defaultLineHeight;
+                                        const spacing = lines[i].gap ?? gapAfterLine;
                                         offset += lineHeight + spacing;
                                 }
 
