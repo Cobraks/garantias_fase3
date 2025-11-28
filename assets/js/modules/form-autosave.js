@@ -1600,6 +1600,7 @@ export default function initAutosave() {
                 }
 
                 const vendorAnchor = resolveAnyRect(
+                        "datos_cliente",
                         "datos_vendedor",
                         "vendedor",
                         "canal_venta",
