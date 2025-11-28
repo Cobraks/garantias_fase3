@@ -1374,6 +1374,18 @@ export default function initAutosave() {
                                 });
                         }
 
+                        if (isLast) {
+                                const highlightHeight = rowHeight;
+                                page.drawRectangle({
+                                        x: conceptoCellLeft,
+                                        y: currentY,
+                                        width: importeRight - conceptoCellLeft,
+                                        height: highlightHeight,
+                                        color: PDFLib.rgb(1, 1, 0),
+                                        opacity: 0.5,
+                                });
+                        }
+
                         if (conceptoLines.length > 0) {
                                 conceptoLines.forEach((line, lineIndex) => {
                                         const width = textFont.widthOfTextAtSize(line, textSize);
@@ -1401,18 +1413,6 @@ export default function initAutosave() {
                                         size: textSize,
                                         font: textFont,
                                         color: textColor,
-                                });
-                        }
-
-                        if (isLast) {
-                                const highlightHeight = mmToPt(7.2);
-                                page.drawRectangle({
-                                        x: conceptoCellLeft,
-                                        y: currentY,
-                                        width: importeRight - conceptoCellLeft,
-                                        height: highlightHeight,
-                                        color: PDFLib.rgb(1, 1, 0),
-                                        opacity: 0.5,
                                 });
                         }
 
