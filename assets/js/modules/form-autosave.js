@@ -100,6 +100,138 @@ function normalizeChannel(value) {
         return CHANNEL_NORMALIZATION[key] || "";
 }
 
+function toIsoDateString(input) {
+        const date = input instanceof Date ? input : new Date(input);
+        if (Number.isNaN(date.getTime())) return "";
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+}
+
+function normalizeText(value) {
+        if (typeof value === "string") {
+                return value.trim();
+        }
+        if (value === null || value === undefined) return "";
+        return String(value).trim();
+}
+
+function normalizeVendorInfo(raw = {}) {
+        const normalized = {
+                role: normalizeText(raw.role || raw.channel || ""),
+                name: normalizeText(raw.name || ""),
+                companyName: normalizeText(raw.companyName || ""),
+                personalName: normalizeText(raw.personalName || ""),
+                cif: normalizeText(raw.cif || ""),
+                email: normalizeText(raw.email || ""),
+                phone: normalizeText(raw.phone || ""),
+                address: {
+                        street: normalizeText(raw.address?.street || ""),
+                        zip: normalizeText(raw.address?.zip || ""),
+                        city: normalizeText(raw.address?.city || ""),
+                        province: normalizeText(raw.address?.province || ""),
+                },
+        };
+
+        if (!normalized.role) {
+                normalized.role = "";
+        }
+
+        if (!normalized.name) {
+                normalized.name = normalized.companyName || normalized.personalName || "";
+        }
+
+        if (normalized.address.city && normalized.address.province) {
+                const samePlace =
+                        normalized.address.city.localeCompare(normalized.address.province, undefined, {
+                                sensitivity: "base",
+                        }) === 0;
+                if (samePlace) {
+                        normalized.address.province = normalized.address.city;
+                }
+        }
+
+        return normalized;
+}
+
+function pickFirstNonEmpty(candidates = []) {
+        for (const candidate of candidates) {
+                const text = normalizeText(candidate);
+                if (text) return text;
+        }
+        return "";
+}
+
+function buildVendorInfoFromResponse(raw = {}, fallbackChannel = "") {
+        const detail = raw.detail || raw || {};
+        const company = detail.vendor_company || raw.vendor_company || {};
+        const address = company.address || {};
+        const channelSlug = normalizeChannel(
+                fallbackChannel ||
+                        detail.canal_venta_value ||
+                        detail.canal_venta ||
+                        raw.canal_venta_value ||
+                        raw.canal_venta ||
+                        company?.type?.value ||
+                        company?.type?.label ||
+                        ""
+        );
+        const role = channelSlug === "particular" ? "particular" : "profesional";
+
+        const personalFirst = normalizeText(detail.concesionario_personal_first || "");
+        const personalLast = normalizeText(detail.concesionario_personal_last || "");
+        const personalFull = [personalFirst, personalLast].filter(Boolean).join(" ");
+
+        const vendorInfo = {
+                role,
+                name: role === "particular" ? pickFirstNonEmpty([detail.concesionario_personal, personalFull]) : "",
+                companyName: pickFirstNonEmpty([
+                        company.legal_name,
+                        company.trade_name,
+                        company.name,
+                        detail.concesionario,
+                        raw.concesionario,
+                ]),
+                personalName: pickFirstNonEmpty([
+                        detail.concesionario_personal,
+                        personalFull,
+                        raw.concesionario_personal,
+                ]),
+                cif: pickFirstNonEmpty([
+                        company.tax_id,
+                        detail.cif,
+                        raw.cif,
+                        detail.vendor_tax_id,
+                        raw.vendor_tax_id,
+                ]),
+                email: pickFirstNonEmpty([
+                        detail.email_vendedor,
+                        raw.email_vendedor,
+                        detail.email_vendedor_registro,
+                        raw.email_vendedor_registro,
+                ]),
+                phone: pickFirstNonEmpty([detail.telefono_vendedor, raw.telefono_vendedor]),
+                address: {
+                        street: pickFirstNonEmpty([address.street]),
+                        zip: pickFirstNonEmpty([address.zip]),
+                        city: pickFirstNonEmpty([address.city]),
+                        province: pickFirstNonEmpty([address.state]),
+                },
+        };
+
+        return normalizeVendorInfo(vendorInfo);
+}
+
+function addDays(baseDate, days) {
+        const date = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate);
+        if (Number.isNaN(date.getTime())) return null;
+        date.setDate(date.getDate() + days);
+        return date;
+}
+
 async function loadStaticPdf(url, options = {}) {
         if (!url) return null;
 
@@ -987,13 +1119,37 @@ export default function initAutosave() {
         }
 
         function computeProformaSignature(rawArgs = {}) {
-                const { templateUrl, items, coverageLabel } = normalizeProformaArgs(rawArgs);
+                const {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                } = normalizeProformaArgs(rawArgs);
 
                 if (!templateUrl || !items || items.length === 0) {
                         return "";
                 }
 
-                const payload = { templateUrl, items, coverageLabel };
+                const payload = {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                };
 
                 return encodeSignaturePayload(payload);
         }
@@ -1122,6 +1278,25 @@ export default function initAutosave() {
                 normalized.coverageLabel = typeof rawArgs.coverageLabel === "string"
                         ? rawArgs.coverageLabel.trim()
                         : "";
+                normalized.matricula = typeof rawArgs.matricula === "string"
+                        ? rawArgs.matricula.trim()
+                        : "";
+                normalized.marca = typeof rawArgs.marca === "string" ? rawArgs.marca.trim() : "";
+                normalized.modelo = typeof rawArgs.modelo === "string" ? rawArgs.modelo.trim() : "";
+
+                normalized.vendorInfo = normalizeVendorInfo(rawArgs.vendorInfo || {});
+
+                normalized.paymentMethod = typeof rawArgs.paymentMethod === "string"
+                        ? rawArgs.paymentMethod.trim()
+                        : "";
+                normalized.transferIban = typeof rawArgs.transferIban === "string"
+                        ? rawArgs.transferIban.trim()
+                        : "";
+
+                const emissionIso = toIsoDateString(rawArgs.emissionDate);
+                const dueIso = toIsoDateString(rawArgs.dueDate);
+                normalized.emissionDate = emissionIso;
+                normalized.dueDate = dueIso;
 
                 return normalized;
         }
@@ -1156,6 +1331,14 @@ export default function initAutosave() {
                 templateUrl,
                 items,
                 coverageLabel: rawCoverageLabel,
+                matricula,
+                marca,
+                modelo,
+                emissionDate,
+                dueDate,
+                vendorInfo,
+                paymentMethod,
+                transferIban,
                 signature,
         }) {
                 if (!draftId || !templateUrl || !Array.isArray(items) || items.length === 0) {
@@ -1192,6 +1375,62 @@ export default function initAutosave() {
                 });
                 const robotoMono = await pdfDoc.embedFont(robotoBytes);
                 const robotoMonoBold = await pdfDoc.embedFont(robotoBoldBytes);
+
+                let interRegular = null;
+                let interMedium = null;
+                let interBold = null;
+                let interExtraBold = null;
+                try {
+                        const interRegularUrl = new URL("../../fonts/Inter_18pt-Regular.ttf", import.meta.url);
+                        const interRegularBytes = await loadStaticPdf(interRegularUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-regular",
+                        });
+                        if (interRegularBytes) {
+                                interRegular = await pdfDoc.embedFont(interRegularBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Regular load failed", err);
+                }
+                try {
+                        const interMediumUrl = new URL("../../fonts/Inter_18pt-Medium.ttf", import.meta.url);
+                        const interMediumBytes = await loadStaticPdf(interMediumUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-medium",
+                        });
+                        if (interMediumBytes) {
+                                interMedium = await pdfDoc.embedFont(interMediumBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Medium load failed", err);
+                }
+                try {
+                        const interBoldUrl = new URL("../../fonts/Inter_18pt-Bold.ttf", import.meta.url);
+                        const interBoldBytes = await loadStaticPdf(interBoldUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-bold",
+                        });
+                        if (interBoldBytes) {
+                                interBold = await pdfDoc.embedFont(interBoldBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Bold load failed", err);
+                }
+                try {
+                        const interExtraBoldUrl = new URL(
+                                "../../fonts/Inter_18pt-ExtraBold.ttf",
+                                import.meta.url
+                        );
+                        const interExtraBoldBytes = await loadStaticPdf(interExtraBoldUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-extrabold",
+                        });
+                        if (interExtraBoldBytes) {
+                                interExtraBold = await pdfDoc.embedFont(interExtraBoldBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter ExtraBold load failed", err);
+                }
 
                 const numberFormatter = new Intl.NumberFormat("es-ES", {
                         minimumFractionDigits: 2,
@@ -1251,20 +1490,299 @@ export default function initAutosave() {
                         return null;
                 };
 
-		const conceptoRect = resolveRect("concepto_1");
-		const importeRect = resolveRect("importe_1");
-		const mmToPt = (mm) => (mm * 72) / 25.4;
-                const totalHighlightSvgPath =
-                        "M160.3,26.55c-6.71-.67-13.79-.23-20.46.54-9.23,1.07-18.54,1.14-27.82,1.13-9.75-.01-19.48.25-29.22-.29-26.12-1.46-52.59-2.72-78.65.35L1.58,10.04h2.57c26.06-3.06,52.53-1.81,78.65-.35,9.75.54,19.47.28,29.22.29,9.28.01,18.58-.06,27.82-1.13,6.67-.77,15.29-1.54,22-.87l-1.54,18.56Z";
+                const resolveAnyRect = (...names) => {
+                        for (const name of names) {
+                                if (!name) continue;
+                                const rect = resolveRect(name);
+                                if (rect) return { name, rect };
+                        }
+                        return null;
+                };
 
+                const conceptoRect = resolveRect("concepto_1");
+                const importeRect = resolveRect("importe_1");
+                const mmToPt = (mm) => (mm * 72) / 25.4;
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
-		const rowHeight =
-				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
-		const fontSize = 10;
-		const borderThickness = 0.35;
+                const rowHeight =
+                                (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
+                const fontSize = 10;
+                const borderThickness = 0.35;
+                const normalizedVendorInfo = normalizeVendorInfo(vendorInfo || {});
+                const normalizedPaymentMethod = typeof paymentMethod === "string"
+                        ? paymentMethod.trim().toLowerCase()
+                        : "";
+                const normalizedTransferIban = typeof transferIban === "string"
+                        ? transferIban.trim()
+                        : "";
 
-		const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
+                const parseDateValue = (value) => {
+                        if (!value) return null;
+                        const date = value instanceof Date ? value : new Date(value);
+                        return Number.isNaN(date.getTime()) ? null : date;
+                };
+
+                const formatShortEsDate = (value) => {
+                        const date = parseDateValue(value);
+                        if (!date) return "";
+                        const months = [
+                                "ene.",
+                                "feb.",
+                                "mar.",
+                                "abr.",
+                                "may.",
+                                "jun.",
+                                "jul.",
+                                "ago.",
+                                "sep.",
+                                "oct.",
+                                "nov.",
+                                "dic.",
+                        ];
+                        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+                };
+
+                const resolvedEmissionLabel =
+                        formatShortEsDate(emissionDate) || formatShortEsDate(new Date());
+                const resolvedDueLabel =
+                        formatShortEsDate(dueDate) || formatShortEsDate(addDays(new Date(), 2));
+
+                const refEmisionRect = resolveRect("ref_emision");
+                if (refEmisionRect) {
+                        const referenceLines = [
+                                `Ref. ${(matricula || "").trim()}`.trim(),
+                                `Emisión: ${resolvedEmissionLabel}`.trim(),
+                                `Vencimiento: ${resolvedDueLabel}`.trim(),
+                        ];
+
+                        const referenceFont = interRegular || robotoMono;
+                        const referenceFontSize = 10;
+                        const referenceLineHeight = 12;
+                        const baseY = refEmisionRect.y;
+                        const extraSpacing = mmToPt(1);
+                        const afterSpacingByIndex = {
+                                0: extraSpacing, // Ref.
+                                1: extraSpacing, // Emisión
+                                2: extraSpacing, // Vencimiento
+                        };
+
+                        const cumulativeOffsets = [];
+                        let offset = 0;
+                        for (let i = referenceLines.length - 1; i >= 0; i -= 1) {
+                                cumulativeOffsets[i] = offset;
+                                offset += referenceLineHeight + (afterSpacingByIndex[i] || 0);
+                        }
+
+                        referenceLines.forEach((line, index) => {
+                                const y = baseY + cumulativeOffsets[index];
+                                const color =
+                                        index === referenceLines.length - 1
+                                                ? PDFLib.rgb(0.8, 0, 0)
+                                                : PDFLib.rgb(0, 0, 0);
+                                const textWidth = referenceFont.widthOfTextAtSize(line, referenceFontSize);
+                                const x = refEmisionRect.x + refEmisionRect.width - textWidth;
+
+                                page.drawText(line, {
+                                        x,
+                                        y,
+                                        size: referenceFontSize,
+                                        font: referenceFont,
+                                        color,
+                                });
+                        });
+                }
+
+                const objetoCoberturaRect = resolveRect("objeto_cobertura");
+                if (objetoCoberturaRect) {
+                        const baseFont = interRegular || robotoMono;
+                        const boldFont = interBold || interRegular || robotoMonoBold || robotoMono;
+                        const textSize = 10;
+                        const matriculaLabel = (matricula || "").trim();
+                        const marcaModeloLabel = [marca, modelo]
+                                .map((value) => (value || "").trim())
+                                .filter(Boolean)
+                                .join(" ");
+                        const segments = [
+                                { text: "Vehículo objeto de la cobertura: ", font: baseFont },
+                        ];
+
+                        if (matriculaLabel) {
+                                segments.push({ text: matriculaLabel, font: boldFont });
+                        }
+
+                        if (matriculaLabel && marcaModeloLabel) {
+                                segments.push({ text: " - ", font: baseFont });
+                        }
+
+                        if (marcaModeloLabel) {
+                                segments.push({ text: marcaModeloLabel, font: boldFont });
+                        }
+
+                        let cursorX = objetoCoberturaRect.x;
+                        const cursorY = objetoCoberturaRect.y;
+                        segments.forEach(({ text, font }) => {
+                                if (!text) return;
+                                const width = font.widthOfTextAtSize(text, textSize);
+                                page.drawText(text, {
+                                        x: cursorX,
+                                        y: cursorY,
+                                        size: textSize,
+                                        font,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                });
+                                cursorX += width;
+                        });
+                }
+
+                const vendorAnchor = resolveAnyRect(
+                        "datos_cliente",
+                        "datos_vendedor",
+                        "vendedor",
+                        "canal_venta",
+                        "datos_canal_venta",
+                        "canal_de_venta"
+                );
+
+                if (vendorAnchor?.rect) {
+                        const { rect, name: vendorFieldName } = vendorAnchor;
+                        const isParticular = normalizedVendorInfo.role === "particular";
+                        const mediumFont =
+                                interMedium || interBold || interRegular || robotoMonoBold || robotoMono;
+                        const regularFont = interRegular || robotoMono;
+                        const defaultLineHeight = 12;
+                        const firstLineHeight = 16.8;
+                        const gapAfterFirst = mmToPt(2);
+                        const gapAfterLine = mmToPt(1);
+                        const lines = [];
+
+                        const nameLine = isParticular
+                                ? normalizedVendorInfo.name || normalizedVendorInfo.personalName
+                                : normalizedVendorInfo.companyName || normalizedVendorInfo.name;
+                        if (nameLine) {
+                                lines.push({
+                                        text: nameLine,
+                                        font: mediumFont,
+                                        size: 14,
+                                        lineHeight: firstLineHeight,
+                                        gap: gapAfterFirst,
+                                });
+                        }
+
+                        if (!isParticular && normalizedVendorInfo.cif) {
+                                lines.push({
+                                        text: normalizedVendorInfo.cif,
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        const contactParts = [
+                                normalizedVendorInfo.email,
+                                normalizedVendorInfo.phone,
+                        ].filter(Boolean);
+                        if (contactParts.length) {
+                                lines.push({
+                                        text: contactParts.join("    "),
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        const addressParts = [];
+                        if (normalizedVendorInfo.address?.street) {
+                                addressParts.push(normalizedVendorInfo.address.street);
+                        }
+                        if (normalizedVendorInfo.address?.zip) {
+                                addressParts.push(normalizedVendorInfo.address.zip);
+                        }
+                        const city = normalizedVendorInfo.address?.city;
+                        const province = normalizedVendorInfo.address?.province;
+                        if (city) {
+                                addressParts.push(city);
+                        }
+                        if (
+                                province &&
+                                (!city || province.localeCompare(city, undefined, { sensitivity: "base" }) !== 0)
+                        ) {
+                                addressParts.push(province);
+                        }
+
+                        if (addressParts.length) {
+                                lines.push({
+                                        text: addressParts.join(", "),
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        if (lines.length) {
+                                const baseY = rect.y;
+                                const cumulativeOffsets = [];
+                                let offset = 0;
+
+                                for (let i = lines.length - 1; i >= 0; i -= 1) {
+                                        cumulativeOffsets[i] = offset;
+                                        const lineHeight =
+                                                typeof lines[i].lineHeight === "number"
+                                                        ? lines[i].lineHeight
+                                                        : defaultLineHeight;
+                                        const spacing = lines[i].gap ?? gapAfterLine;
+                                        offset += lineHeight + spacing;
+                                }
+
+                                lines.forEach((line, index) => {
+                                        const y = baseY + cumulativeOffsets[index];
+                                        const x = rect.x;
+                                        page.drawText(line.text, {
+                                                x,
+                                                y,
+                                                size: line.size,
+                                                font: line.font,
+                                                color: PDFLib.rgb(0, 0, 0),
+                                        });
+                                });
+                        }
+
+                        if (vendorFieldName) {
+                                try {
+                                        form.removeField(vendorFieldName);
+                                } catch (err) {
+                                        console.warn("[AUTOSAVE] vendor field cleanup", vendorFieldName, err);
+                                }
+                        }
+                }
+
+                let totalHighlightImg = null;
+                let totalHighlightImgTargetWidth = 0;
+                try {
+                        const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
+                        const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
+                                cache: true,
+                                cacheKey: "img:total-highlight",
+                        });
+                        if (totalHighlightImgBytes) {
+                                totalHighlightImg = await pdfDoc.embedPng(
+                                        totalHighlightImgBytes instanceof Uint8Array
+                                                ? totalHighlightImgBytes
+                                                : new Uint8Array(totalHighlightImgBytes)
+                                );
+                                const baseDims = totalHighlightImg.scale(1);
+                                totalHighlightImgTargetWidth =
+                                        baseDims && baseDims.height > 0
+                                                ? (rowHeight / baseDims.height) * baseDims.width
+                                                : 0;
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Missing total highlight asset", err);
+                }
+
+                const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
                         const concepto = (item.concepto || "").trim();
                         const valor = item.valor;
                         return concepto || valor === 0 || Number.isFinite(Number(valor));
@@ -1307,12 +1825,13 @@ export default function initAutosave() {
                 const penultimateIndex = Math.max(0, lastIndex - 1);
 
                 const baseImponibleIndex = preparedItems.findIndex(
-                        (item) => (item.concepto || "").trim() === "Base imponible"
+                        (item = {}) => (item.concepto || "").trim().toLowerCase() === "base imponible"
                 );
 
                 let rowsDrawn = 0;
 
                 const conceptoMaxWidth = conceptoRight - conceptoCellLeft - conceptoPadding * 2;
+                const dashPattern = [10, 6];
 
                 for (let index = 0; index < preparedItems.length; index += 1) {
                         const item = preparedItems[index];
@@ -1321,20 +1840,43 @@ export default function initAutosave() {
                         }
                         const baseLineGap = 2;
                         const coverageNudge = 1;
-                        const textSize = fontSize;
+                        const isLast = index === lastIndex;
+                        const textSize = isLast ? 12 : fontSize;
 
                         let concepto = (item.concepto || "").trim();
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
-                        const isBaseImponible = index === baseImponibleIndex;
+                        const conceptoLower = concepto.toLowerCase();
+                        const isBaseImponible = conceptoLower === "base imponible";
+                        const isIvaRow = conceptoLower.startsWith("iva");
                         const isOddRow = rowsDrawn % 2 === 1;
-                        const isLast = index === lastIndex;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
-                        const useBold = isLast;
-                        const textFont = useBold ? robotoMonoBold : robotoMono;
+                        const conceptUseBold = isLast;
+                        const importeUseBold = isLast || isBaseImponible || isIvaRow;
+                        const useExtraBold = isLast;
+                        const conceptRegularFont = interRegular || robotoMono;
+                        const conceptBoldFont =
+                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const conceptExtraBoldFont =
+                                interExtraBold || conceptBoldFont || interMedium || interRegular || robotoMono;
+                        const importeRegularFont = robotoMono || interRegular || conceptRegularFont;
+                        const importeBoldFont = robotoMonoBold || importeRegularFont;
+                        const importeExtraBoldFont = interExtraBold || importeBoldFont;
+                        const conceptFont =
+                                useExtraBold
+                                        ? conceptExtraBoldFont
+                                        : conceptUseBold
+                                          ? conceptBoldFont
+                                          : conceptRegularFont;
+                        const importeFont =
+                                useExtraBold
+                                        ? importeExtraBoldFont
+                                        : importeUseBold
+                                          ? importeBoldFont
+                                          : importeRegularFont;
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
@@ -1346,7 +1888,7 @@ export default function initAutosave() {
                                 ? splitIntoLines(
                                           concepto,
                                           Math.max(10, conceptoMaxWidth),
-                                          textFont,
+                                          conceptFont,
                                           textSize
                                   )
                                 : [];
@@ -1373,35 +1915,34 @@ export default function initAutosave() {
                                         y: currentY,
                                         width: importeRight - conceptoCellLeft,
                                         height: rowHeight,
-                                        color: PDFLib.rgb(0.995, 0.995, 0.995),
+                                        color: PDFLib.rgb(0.97, 0.97, 0.97),
                                 });
                         }
 
                         if (isLast) {
-                                const svgViewWidth = 164.47;
-                                const svgViewHeight = 36;
-                                const extraRight = mmToPt(3);
-                                const targetHeight = mmToPt(12.6);
-                                const scale = targetHeight / svgViewHeight;
-                                const scaledWidth = svgViewWidth * scale;
-                                const scaledHeight = targetHeight;
-                                const highlightX = importeRight - scaledWidth + extraRight;
 
-                                // Derive the row bounds regardless of whether `currentY` represents the top or bottom.
-                                const rowBottom = Math.min(currentY, currentY - rowHeight);
-                                const highlightY = rowBottom + (rowHeight - scaledHeight) / 2;
-
-                                page.drawSvgPath(totalHighlightSvgPath, {
-                                        x: highlightX,
-                                        y: highlightY,
-                                        scale,
-                                        color: PDFLib.rgb(1, 1, 0.5960784314),
-                                });
+                                if (totalHighlightImg && totalHighlightImgTargetWidth > 0) {
+                                        const inset = 1;
+                                        const availableWidth = importeRight - conceptoCellLeft - inset;
+                                        const svgWidth = Math.min(availableWidth, totalHighlightImgTargetWidth);
+                                        if (svgWidth > 0) {
+                                                const svgScale = svgWidth / totalHighlightImgTargetWidth;
+                                                const svgHeight = rowHeight * svgScale;
+                                                const svgX = importeRight - svgWidth - inset;
+                                                const svgY = currentY;
+                                                page.drawImage(totalHighlightImg, {
+                                                        x: svgX,
+                                                        y: svgY,
+                                                        width: svgWidth,
+                                                        height: svgHeight,
+                                                });
+                                        }
+                                }
                         }
 
                         if (conceptoLines.length > 0) {
                                 conceptoLines.forEach((line, lineIndex) => {
-                                        const width = textFont.widthOfTextAtSize(line, textSize);
+                                        const width = conceptFont.widthOfTextAtSize(line, textSize);
                                         const x = alignRight
                                                 ? conceptoRight - conceptoPadding - width
                                                 : conceptoX;
@@ -1411,43 +1952,42 @@ export default function initAutosave() {
                                                 x,
                                                 y,
                                                 size: textSize,
-                                                font: textFont,
+                                                font: conceptFont,
                                                 color: textColor,
                                         });
                                 });
                         }
 
                         if (importe) {
-                                const width = textFont.widthOfTextAtSize(importe, textSize);
+                                const width = importeFont.widthOfTextAtSize(importe, textSize);
                                 const targetX = importeRight - importePadding - width;
                                 page.drawText(importe, {
                                         x: targetX,
                                         y: importeY,
                                         size: textSize,
-                                        font: textFont,
+                                        font: importeFont,
                                         color: textColor,
-                                });
-                        }
-
-                        if (!isLast) {
-                                const isBorderBeforeBase =
-                                        baseImponibleIndex > 0 && index === baseImponibleIndex - 1;
-                                const lineColor = isBorderBeforeBase
-                                        ? PDFLib.rgb(0, 0, 0)
-                                        : PDFLib.rgb(0.5, 0.5, 0.5);
-                                page.drawLine({
-                                        start: { x: conceptoCellLeft, y: currentY },
-                                        end: { x: importeRight, y: currentY },
-                                        thickness: borderThickness,
-                                        color: lineColor,
-                                        dashArray: isBorderBeforeBase ? undefined : [3, 3],
-                                        dashPhase: isBorderBeforeBase ? undefined : 0,
                                 });
                         }
 
                         rowsDrawn += 1;
 
                         currentY -= rowHeight;
+                }
+
+                if (rowsDrawn > 0) {
+                        const dashedLineColor = PDFLib.rgb(0.6, 0.6, 0.6);
+                        for (let i = 0; i < rowsDrawn - 1; i += 1) {
+                                const lineY = startY - i * rowHeight;
+                                page.drawLine({
+                                        start: { x: conceptoCellLeft, y: lineY },
+                                        end: { x: importeRight, y: lineY },
+                                        thickness: borderThickness,
+                                        color: dashedLineColor,
+                                        dashArray: dashPattern,
+                                        dashPhase: 0,
+                                });
+                        }
                 }
 
                 if (rowsDrawn > 0) {
@@ -1474,6 +2014,68 @@ export default function initAutosave() {
                         });
                 }
 
+                if (rowsDrawn > 0) {
+                        const isParticularRole = normalizedVendorInfo.role === "particular";
+                        const isDirectDebit =
+                                !isParticularRole &&
+                                (normalizedPaymentMethod === "domiciliacion" ||
+                                        normalizedPaymentMethod === "domiciliacion_bancaria");
+                        const paymentLabel = isDirectDebit
+                                ? "Domiciliación bancaria"
+                                : "Transferencia bancaria";
+                        const showIbanBox = !isDirectDebit;
+                        const paymentBoxY = currentY + mmToPt(1);
+                        const paymentBoxHeight = rowHeight;
+                        const tableWidth = importeRight - conceptoCellLeft;
+                        const leftBoxWidth = showIbanBox ? tableWidth / 2 : tableWidth;
+                        const rightBoxWidth = showIbanBox ? tableWidth - leftBoxWidth : 0;
+                        const leftBoxPadding = mmToPt(5);
+                        const rightBoxPadding = mmToPt(5);
+                        const lineHeight = 10;
+                        const textY = paymentBoxY + (paymentBoxHeight - lineHeight) / 2;
+                        const boldFont = interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const regularFont = interRegular || robotoMono;
+
+                        const drawSegments = (segments, startX) => {
+                                let cursorX = startX;
+                                segments.forEach(({ text, font }) => {
+                                        if (!text) return;
+                                        page.drawText(text, {
+                                                x: cursorX,
+                                                y: textY,
+                                                size: lineHeight,
+                                                font: font || regularFont,
+                                                color: PDFLib.rgb(0, 0, 0),
+                                        });
+                                        cursorX += (font || regularFont).widthOfTextAtSize(text, lineHeight);
+                                });
+                        };
+
+                        drawSegments(
+                                [
+                                        { text: "Forma de pago: ", font: boldFont },
+                                        { text: paymentLabel, font: regularFont },
+                                ],
+                                conceptoCellLeft + leftBoxPadding
+                        );
+
+                        if (showIbanBox) {
+                                const ibanSegments = [
+                                        { text: "IBAN: ", font: boldFont },
+                                        { text: normalizedTransferIban, font: regularFont },
+                                ];
+                                const totalWidth = ibanSegments.reduce(
+                                        (acc, seg) =>
+                                                acc + (seg.font || regularFont).widthOfTextAtSize(seg.text || "", lineHeight),
+                                        0
+                                );
+                                const rightBoxX = conceptoCellLeft + leftBoxWidth;
+                                const startX =
+                                        rightBoxX + Math.max(rightBoxPadding, rightBoxWidth - totalWidth - rightBoxPadding);
+                                drawSegments(ibanSegments, startX);
+                        }
+                }
+
                 try {
                         form.removeField("concepto_1");
                 } catch (err) {
@@ -1481,6 +2083,16 @@ export default function initAutosave() {
                 }
                 try {
                         form.removeField("importe_1");
+                } catch (err) {
+                        // ignore
+                }
+                try {
+                        form.removeField("ref_emision");
+                } catch (err) {
+                        // ignore
+                }
+                try {
+                        form.removeField("objeto_cobertura");
                 } catch (err) {
                         // ignore
                 }
@@ -1567,12 +2179,46 @@ export default function initAutosave() {
                                 });
                 }
 
-                const normalizedProformaArgs = proformaArgs || {
-                        draftId,
-                        templateUrl: responseJson.proforma_template_url || "",
-                        items: [],
-                        coverageLabel: buildCoverageLabel(garantia),
-                };
+                        const fallbackReferenceBaseDate = new Date();
+                        const resolvedVendorInfo = proformaArgs?.vendorInfo
+                                ? normalizeVendorInfo(proformaArgs.vendorInfo)
+                                : buildVendorInfoFromResponse(responseJson, garantia?.canal_venta);
+                        const normalizedProformaArgs = proformaArgs
+                                ? {
+                                          ...proformaArgs,
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  proformaArgs.paymentMethod ||
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof proformaArgs.transferIban === "string"
+                                                          ? proformaArgs.transferIban
+                                                          : typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                  }
+                                : {
+                                          draftId,
+                                          templateUrl: responseJson.proforma_template_url || "",
+                                          items: [],
+                                          coverageLabel: buildCoverageLabel(garantia),
+                                          matricula: datosVehiculo?.matricula || "",
+                                          marca: datosVehiculo?.marca || "",
+                                          modelo: datosVehiculo?.modelo || "",
+                                          emissionDate: toIsoDateString(fallbackReferenceBaseDate),
+                                          dueDate: toIsoDateString(addDays(fallbackReferenceBaseDate, 2)),
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                  };
 
                 if (
                         normalizedProformaArgs.templateUrl &&
@@ -2865,12 +3511,28 @@ export default function initAutosave() {
                                   }
                                 : null;
 
+                        const referenceBaseDate = new Date();
+                        const emissionIso = toIsoDateString(referenceBaseDate);
+                        const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
+                        const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
+
                         const proformaArgs = json.proforma_template_url
                                 ? {
                                           draftId,
                                           templateUrl: json.proforma_template_url,
                                           items: listadoDescuentosRecargos,
                                           coverageLabel: buildCoverageLabel(garantia),
+                                          matricula: datosVehiculo?.matricula || "",
+                                          marca: datosVehiculo?.marca || "",
+                                          modelo: datosVehiculo?.modelo || "",
+                                          emissionDate: emissionIso,
+                                          dueDate: dueIso,
+                                          vendorInfo,
+                                          paymentMethod: garantia?.metodo_pago || "",
+                                          transferIban:
+                                                  typeof json.transfer_iban === "string"
+                                                          ? json.transfer_iban.trim()
+                                                          : "",
                                   }
                                 : null;
 
