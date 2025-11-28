@@ -1357,7 +1357,7 @@ export default function initAutosave() {
                         const extraSpacing = mmToPt(1);
                         const afterSpacingByIndex = {
                                 0: extraSpacing, // Ref.
-                                1: 0, // Emisión
+                                1: extraSpacing, // Emisión
                                 2: extraSpacing, // Vencimiento
                         };
 
