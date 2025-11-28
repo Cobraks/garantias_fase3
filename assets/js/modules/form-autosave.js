@@ -1266,10 +1266,50 @@ export default function initAutosave() {
                         '<rect width="152.5" height="36" fill="#76c09e" opacity=".3" stroke-width="0"></rect>\n' +
                         '<path d="M149.5,26.7c-6.2-.7-12.8-.2-19,.6s-17.2,1.2-25.9,1.2c-9.1,0-18.1.3-27.2-.3-24.3-1.5-48.9-2.8-73.2.4L1.9,9.9h2.4c24.2-3.1,48.9-1.8,73.2-.4,9.1.6,18.1.3,27.2.3,8.6,0,17.3,0,25.9-1.2,6.2-.8,14.2-1.6,20.5-.9l-1.4,19Z" fill="#fff62a" opacity=".2" stroke-width="0"></path>\n' +
                         "</svg>";
-                const totalHighlightSvg = await pdfDoc.embedSvg(totalHighlightSvgMarkup);
-                const totalHighlightSvgBaseDims = totalHighlightSvg.scale(1);
-                const totalHighlightSvgTargetWidth =
-                        (rowHeight / totalHighlightSvgBaseDims.height) * totalHighlightSvgBaseDims.width;
+                const svgToPngBytes = async (markup) => {
+                        try {
+                                const blob = new Blob([markup], { type: "image/svg+xml" });
+                                const url = URL.createObjectURL(blob);
+                                try {
+                                        const img = new Image();
+                                        const loadPromise = new Promise((resolve, reject) => {
+                                                img.onload = () => resolve();
+                                                img.onerror = reject;
+                                        });
+                                        img.src = url;
+                                        await loadPromise;
+
+                                        const width = img.width || img.naturalWidth;
+                                        const height = img.height || img.naturalHeight;
+                                        if (!width || !height) return null;
+
+                                        const canvas = document.createElement("canvas");
+                                        canvas.width = width;
+                                        canvas.height = height;
+                                        const ctx = canvas.getContext("2d");
+                                        if (!ctx) return null;
+
+                                        ctx.drawImage(img, 0, 0, width, height);
+                                        const dataUrl = canvas.toDataURL("image/png");
+                                        const res = await fetch(dataUrl);
+                                        const buffer = await res.arrayBuffer();
+                                        return new Uint8Array(buffer);
+                                } finally {
+                                        URL.revokeObjectURL(url);
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Failed to rasterize SVG", err);
+                                return null;
+                        }
+                };
+                const totalHighlightSvgPng = await svgToPngBytes(totalHighlightSvgMarkup);
+                const totalHighlightSvg = totalHighlightSvgPng
+                        ? await pdfDoc.embedPng(totalHighlightSvgPng)
+                        : null;
+                const totalHighlightSvgBaseDims = totalHighlightSvg ? totalHighlightSvg.scale(1) : null;
+                const totalHighlightSvgTargetWidth = totalHighlightSvgBaseDims
+                        ? (rowHeight / totalHighlightSvgBaseDims.height) * totalHighlightSvgBaseDims.width
+                        : 0;
 
                 const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
                         const concepto = (item.concepto || "").trim();
@@ -1395,20 +1435,22 @@ export default function initAutosave() {
                                         opacity: 0.5,
                                 });
 
-                                const svgPadding = importePadding;
-                                const availableWidth = importeRight - conceptoCellLeft - svgPadding * 2;
-                                const svgWidth = Math.min(Math.max(0, availableWidth), totalHighlightSvgTargetWidth);
-                                if (svgWidth > 0) {
-                                        const svgScale = svgWidth / totalHighlightSvgTargetWidth;
-                                        const svgHeight = rowHeight * svgScale;
-                                        const svgX = conceptoCellLeft + availableWidth - svgWidth + svgPadding;
-                                        const svgY = currentY;
-                                        page.drawImage(totalHighlightSvg, {
-                                                x: svgX,
-                                                y: svgY,
-                                                width: svgWidth,
-                                                height: svgHeight,
-                                        });
+                                if (totalHighlightSvg && totalHighlightSvgTargetWidth > 0) {
+                                        const svgPadding = importePadding;
+                                        const availableWidth = importeRight - conceptoCellLeft - svgPadding * 2;
+                                        const svgWidth = Math.min(Math.max(0, availableWidth), totalHighlightSvgTargetWidth);
+                                        if (svgWidth > 0) {
+                                                const svgScale = svgWidth / totalHighlightSvgTargetWidth;
+                                                const svgHeight = rowHeight * svgScale;
+                                                const svgX = conceptoCellLeft + availableWidth - svgWidth + svgPadding;
+                                                const svgY = currentY;
+                                                page.drawImage(totalHighlightSvg, {
+                                                        x: svgX,
+                                                        y: svgY,
+                                                        width: svgWidth,
+                                                        height: svgHeight,
+                                                });
+                                        }
                                 }
                         }
 
