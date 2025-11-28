@@ -1381,7 +1381,7 @@ export default function initAutosave() {
                                 const svgViewWidth = 164.47;
                                 const svgViewHeight = 36;
                                 const extraRight = mmToPt(3);
-                                const targetHeight = mmToPt(6.5);
+                                const targetHeight = mmToPt(12.6);
                                 const scale = targetHeight / svgViewHeight;
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = targetHeight;
