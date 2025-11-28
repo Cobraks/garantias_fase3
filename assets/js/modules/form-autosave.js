@@ -1391,7 +1391,9 @@ export default function initAutosave() {
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = svgViewHeight * scale;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
+                                const highlightYOffset = 6; // fine-tune marker position to sit slightly lower within the row
+                                const highlightY =
+                                        currentY + (rowHeight - scaledHeight) / 2 - highlightYOffset;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
