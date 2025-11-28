@@ -1386,10 +1386,9 @@ export default function initAutosave() {
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = targetHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const rowBottom = Math.min(currentY, currentY + rowHeight);
-                                const rowTop = Math.max(currentY, currentY + rowHeight);
-                                const rowSpan = rowTop - rowBottom;
-                                const highlightY = rowBottom + (rowSpan - scaledHeight) / 2;
+                                // Anchor the highlight to the same vertical reference as the amount text
+                                // so it stays within the last row instead of drifting below the table.
+                                const highlightY = importeY - (scaledHeight - textSize) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
