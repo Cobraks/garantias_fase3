@@ -1386,9 +1386,10 @@ export default function initAutosave() {
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = targetHeight;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                // Center the highlight within the last row so it stays over the TOTAL line.
-                                // Anchor the marker to the bottom border of the last row so it grows upward inside the cell.
-                                const highlightY = currentY;
+
+                                // Derive the row bounds regardless of whether `currentY` represents the top or bottom.
+                                const rowBottom = Math.min(currentY, currentY - rowHeight);
+                                const highlightY = rowBottom + (rowHeight - scaledHeight) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
