@@ -1379,6 +1379,7 @@ export default function initAutosave() {
                 let interRegular = null;
                 let interMedium = null;
                 let interBold = null;
+                let interExtraBold = null;
                 try {
                         const interRegularUrl = new URL("../../fonts/Inter_18pt-Regular.ttf", import.meta.url);
                         const interRegularBytes = await loadStaticPdf(interRegularUrl.href, {
@@ -1414,6 +1415,21 @@ export default function initAutosave() {
                         }
                 } catch (err) {
                         console.warn("[AUTOSAVE] Inter Bold load failed", err);
+                }
+                try {
+                        const interExtraBoldUrl = new URL(
+                                "../../fonts/Inter_18pt-ExtraBold.ttf",
+                                import.meta.url
+                        );
+                        const interExtraBoldBytes = await loadStaticPdf(interExtraBoldUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-extrabold",
+                        });
+                        if (interExtraBoldBytes) {
+                                interExtraBold = await pdfDoc.embedFont(interExtraBoldBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter ExtraBold load failed", err);
                 }
 
                 const numberFormatter = new Intl.NumberFormat("es-ES", {
@@ -1782,7 +1798,7 @@ export default function initAutosave() {
                         const totalValor = preparedItems[totalIndex]?.valor;
                         if (Number.isFinite(ivaValor) && Number.isFinite(totalValor)) {
                                 preparedItems.splice(ivaIndex, 0, {
-                                        concepto: "Base imponible",
+                                        concepto: "BASE IMPONIBLE",
                                         valor: totalValor - ivaValor,
                                         destacado: false,
                                 });
@@ -1809,12 +1825,13 @@ export default function initAutosave() {
                 const penultimateIndex = Math.max(0, lastIndex - 1);
 
                 const baseImponibleIndex = preparedItems.findIndex(
-                        (item) => (item.concepto || "").trim() === "Base imponible"
+                        (item = {}) => (item.concepto || "").trim().toLowerCase() === "base imponible"
                 );
 
                 let rowsDrawn = 0;
 
                 const conceptoMaxWidth = conceptoRight - conceptoCellLeft - conceptoPadding * 2;
+                const dashPattern = [6, 4];
 
                 for (let index = 0; index < preparedItems.length; index += 1) {
                         const item = preparedItems[index];
@@ -1823,32 +1840,41 @@ export default function initAutosave() {
                         }
                         const baseLineGap = 2;
                         const coverageNudge = 1;
-                        const textSize = fontSize;
+                        const isLast = index === lastIndex;
+                        const textSize = isLast ? 12 : fontSize;
 
                         let concepto = (item.concepto || "").trim();
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
-                        const isBaseImponible = index === baseImponibleIndex;
+                        const conceptoLower = concepto.toLowerCase();
+                        const isBaseImponible = conceptoLower === "base imponible";
+                        const isIvaRow = conceptoLower.startsWith("iva");
                         const isOddRow = rowsDrawn % 2 === 1;
-                        const isLast = index === lastIndex;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
-                        const useBold = isLast;
+                        const useBold = isLast || isBaseImponible || isIvaRow;
+                        const useExtraBold = isLast;
                         const conceptRegularFont = interRegular || robotoMono;
                         const conceptBoldFont =
                                 interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const conceptExtraBoldFont =
+                                interExtraBold || conceptBoldFont || interMedium || interRegular || robotoMono;
                         const importeRegularFont = robotoMono || interRegular || conceptRegularFont;
                         const importeBoldFont = robotoMonoBold || importeRegularFont;
-                        const conceptFont = useBold ? conceptBoldFont : conceptRegularFont;
-                        const importeFont = useBold ? importeBoldFont : importeRegularFont;
+                        const importeExtraBoldFont = interExtraBold || importeBoldFont;
+                        const conceptFont = useExtraBold ? conceptExtraBoldFont : useBold ? conceptBoldFont : conceptRegularFont;
+                        const importeFont = useExtraBold ? importeExtraBoldFont : useBold ? importeBoldFont : importeRegularFont;
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
                         const isFirstRowWithCoverage = index === 0 && coverageLabel;
                         if (isFirstRowWithCoverage) {
                                 concepto = `${coverageLabel} · ${concepto}`.trim();
+                        }
+                        if (isBaseImponible) {
+                                concepto = concepto.toUpperCase();
                         }
                         const conceptoLines = concepto
                                 ? splitIntoLines(
@@ -1937,17 +1963,14 @@ export default function initAutosave() {
                         }
 
                         if (!isLast) {
-                                const isBorderBeforeBase =
-                                        baseImponibleIndex > 0 && index === baseImponibleIndex - 1;
                                 const dashedLineColor = PDFLib.rgb(0.6, 0.6, 0.6);
-                                const lineColor = isBorderBeforeBase ? PDFLib.rgb(0, 0, 0) : dashedLineColor;
                                 page.drawLine({
                                         start: { x: conceptoCellLeft, y: currentY },
                                         end: { x: importeRight, y: currentY },
                                         thickness: borderThickness,
-                                        color: lineColor,
-                                        dashArray: isBorderBeforeBase ? undefined : [6, 4],
-                                        dashPhase: isBorderBeforeBase ? undefined : 0,
+                                        color: dashedLineColor,
+                                        dashArray: dashPattern,
+                                        dashPhase: 0,
                                 });
                         }
 
