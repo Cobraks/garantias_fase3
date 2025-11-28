@@ -1255,7 +1255,7 @@ export default function initAutosave() {
 		const importeRect = resolveRect("importe_1");
 		const mmToPt = (mm) => (mm * 72) / 25.4;
                 const totalHighlightSvgPath =
-                        "M242.41,27.73c-10.25-.98-21.07-.35-31.25.8-14.1,1.58-28.31,1.68-42.49,1.67-14.89-.02-29.75.37-44.63-.43-39.9-2.15-80.32-4-120.12.51L0,3.4h3.92C43.72-1.11,84.15.75,124.04,2.89c14.89.8,29.74.42,44.63.43,14.17.02,28.38-.09,42.49-1.67,10.19-1.14,23.36-2.27,33.61-1.28l-2.35,27.35Z";
+                        "M194.4,22.6c-8.2-0.8-16.8-0.3-25,0.6-11.3,1.3-22.6,1.3-34,1.3-11.9,0-23.8,0.3-35.7-0.3-31.9-1.7-64.2-3.2-96,0.4L0.6,3.1h3.1c31.8-3.6,64.1-2.1,96-0.4C111.7,3.3,123.6,3,135.5,3c11.3,0,22.7-0.1,34-1.3,8.1-0.9,18.7-1.8,26.9-1L194.4,22.6Z";
 
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
@@ -1378,25 +1378,17 @@ export default function initAutosave() {
                         }
 
                         if (isLast) {
-                                const svgViewWidth = 244.76;
-                                const svgViewHeight = 30.27;
+                                const svgViewWidth = 196.7;
+                                const svgViewHeight = 25.1;
                                 const extraRight = mmToPt(3);
                                 const rowWidth = importeRight - conceptoCellLeft;
                                 const targetWidth = rowWidth + extraRight;
-                                const maxHeight = rowHeight * 0.9;
-                                const scale = Math.min(
-                                        targetWidth / svgViewWidth,
-                                        maxHeight / svgViewHeight
-                                );
+                                const maxHeight = rowHeight * 0.7;
+                                const scale = Math.min(targetWidth / svgViewWidth, maxHeight / svgViewHeight);
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = svgViewHeight * scale;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const highlightYOffset = 6; // fine-tune marker position to sit slightly lower within the row
-                                const highlightBaseY = currentY + (rowHeight - scaledHeight) / 2 - highlightYOffset;
-                                const highlightY = Math.min(
-                                        Math.max(highlightBaseY, currentY),
-                                        currentY + rowHeight - scaledHeight
-                                );
+                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
