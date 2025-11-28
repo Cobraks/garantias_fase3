@@ -1391,13 +1391,14 @@ export default function initAutosave() {
                                 const scaledWidth = svgViewWidth * scale;
                                 const scaledHeight = svgViewHeight * scale;
                                 const highlightX = importeRight - scaledWidth + extraRight;
-                                const highlightY = currentY + (rowHeight - scaledHeight) / 2;
+                                const lastRowBottom = startY - lastIndex * rowHeight;
+                                const highlightY = lastRowBottom + (rowHeight - scaledHeight) / 2;
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
                                         y: highlightY,
                                         scale,
-                                        color: PDFLib.rgb(0.98039, 0.9451, 0.6),
+                                        color: PDFLib.rgb(1, 1, 0.5960784314),
                                 });
                         }
 
