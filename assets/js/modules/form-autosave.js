@@ -1570,14 +1570,25 @@ export default function initAutosave() {
 
                 const refEmisionRect = resolveRect("ref_emision");
                 if (refEmisionRect) {
+                        const labelFont =
+                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const valueFont = interRegular || robotoMono;
                         const referenceLines = [
-                                `Ref. ${(matricula || "").trim()}`.trim(),
-                                `Emisión: ${resolvedEmissionLabel}`.trim(),
-                                `Vencimiento: ${resolvedDueLabel}`.trim(),
+                                {
+                                        label: "Ref.",
+                                        value: (matricula || "").trim(),
+                                },
+                                {
+                                        label: "Emisión:",
+                                        value: resolvedEmissionLabel,
+                                },
+                                {
+                                        label: "Vencimiento:",
+                                        value: resolvedDueLabel,
+                                        color: PDFLib.rgb(0.8, 0, 0),
+                                },
                         ];
 
-                        const referenceFont =
-                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
                         const referenceFontSize = 10;
                         const referenceLineHeight = 12;
                         const baseY = refEmisionRect.y;
@@ -1597,18 +1608,33 @@ export default function initAutosave() {
 
                         referenceLines.forEach((line, index) => {
                                 const y = baseY + cumulativeOffsets[index];
-                                const color =
-                                        index === referenceLines.length - 1
-                                                ? PDFLib.rgb(0.8, 0, 0)
-                                                : PDFLib.rgb(0, 0, 0);
-                                const textWidth = referenceFont.widthOfTextAtSize(line, referenceFontSize);
-                                const x = refEmisionRect.x + refEmisionRect.width - textWidth;
+                                const color = line.color || PDFLib.rgb(0, 0, 0);
+                                const labelText = line.label ? `${line.label} ` : "";
+                                const labelWidth = labelFont.widthOfTextAtSize(
+                                        labelText,
+                                        referenceFontSize
+                                );
+                                const valueText = (line.value || "").trim();
+                                const valueWidth = valueFont.widthOfTextAtSize(
+                                        valueText,
+                                        referenceFontSize
+                                );
+                                const totalWidth = labelWidth + valueWidth;
+                                const x = refEmisionRect.x + refEmisionRect.width - totalWidth;
 
-                                page.drawText(line, {
+                                page.drawText(labelText, {
                                         x,
                                         y,
                                         size: referenceFontSize,
-                                        font: referenceFont,
+                                        font: labelFont,
+                                        color,
+                                });
+
+                                page.drawText(valueText, {
+                                        x: x + labelWidth,
+                                        y,
+                                        size: referenceFontSize,
+                                        font: valueFont,
                                         color,
                                 });
                         });
@@ -1878,16 +1904,9 @@ export default function initAutosave() {
                         const conceptUseBold = isLast;
                         const importeUseBold = isLast || isBaseImponible || isIvaRow;
                         const useExtraBold = isLast;
-                        const conceptRegularFont = interRegular || robotoMono;
-                        const conceptBoldFont =
-                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
-                        const conceptExtraBoldFont =
-                                interExtraBoldDisplay ||
-                                interExtraBold ||
-                                conceptBoldFont ||
-                                interMedium ||
-                                interRegular ||
-                                robotoMono;
+                        const conceptRegularFont = robotoMono || interRegular;
+                        const conceptBoldFont = robotoMonoBold || conceptRegularFont;
+                        const conceptExtraBoldFont = robotoMonoBold || conceptBoldFont;
                         const importeRegularFont = robotoMono || interRegular || conceptRegularFont;
                         const importeBoldFont = robotoMonoBold || importeRegularFont;
                         const importeExtraBoldFont = interExtraBoldDisplay || interExtraBold || importeBoldFont;
