@@ -1254,14 +1254,11 @@ export default function initAutosave() {
 		const conceptoRect = resolveRect("concepto_1");
 		const importeRect = resolveRect("importe_1");
 		const mmToPt = (mm) => (mm * 72) / 25.4;
-                const totalHighlightSvgPath =
-                        "M160.3,26.55c-6.71-.67-13.79-.23-20.46.54-9.23,1.07-18.54,1.14-27.82,1.13-9.75-.01-19.48.25-29.22-.29-26.12-1.46-52.59-2.72-78.65.35L1.58,10.04h2.57c26.06-3.06,52.53-1.81,78.65-.35,9.75.54,19.47.28,29.22.29,9.28.01,18.58-.06,27.82-1.13,6.67-.77,15.29-1.54,22-.87l-1.54,18.56Z";
-
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
-		const rowHeight =
-				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
-		const fontSize = 10;
+                const rowHeight =
+                                (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
+                const fontSize = 10;
 		const borderThickness = 0.35;
 
 		const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
@@ -1377,27 +1374,6 @@ export default function initAutosave() {
                                 });
                         }
 
-                        if (isLast) {
-                                const svgViewWidth = 164.47;
-                                const svgViewHeight = 36;
-                                const extraRight = mmToPt(3);
-                                const targetHeight = rowHeight;
-                                const scale = targetHeight / svgViewHeight;
-                                const scaledWidth = svgViewWidth * scale;
-                                const scaledHeight = targetHeight;
-                                const highlightX = importeRight - scaledWidth + extraRight;
-
-                                // Anchor the SVG so its bottom aligns with the row bottom (PDF origin at bottom-left).
-                                const highlightY = currentY;
-
-                                page.drawSvgPath(totalHighlightSvgPath, {
-                                        x: highlightX,
-                                        y: highlightY,
-                                        scale,
-                                        color: PDFLib.rgb(1, 1, 0.5960784314),
-                                });
-                        }
-
                         if (conceptoLines.length > 0) {
                                 conceptoLines.forEach((line, lineIndex) => {
                                         const width = textFont.widthOfTextAtSize(line, textSize);
@@ -1425,6 +1401,18 @@ export default function initAutosave() {
                                         size: textSize,
                                         font: textFont,
                                         color: textColor,
+                                });
+                        }
+
+                        if (isLast) {
+                                const highlightHeight = mmToPt(7.2);
+                                page.drawRectangle({
+                                        x: conceptoCellLeft,
+                                        y: currentY,
+                                        width: importeRight - conceptoCellLeft,
+                                        height: highlightHeight,
+                                        color: PDFLib.rgb(1, 1, 0),
+                                        opacity: 0.5,
                                 });
                         }
 
