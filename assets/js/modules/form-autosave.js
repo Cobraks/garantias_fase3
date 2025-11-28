@@ -1253,18 +1253,65 @@ export default function initAutosave() {
 
 		const conceptoRect = resolveRect("concepto_1");
 		const importeRect = resolveRect("importe_1");
-		const mmToPt = (mm) => (mm * 72) / 25.4;
-                const totalHighlightSvgPath =
-                        "M160.3,26.55c-6.71-.67-13.79-.23-20.46.54-9.23,1.07-18.54,1.14-27.82,1.13-9.75-.01-19.48.25-29.22-.29-26.12-1.46-52.59-2.72-78.65.35L1.58,10.04h2.57c26.06-3.06,52.53-1.81,78.65-.35,9.75.54,19.47.28,29.22.29,9.28.01,18.58-.06,27.82-1.13,6.67-.77,15.29-1.54,22-.87l-1.54,18.56Z";
-
+                const mmToPt = (mm) => (mm * 72) / 25.4;
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
-		const rowHeight =
-				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
-		const fontSize = 10;
-		const borderThickness = 0.35;
+                const rowHeight =
+                                (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
+                const fontSize = 10;
+                const borderThickness = 0.35;
 
-		const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
+                const totalHighlightSvgMarkup =
+                        '<svg xmlns="http://www.w3.org/2000/svg" id="Capa_1" data-name="Capa 1" width="152.5" height="36" version="1.1" viewBox="0 0 152.5 36">\n' +
+                        '<rect width="152.5" height="36" fill="#76c09e" opacity=".3" stroke-width="0"></rect>\n' +
+                        '<path d="M149.5,26.7c-6.2-.7-12.8-.2-19,.6s-17.2,1.2-25.9,1.2c-9.1,0-18.1.3-27.2-.3-24.3-1.5-48.9-2.8-73.2.4L1.9,9.9h2.4c24.2-3.1,48.9-1.8,73.2-.4,9.1.6,18.1.3,27.2.3,8.6,0,17.3,0,25.9-1.2,6.2-.8,14.2-1.6,20.5-.9l-1.4,19Z" fill="#fff62a" opacity=".2" stroke-width="0"></path>\n' +
+                        "</svg>";
+                const svgToPngBytes = async (markup) => {
+                        try {
+                                const blob = new Blob([markup], { type: "image/svg+xml" });
+                                const url = URL.createObjectURL(blob);
+                                try {
+                                        const img = new Image();
+                                        const loadPromise = new Promise((resolve, reject) => {
+                                                img.onload = () => resolve();
+                                                img.onerror = reject;
+                                        });
+                                        img.src = url;
+                                        await loadPromise;
+
+                                        const width = img.width || img.naturalWidth;
+                                        const height = img.height || img.naturalHeight;
+                                        if (!width || !height) return null;
+
+                                        const canvas = document.createElement("canvas");
+                                        canvas.width = width;
+                                        canvas.height = height;
+                                        const ctx = canvas.getContext("2d");
+                                        if (!ctx) return null;
+
+                                        ctx.drawImage(img, 0, 0, width, height);
+                                        const dataUrl = canvas.toDataURL("image/png");
+                                        const res = await fetch(dataUrl);
+                                        const buffer = await res.arrayBuffer();
+                                        return new Uint8Array(buffer);
+                                } finally {
+                                        URL.revokeObjectURL(url);
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Failed to rasterize SVG", err);
+                                return null;
+                        }
+                };
+                const totalHighlightSvgPng = await svgToPngBytes(totalHighlightSvgMarkup);
+                const totalHighlightSvg = totalHighlightSvgPng
+                        ? await pdfDoc.embedPng(totalHighlightSvgPng)
+                        : null;
+                const totalHighlightSvgBaseDims = totalHighlightSvg ? totalHighlightSvg.scale(1) : null;
+                const totalHighlightSvgTargetWidth = totalHighlightSvgBaseDims
+                        ? (rowHeight / totalHighlightSvgBaseDims.height) * totalHighlightSvgBaseDims.width
+                        : 0;
+
+                const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
                         const concepto = (item.concepto || "").trim();
                         const valor = item.valor;
                         return concepto || valor === 0 || Number.isFinite(Number(valor));
@@ -1378,25 +1425,33 @@ export default function initAutosave() {
                         }
 
                         if (isLast) {
-                                const svgViewWidth = 164.47;
-                                const svgViewHeight = 36;
-                                const extraRight = mmToPt(3);
-                                const targetHeight = mmToPt(12.6);
-                                const scale = targetHeight / svgViewHeight;
-                                const scaledWidth = svgViewWidth * scale;
-                                const scaledHeight = targetHeight;
-                                const highlightX = importeRight - scaledWidth + extraRight;
-
-                                // Derive the row bounds regardless of whether `currentY` represents the top or bottom.
-                                const rowBottom = Math.min(currentY, currentY - rowHeight);
-                                const highlightY = rowBottom + (rowHeight - scaledHeight) / 2;
-
-                                page.drawSvgPath(totalHighlightSvgPath, {
-                                        x: highlightX,
-                                        y: highlightY,
-                                        scale,
-                                        color: PDFLib.rgb(1, 1, 0.5960784314),
+                                const highlightHeight = rowHeight;
+                                page.drawRectangle({
+                                        x: conceptoCellLeft,
+                                        y: currentY,
+                                        width: importeRight - conceptoCellLeft,
+                                        height: highlightHeight,
+                                        color: PDFLib.rgb(1, 1, 0),
+                                        opacity: 0.5,
                                 });
+
+                                if (totalHighlightSvg && totalHighlightSvgTargetWidth > 0) {
+                                        const svgPadding = importePadding;
+                                        const availableWidth = importeRight - conceptoCellLeft - svgPadding * 2;
+                                        const svgWidth = Math.min(Math.max(0, availableWidth), totalHighlightSvgTargetWidth);
+                                        if (svgWidth > 0) {
+                                                const svgScale = svgWidth / totalHighlightSvgTargetWidth;
+                                                const svgHeight = rowHeight * svgScale;
+                                                const svgX = conceptoCellLeft + availableWidth - svgWidth + svgPadding;
+                                                const svgY = currentY;
+                                                page.drawImage(totalHighlightSvg, {
+                                                        x: svgX,
+                                                        y: svgY,
+                                                        width: svgWidth,
+                                                        height: svgHeight,
+                                                });
+                                        }
+                                }
                         }
 
                         if (conceptoLines.length > 0) {
