@@ -1798,7 +1798,7 @@ export default function initAutosave() {
                         const totalValor = preparedItems[totalIndex]?.valor;
                         if (Number.isFinite(ivaValor) && Number.isFinite(totalValor)) {
                                 preparedItems.splice(ivaIndex, 0, {
-                                        concepto: "BASE IMPONIBLE",
+                                        concepto: "Base imponible",
                                         valor: totalValor - ivaValor,
                                         destacado: false,
                                 });
@@ -1831,7 +1831,7 @@ export default function initAutosave() {
                 let rowsDrawn = 0;
 
                 const conceptoMaxWidth = conceptoRight - conceptoCellLeft - conceptoPadding * 2;
-                const dashPattern = [6, 4];
+                const dashPattern = [10, 6];
 
                 for (let index = 0; index < preparedItems.length; index += 1) {
                         const item = preparedItems[index];
@@ -1854,7 +1854,8 @@ export default function initAutosave() {
                         const isOddRow = rowsDrawn % 2 === 1;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
-                        const useBold = isLast || isBaseImponible || isIvaRow;
+                        const conceptUseBold = isLast;
+                        const importeUseBold = isLast || isBaseImponible || isIvaRow;
                         const useExtraBold = isLast;
                         const conceptRegularFont = interRegular || robotoMono;
                         const conceptBoldFont =
@@ -1864,17 +1865,24 @@ export default function initAutosave() {
                         const importeRegularFont = robotoMono || interRegular || conceptRegularFont;
                         const importeBoldFont = robotoMonoBold || importeRegularFont;
                         const importeExtraBoldFont = interExtraBold || importeBoldFont;
-                        const conceptFont = useExtraBold ? conceptExtraBoldFont : useBold ? conceptBoldFont : conceptRegularFont;
-                        const importeFont = useExtraBold ? importeExtraBoldFont : useBold ? importeBoldFont : importeRegularFont;
+                        const conceptFont =
+                                useExtraBold
+                                        ? conceptExtraBoldFont
+                                        : conceptUseBold
+                                          ? conceptBoldFont
+                                          : conceptRegularFont;
+                        const importeFont =
+                                useExtraBold
+                                        ? importeExtraBoldFont
+                                        : importeUseBold
+                                          ? importeBoldFont
+                                          : importeRegularFont;
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
                         const isFirstRowWithCoverage = index === 0 && coverageLabel;
                         if (isFirstRowWithCoverage) {
                                 concepto = `${coverageLabel} · ${concepto}`.trim();
-                        }
-                        if (isBaseImponible) {
-                                concepto = concepto.toUpperCase();
                         }
                         const conceptoLines = concepto
                                 ? splitIntoLines(
@@ -1914,13 +1922,13 @@ export default function initAutosave() {
                         if (isLast) {
 
                                 if (totalHighlightImg && totalHighlightImgTargetWidth > 0) {
-                                        const overflow = mmToPt(2);
-                                        const availableWidth = importeRight - conceptoCellLeft + overflow;
+                                        const inset = 1;
+                                        const availableWidth = importeRight - conceptoCellLeft - inset;
                                         const svgWidth = Math.min(availableWidth, totalHighlightImgTargetWidth);
                                         if (svgWidth > 0) {
                                                 const svgScale = svgWidth / totalHighlightImgTargetWidth;
                                                 const svgHeight = rowHeight * svgScale;
-                                                const svgX = importeRight - svgWidth + overflow;
+                                                const svgX = importeRight - svgWidth - inset;
                                                 const svgY = currentY;
                                                 page.drawImage(totalHighlightImg, {
                                                         x: svgX,
@@ -1962,21 +1970,24 @@ export default function initAutosave() {
                                 });
                         }
 
-                        if (!isLast) {
-                                const dashedLineColor = PDFLib.rgb(0.6, 0.6, 0.6);
+                        rowsDrawn += 1;
+
+                        currentY -= rowHeight;
+                }
+
+                if (rowsDrawn > 0) {
+                        const dashedLineColor = PDFLib.rgb(0.6, 0.6, 0.6);
+                        for (let i = 0; i < rowsDrawn - 1; i += 1) {
+                                const lineY = startY - i * rowHeight;
                                 page.drawLine({
-                                        start: { x: conceptoCellLeft, y: currentY },
-                                        end: { x: importeRight, y: currentY },
+                                        start: { x: conceptoCellLeft, y: lineY },
+                                        end: { x: importeRight, y: lineY },
                                         thickness: borderThickness,
                                         color: dashedLineColor,
                                         dashArray: dashPattern,
                                         dashPhase: 0,
                                 });
                         }
-
-                        rowsDrawn += 1;
-
-                        currentY -= rowHeight;
                 }
 
                 if (rowsDrawn > 0) {
