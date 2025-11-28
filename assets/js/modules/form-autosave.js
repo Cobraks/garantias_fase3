@@ -1388,7 +1388,8 @@ export default function initAutosave() {
                                 const highlightX = importeRight - scaledWidth + extraRight;
                                 // Anchor the highlight to the same vertical reference as the amount text
                                 // so it stays within the last row instead of drifting below the table.
-                                const highlightY = importeY - (scaledHeight - textSize) / 2;
+                                const highlightY =
+                                        importeY - (scaledHeight - textSize) / 2 - mmToPt(12.7);
 
                                 page.drawSvgPath(totalHighlightSvgPath, {
                                         x: highlightX,
