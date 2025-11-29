@@ -2615,10 +2615,10 @@ margin-top: .5rem;
     justify-content: space-between;
     gap: 1rem 1.5rem;
     margin: 1.75rem 0;
-    padding: 1.25rem 1.5rem;
+    padding: 0;
     background: var(--surface);
     border-radius: .9rem;
-    border: 1px solid var(--go-color-e2e8f0);
+    border: none;
     box-shadow: 0 12px 28px rgba(var(--go-color-0f172a-rgb), .08);
   }
 
@@ -2649,6 +2649,13 @@ margin-top: .5rem;
     flex: 0 0 auto;
   }
 
+  .form-success__docs .document-card {
+    height: 56px;
+    padding-inline: 1rem;
+    padding-block: 0;
+    flex-direction: row;
+  }
+
   .document-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 14px 30px rgba(var(--go-color-0f172a-rgb), .16);
@@ -2667,6 +2674,13 @@ margin-top: .5rem;
     height: 2rem;
     margin-bottom: .75rem;
     color: var(--color-primary);
+  }
+
+  .form-success__docs .document-card .document-card__icon {
+    height: 1.5rem;
+    width: 1.5rem;
+    margin-bottom: 0;
+    margin-right: .5rem;
   }
 
   .document-card__title {

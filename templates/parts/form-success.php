@@ -56,7 +56,6 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
     </div>
     <div class="form-success__docs" hidden>
-        <p class="form-success__docs-message" hidden></p>
         <a href="#" class="document-card" data-doc="certificate" hidden>
             <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
             <span class="document-card__title"></span>
