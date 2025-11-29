@@ -308,6 +308,19 @@ async function fetchAcfOptions() {
                 .then((json) => {
                         const acf = json?.acf || {};
                         acfOptionsCache.data = acf;
+                        try {
+                                const cfg = normalizeProformaGlobalConfig(acf);
+                                console.log("[AUTOSAVE] ACF options loaded", {
+                                        enabled: cfg.enabled,
+                                        roles: cfg.roles,
+                                        showForProfessionals: cfg.showForProfessionals,
+                                        hasBaseDocument: Boolean(cfg.baseDocument),
+                                        presentation: cfg.presentation,
+                                        hasTransferIban: Boolean(cfg.transferIban),
+                                });
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] ACF options normalize log error", err);
+                        }
                         return acf;
                 })
                 .catch((err) => {
@@ -449,7 +462,7 @@ async function resolveProformaEligibility({
         if (!globalConfig) return defaultResult;
 
         const basePresentation = mergePresentationFlags(globalConfig.presentation);
-        const normalizedRole = normalizeChannel(channelRole) || "";
+        const normalizedRole = normalizeChannel(channelRole) || normalizeChannel(getUserRole()) || "";
         const transferIban = normalizeText(globalConfig.transferIban || "");
         const hasBaseTemplate = Boolean(globalConfig.baseDocument);
 
@@ -467,24 +480,50 @@ async function resolveProformaEligibility({
         const normalizedPaymentMethod = paymentPref.normalizedMethod || defaultResult.normalizedPaymentMethod;
 
         let allowed = Boolean(globalConfig.enabled && hasBaseTemplate);
+        let disallowReason = "";
 
-        if (allowed && globalConfig.roles.length > 0 && !globalConfig.roles.includes(normalizedRole)) {
-                allowed = false;
+        if (allowed && globalConfig.roles.length > 0) {
+                if (!normalizedRole) {
+                        console.warn(
+                                "[AUTOSAVE] Proforma role empty; skipping role restriction to avoid false negatives"
+                        );
+                } else if (!globalConfig.roles.includes(normalizedRole)) {
+                        allowed = false;
+                        disallowReason = `role ${normalizedRole} not enabled`;
+                }
         }
 
         if (allowed && normalizedRole === "profesional") {
                 const allowedModes = globalConfig.showForProfessionals;
                 if (allowedModes.length > 0) {
                         allowed = allowedModes.includes(normalizedPaymentMethod);
+                        if (!allowed) {
+                                disallowReason = `payment ${normalizedPaymentMethod} not allowed for professionals`;
+                        }
                 }
         }
 
-        return {
+        const result = {
                 allowed,
                 presentation: basePresentation,
                 normalizedPaymentMethod,
                 transferIban,
+                trace: {
+                        channelRole,
+                        normalizedRole,
+                        global: {
+                                enabled: globalConfig.enabled,
+                                roles: globalConfig.roles,
+                                showForProfessionals: globalConfig.showForProfessionals,
+                                hasBaseTemplate,
+                        },
+                        payment: paymentPref,
+                        disallowReason,
+                },
         };
+
+        console.log("[AUTOSAVE] Proforma eligibility", result);
+        return result;
 }
 
 function stableSerialize(value) {
@@ -3842,6 +3881,22 @@ export default function initAutosave() {
                                   }
                                 : null;
 
+                        if (!proformaArgs) {
+                                console.warn("[AUTOSAVE] Proforma args not built", {
+                                        hasTemplate: Boolean(json.proforma_template_url),
+                                        allowed: proformaEligibility.allowed,
+                                        items: listadoDescuentosRecargos?.length || 0,
+                                });
+                        } else {
+                                console.log("[AUTOSAVE] Proforma args built", {
+                                        draftId,
+                                        templateUrl: proformaArgs.templateUrl,
+                                        items: proformaArgs.items.length,
+                                        paymentMethod: proformaArgs.paymentMethod,
+                                        presentation: proformaArgs.presentation,
+                                });
+                        }
+
                         if (!finalize && certificateArgs) {
                                 scheduleCertificateGeneration(certificateArgs, {
                                         immediate: true,
@@ -3873,6 +3928,11 @@ export default function initAutosave() {
                                                 docLinks.proforma = proformaUrl;
                                         }
                                 }
+                                console.log("[AUTOSAVE] Success doc links", {
+                                        docLinks,
+                                        proformaAllowed: proformaEligibility.allowed,
+                                        presentation: proformaEligibility.presentation,
+                                });
                                 const extras = {
                                         transferIban:
                                                 typeof json.transfer_iban === "string"
