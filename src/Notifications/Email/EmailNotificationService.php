@@ -3,6 +3,8 @@
 namespace GarantiasOnline360VO\Notifications\Email;
 
 use GarantiasOnline360VO\GuaranteeLogger;
+use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Rest\GuaranteeRestController;
 use GarantiasOnline360VO\Support\NotificationEmailResolver;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 
@@ -282,7 +284,7 @@ class EmailNotificationService
         }
 
         $reply_to = $this->get_reply_to_address();
-        $options  = $this->build_professional_options($reply_to);
+        $options  = $this->build_professional_options($reply_to, $data);
 
         $message = $this->builder->composeContractedProfessional(
             $data,
@@ -305,7 +307,7 @@ class EmailNotificationService
         }
 
         $reply_to = $this->get_reply_to_address();
-        $options  = $this->build_professional_options($reply_to);
+        $options  = $this->build_professional_options($reply_to, $data);
 
         $message = $this->builder->composeTransferActivatedProfessional(
             $data,
@@ -612,7 +614,7 @@ class EmailNotificationService
         return $service->get_admin_delivery($guarantee_id, $context);
     }
 
-    private function build_professional_options(string $reply_to): array
+    private function build_professional_options(string $reply_to, array $data = []): array
     {
         $options = [];
 
@@ -625,7 +627,76 @@ class EmailNotificationService
             $options['headers'][] = $from_header;
         }
 
+        $attachments = $this->get_proforma_attachments($data);
+        if (! empty($attachments)) {
+            $options['attachments'] = $attachments;
+        }
+
         return $options;
+    }
+
+    private function get_proforma_attachments(array $data): array
+    {
+        $settings = GuaranteeRestController::get_proforma_feature_settings();
+        $options  = isset($settings['options']) && is_array($settings['options'])
+            ? $settings['options']
+            : [];
+
+        if (empty($options['enviar_por_correo'])) {
+            return [];
+        }
+
+        $guarantee_id = isset($data['id']) ? (int) $data['id'] : 0;
+        if ($guarantee_id <= 0) {
+            return [];
+        }
+
+        $hash = get_post_meta($guarantee_id, GuaranteeRestController::PROFORMA_HASH_META, true);
+        if (! $hash) {
+            error_log('[EMAIL][Proforma] missing hash for guarantee ' . $guarantee_id);
+            return [];
+        }
+
+        $binary = PrivateDocsManager::retrieve($hash, 'pdf');
+        if (! $binary) {
+            error_log('[EMAIL][Proforma] unable to retrieve pdf for ' . $guarantee_id);
+            return [];
+        }
+
+        $temp_path = function_exists('wp_tempnam')
+            ? wp_tempnam(sprintf('go-proforma-%d.pdf', $guarantee_id))
+            : tempnam(
+                function_exists('get_temp_dir') ? get_temp_dir() : sys_get_temp_dir(),
+                'go-proforma-'
+            );
+
+        if (! $temp_path || ! is_string($temp_path)) {
+            error_log('[EMAIL][Proforma] temp path unavailable for ' . $guarantee_id);
+            return [];
+        }
+
+        $written = file_put_contents($temp_path, $binary);
+        if ($written === false) {
+            error_log('[EMAIL][Proforma] failed writing attachment for ' . $guarantee_id);
+            return [];
+        }
+
+        $this->schedule_temp_file_cleanup($temp_path);
+
+        return [$temp_path];
+    }
+
+    private function schedule_temp_file_cleanup(string $path): void
+    {
+        if ($path === '') {
+            return;
+        }
+
+        register_shutdown_function(static function () use ($path) {
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+        });
     }
 
     private function log_skip(int $guarantee_id, string $slug, string $reason, int $initiator_id): void

@@ -354,6 +354,11 @@ export default function initAutosave() {
                                 ? true
                                 : Boolean(rawProformaSettings.highlightTotal),
                 showOnSuccessScreen: Boolean(rawProformaSettings.showOnSuccessScreen),
+                sendByEmail: Boolean(
+                        rawProformaSettings.sendByEmail ||
+                                (rawProformaSettings.options &&
+                                        rawProformaSettings.options.enviar_por_correo === true)
+                ),
         };
 
         let proformaFlowEnabled = false;
@@ -454,6 +459,10 @@ export default function initAutosave() {
                 `Mostrar proforma en pantalla de éxito: ${
                         proformaSettings.showOnSuccessScreen ? "Sí" : "No"
                 }`
+        );
+        console.log(
+                "[Proforma]",
+                `Enviar por correo: ${proformaSettings.sendByEmail ? "Sí" : "No"}`
         );
 
         function formatProformaRolesLabel() {

@@ -94,6 +94,7 @@ export function getProformaFeatureSettings() {
                                 : Boolean(raw.highlightTotal),
                 showOnSuccessScreen: options.mostrar_en_pantalla_exito === true,
                 showInDocuments: options.mostrar_en_documentos === true,
+                sendByEmail: options.enviar_por_correo === true,
                 options,
         };
 }
