@@ -663,17 +663,15 @@ class EmailNotificationService
             return [];
         }
 
-        $temp_path = function_exists('wp_tempnam')
-            ? wp_tempnam(sprintf('go-proforma-%d.pdf', $guarantee_id))
-            : tempnam(
-                function_exists('get_temp_dir') ? get_temp_dir() : sys_get_temp_dir(),
-                'go-proforma-'
-            );
+        $filename = $this->build_proforma_filename($data);
+        $directory = function_exists('get_temp_dir') ? get_temp_dir() : sys_get_temp_dir();
+        $directory = trailingslashit($directory);
 
-        if (! $temp_path || ! is_string($temp_path)) {
-            error_log('[EMAIL][Proforma] temp path unavailable for ' . $guarantee_id);
-            return [];
-        }
+        $target_name = function_exists('wp_unique_filename')
+            ? wp_unique_filename($directory, $filename)
+            : $filename;
+
+        $temp_path = $directory . $target_name;
 
         $written = file_put_contents($temp_path, $binary);
         if ($written === false) {
@@ -684,6 +682,21 @@ class EmailNotificationService
         $this->schedule_temp_file_cleanup($temp_path);
 
         return [$temp_path];
+    }
+
+    private function build_proforma_filename(array $data): string
+    {
+        $plate = '';
+
+        if (! empty($data['plate']) && is_string($data['plate'])) {
+            $plate = strtoupper(str_replace(' ', '', sanitize_text_field($data['plate'])));
+        }
+
+        if ($plate === '') {
+            $plate = isset($data['id']) ? (string) ((int) $data['id']) : 'proforma';
+        }
+
+        return sprintf('factura_proforma_%s.pdf', $plate);
     }
 
     private function schedule_temp_file_cleanup(string $path): void
