@@ -9741,7 +9741,7 @@ const ADD_DOC_KEY = "add-document";
         goConfig && goConfig.proforma && goConfig.proforma.options
             ? goConfig.proforma.options
             : {};
-    const shouldShowProformaDocs = proformaOptions.mostrar_en_documentos !== false;
+    const shouldShowProformaDocs = proformaOptions.mostrar_en_documentos === true;
 
     const docsSource = Array.isArray(data.documents)
         ? data.documents
