@@ -83,9 +83,15 @@ export function getProformaFeatureSettings() {
         const professionalPaymentModes = Array.isArray(raw.professionalPaymentModes)
                 ? raw.professionalPaymentModes.map((mode) => String(mode || "").toLowerCase())
                 : [];
+        const options = raw.options && typeof raw.options === "object" ? raw.options : {};
         return {
                 enabled: raw.enabled !== false,
                 allowedRoles,
                 professionalPaymentModes,
+                highlightTotal:
+                        raw.highlightTotal === undefined
+                                ? true
+                                : Boolean(raw.highlightTotal),
+                options,
         };
 }

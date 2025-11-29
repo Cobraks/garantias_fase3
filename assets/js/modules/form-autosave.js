@@ -349,6 +349,10 @@ export default function initAutosave() {
                                   ),
                           )
                         : [],
+                highlightTotal:
+                        rawProformaSettings.highlightTotal === undefined
+                                ? true
+                                : Boolean(rawProformaSettings.highlightTotal),
         };
 
         let proformaFlowEnabled = false;
@@ -433,11 +437,16 @@ export default function initAutosave() {
                 enabled: proformaSettings.enabled,
                 allowedRoles: proformaSettings.allowedRoles,
                 professionalPaymentModes: proformaSettings.professionalPaymentModes,
+                highlightTotal: proformaSettings.highlightTotal,
                 raw: rawProformaSettings,
         });
         console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
         console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
         console.log("[Proforma]", `Mostrar a profesionales con: ${formatProformaPaymentsLabel()}`);
+        console.log(
+                "[Proforma]",
+                `Subrayar total: ${proformaSettings.highlightTotal ? "Sí" : "No"}`
+        );
 
         function formatProformaRolesLabel() {
                 if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
@@ -2060,26 +2069,28 @@ export default function initAutosave() {
 
                 let totalHighlightImg = null;
                 let totalHighlightImgTargetWidth = 0;
-                try {
-                        const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
-                        const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
-                                cache: true,
-                                cacheKey: "img:total-highlight",
-                        });
-                        if (totalHighlightImgBytes) {
-                                totalHighlightImg = await pdfDoc.embedPng(
-                                        totalHighlightImgBytes instanceof Uint8Array
-                                                ? totalHighlightImgBytes
-                                                : new Uint8Array(totalHighlightImgBytes)
-                                );
-                                const baseDims = totalHighlightImg.scale(1);
-                                totalHighlightImgTargetWidth =
-                                        baseDims && baseDims.height > 0
-                                                ? (rowHeight / baseDims.height) * baseDims.width
-                                                : 0;
+                if (proformaSettings.highlightTotal) {
+                        try {
+                                const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
+                                const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
+                                        cache: true,
+                                        cacheKey: "img:total-highlight",
+                                });
+                                if (totalHighlightImgBytes) {
+                                        totalHighlightImg = await pdfDoc.embedPng(
+                                                totalHighlightImgBytes instanceof Uint8Array
+                                                        ? totalHighlightImgBytes
+                                                        : new Uint8Array(totalHighlightImgBytes)
+                                        );
+                                        const baseDims = totalHighlightImg.scale(1);
+                                        totalHighlightImgTargetWidth =
+                                                baseDims && baseDims.height > 0
+                                                        ? (rowHeight / baseDims.height) * baseDims.width
+                                                        : 0;
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Missing total highlight asset", err);
                         }
-                } catch (err) {
-                        console.warn("[AUTOSAVE] Missing total highlight asset", err);
                 }
 
                 const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {

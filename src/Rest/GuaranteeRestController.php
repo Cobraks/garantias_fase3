@@ -50,6 +50,12 @@ class GuaranteeRestController
     private const OPTION_FIELD_PROFORMA_ENABLED = 'activar_proforma_general';
     private const OPTION_FIELD_PROFORMA_TARGETS = 'activar_para';
     private const OPTION_FIELD_PROFORMA_SHOW_PROFESSIONALS = 'mostrar_a_profesionales';
+    private const PROFORMA_OPTION_KEYS = [
+        'subrayar_total',
+        'mostrar_en_documentos',
+        'mostrar_en_pantalla_exito',
+        'enviar_por_correo',
+    ];
 
     private static $cache_hooks_registered = false;
     private static $list_cache_invalidated = [];
@@ -1901,6 +1907,12 @@ class GuaranteeRestController
             'enabled'       => true,
             'allowed_roles' => ['profesional', 'particular', 'gestoria'],
             'professional_payment_modes' => ['transferencia', 'domiciliacion'],
+            'options' => [
+                'subrayar_total'          => true,
+                'mostrar_en_documentos'   => false,
+                'mostrar_en_pantalla_exito' => false,
+                'enviar_por_correo'       => false,
+            ],
         ];
 
         if (! function_exists('get_field')) {
@@ -1966,12 +1978,16 @@ class GuaranteeRestController
             }
         }
 
+        $options = self::extract_proforma_options($proforma_settings, $defaults['options']);
+
         $cached = [
             'enabled'       => $enabled,
             'allowed_roles' => array_values(array_unique($allowed_roles)),
             'professional_payment_modes' => $professional_payment_modes
                 ? array_values(array_unique($professional_payment_modes))
                 : $defaults['professional_payment_modes'],
+            'options' => $options,
+            'highlight_total' => $options['subrayar_total'] ?? $defaults['options']['subrayar_total'],
         ];
 
         return $cached;
@@ -2014,6 +2030,68 @@ class GuaranteeRestController
         }
 
         return $key === 'transferencia' ? 'transferencia' : '';
+    }
+
+    private static function extract_proforma_options(array $proforma_settings, array $defaults): array
+    {
+        $known_keys = self::PROFORMA_OPTION_KEYS;
+        $selected = [];
+        $source_found = false;
+
+        $collect = function ($value) use (&$selected, &$source_found, $known_keys) {
+            $normalized = self::normalize_proforma_option($value, $known_keys);
+            if ($normalized) {
+                $source_found = true;
+                $selected[$normalized] = true;
+            }
+        };
+
+        foreach ($proforma_settings as $key => $value) {
+            if (in_array($key, $known_keys, true)) {
+                $source_found = true;
+                if (!empty($value)) {
+                    $selected[$key] = true;
+                }
+            }
+
+            if (is_array($value)) {
+                foreach ($value as $innerValue) {
+                    if (is_array($innerValue)) {
+                        foreach ($innerValue as $nested) {
+                            $collect($nested);
+                        }
+                    } else {
+                        $collect($innerValue);
+                    }
+                }
+                continue;
+            }
+
+            $collect($value);
+        }
+
+        $options = [];
+        foreach ($defaults as $option_key => $default_value) {
+            if (!in_array($option_key, $known_keys, true)) {
+                continue;
+            }
+            $options[$option_key] = $source_found
+                ? !empty($selected[$option_key])
+                : (bool) $default_value;
+        }
+
+        return $options;
+    }
+
+    private static function normalize_proforma_option($value, array $known_keys): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $key = sanitize_key($value);
+
+        return in_array($key, $known_keys, true) ? $key : '';
     }
 
     private static function hydrate_detail_document_urls(array $detail, $id)
