@@ -9737,12 +9737,20 @@ const ADD_DOC_KEY = "add-document";
         return "-";
     })();
     const traccionRowHtml = `<li class="detail__item${recargoClass("traccion")}"><strong>Tracción:</strong> ${traccionValue}</li>`;
+    const proformaOptions =
+        goConfig && goConfig.proforma && goConfig.proforma.options
+            ? goConfig.proforma.options
+            : {};
+    const shouldShowProformaDocs = proformaOptions.mostrar_en_documentos !== false;
+
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
         ? rowData.documents
         : [];
-    const docsData = docsSource
+    const docsData = (shouldShowProformaDocs
+        ? docsSource
+        : docsSource.filter((doc) => (doc && doc.key ? String(doc.key) : "") !== "proforma"))
         .map((doc) => {
             const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
             const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;

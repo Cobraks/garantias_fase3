@@ -1318,9 +1318,6 @@ class GuaranteeRestController
 
         $is_cancelled = self::is_cancelled_state($post_id);
         $cancel_date = self::get_cancellation_date($post_id);
-        $proforma_settings = self::get_proforma_feature_settings();
-        $show_proforma_in_documents = ! empty($proforma_settings['options']['mostrar_en_documentos']);
-
         $static_docs = [
             [
                 'key'           => 'certificate',
@@ -1339,19 +1336,17 @@ class GuaranteeRestController
             ],
         ];
 
-        if ($show_proforma_in_documents) {
-            $static_docs[] = [
-                'key'           => 'proforma',
-                'title'         => __('Factura proforma', 'garantias-online-360vo'),
-                'routeType'     => 'proforma',
-                'is_private'    => true,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ];
-        }
+        $static_docs[] = [
+            'key'           => 'proforma',
+            'title'         => __('Factura proforma', 'garantias-online-360vo'),
+            'routeType'     => 'proforma',
+            'is_private'    => true,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
+        ];
 
         $static_docs[] = [
             'key'           => 'cobertura',
