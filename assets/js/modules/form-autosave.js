@@ -353,6 +353,7 @@ export default function initAutosave() {
                         rawProformaSettings.highlightTotal === undefined
                                 ? true
                                 : Boolean(rawProformaSettings.highlightTotal),
+                showOnSuccessScreen: Boolean(rawProformaSettings.showOnSuccessScreen),
         };
 
         let proformaFlowEnabled = false;
@@ -438,6 +439,7 @@ export default function initAutosave() {
                 allowedRoles: proformaSettings.allowedRoles,
                 professionalPaymentModes: proformaSettings.professionalPaymentModes,
                 highlightTotal: proformaSettings.highlightTotal,
+                showOnSuccessScreen: proformaSettings.showOnSuccessScreen,
                 raw: rawProformaSettings,
         });
         console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
@@ -446,6 +448,12 @@ export default function initAutosave() {
         console.log(
                 "[Proforma]",
                 `Subrayar total: ${proformaSettings.highlightTotal ? "Sí" : "No"}`
+        );
+        console.log(
+                "[Proforma]",
+                `Mostrar proforma en pantalla de éxito: ${
+                        proformaSettings.showOnSuccessScreen ? "Sí" : "No"
+                }`
         );
 
         function formatProformaRolesLabel() {
@@ -753,6 +761,9 @@ export default function initAutosave() {
                 const availableDocs = [];
                 let certificateReady = false;
                 for (const doc of AVAILABLE_DOCS) {
+                        if (doc.key === "proforma" && !proformaSettings.showOnSuccessScreen) {
+                                continue;
+                        }
                         const url = latestDocLinks?.[doc.key];
                         if (!url) continue;
                         const link = docsContainer.querySelector(

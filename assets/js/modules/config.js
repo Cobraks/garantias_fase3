@@ -92,6 +92,7 @@ export function getProformaFeatureSettings() {
                         raw.highlightTotal === undefined
                                 ? true
                                 : Boolean(raw.highlightTotal),
+                showOnSuccessScreen: options.mostrar_en_pantalla_exito === true,
                 options,
         };
 }
