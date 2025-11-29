@@ -3281,8 +3281,8 @@ export default function initAutosave() {
                                 );
                                 if (transferNote) {
                                         const message = deadlineLabel
-                                                ? `Realiza el pago antes del ${deadlineLabel}.`
-                                                : "Realiza el pago lo antes posible.";
+                                                ? `Realiza la transferencia antes del ${deadlineLabel}.`
+                                                : "Realiza la transferencia lo antes posible.";
                                         let noteTextNode = transferNote.querySelector(
                                                 ".form-success__transfer-note-text"
                                         );
