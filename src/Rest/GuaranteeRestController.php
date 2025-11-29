@@ -45,6 +45,10 @@ class GuaranteeRestController
 
     private const OPTION_GROUP_DOCUMENTATION = 'documentacion';
     private const OPTION_FIELD_PROFORMA_TEMPLATE = 'base_proforma';
+    private const OPTION_GROUP_FACTURACION = 'facturacion';
+    private const OPTION_SUBGROUP_PROFORMA = 'factura_proforma';
+    private const OPTION_FIELD_PROFORMA_ENABLED = 'activar_proforma_general';
+    private const OPTION_FIELD_PROFORMA_TARGETS = 'activar_para';
 
     private static $cache_hooks_registered = false;
     private static $list_cache_invalidated = [];
@@ -1884,6 +1888,95 @@ class GuaranteeRestController
         return $result;
     }
 
+    public static function get_proforma_feature_settings(): array
+    {
+        static $cached = null;
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $defaults = [
+            'enabled'       => true,
+            'allowed_roles' => ['profesional', 'particular', 'gestoria'],
+        ];
+
+        if (! function_exists('get_field')) {
+            $cached = $defaults;
+            return $cached;
+        }
+
+        $facturacion = get_field(self::OPTION_GROUP_FACTURACION, SettingsPage::SUBMENU_SLUG);
+        if (! is_array($facturacion) || ! isset($facturacion[self::OPTION_SUBGROUP_PROFORMA])) {
+            $facturacion = get_field(self::OPTION_GROUP_FACTURACION, 'option');
+        }
+
+        $proforma_settings = is_array($facturacion)
+            ? ($facturacion[self::OPTION_SUBGROUP_PROFORMA] ?? null)
+            : null;
+
+        if (! is_array($proforma_settings)) {
+            $cached = $defaults;
+            return $cached;
+        }
+
+        $enabled_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_ENABLED] ?? null;
+        $targets_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_TARGETS] ?? null;
+        $targets_defined = array_key_exists(self::OPTION_FIELD_PROFORMA_TARGETS, $proforma_settings);
+
+        $enabled = $enabled_raw === null ? $defaults['enabled'] : (bool) $enabled_raw;
+
+        $allowed_roles = [];
+        if (is_array($targets_raw)) {
+            foreach ($targets_raw as $target) {
+                $normalized = self::normalize_proforma_role($target);
+                if ($normalized) {
+                    $allowed_roles[] = $normalized;
+                }
+            }
+        } elseif (is_string($targets_raw) && $targets_raw !== '') {
+            $normalized = self::normalize_proforma_role($targets_raw);
+            if ($normalized) {
+                $allowed_roles[] = $normalized;
+            }
+        }
+
+        if (!$targets_defined && empty($allowed_roles)) {
+            $allowed_roles = $defaults['allowed_roles'];
+        }
+
+        $cached = [
+            'enabled'       => $enabled,
+            'allowed_roles' => array_values(array_unique($allowed_roles)),
+        ];
+
+        return $cached;
+    }
+
+    private static function normalize_proforma_role($value): string
+    {
+        $map = [
+            'profesional'   => 'profesional',
+            'profesionales' => 'profesional',
+            'go_profesional'=> 'profesional',
+            'particular'    => 'particular',
+            'particulares'  => 'particular',
+            'go_particular' => 'particular',
+            'go_individual' => 'particular',
+            'individual'    => 'particular',
+            'gestoria'      => 'gestoria',
+            'gestorias'     => 'gestoria',
+            'go_gestoria'   => 'gestoria',
+        ];
+
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $key = sanitize_key($value);
+        return $map[$key] ?? '';
+    }
+
     private static function hydrate_detail_document_urls(array $detail, $id)
     {
         return self::inject_document_collection($detail, (int) $id, true);
@@ -3721,8 +3814,11 @@ class GuaranteeRestController
 
         $cobertura_url = self::build_document_download_url($post_id, 'cobertura');
         $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
+        $proforma_settings = self::get_proforma_feature_settings();
         $proforma_template = self::get_proforma_template_source();
-        $proforma_template_url = isset($proforma_template['url']) ? (string) $proforma_template['url'] : '';
+        $proforma_template_url = ($proforma_settings['enabled'] ?? true)
+            ? (isset($proforma_template['url']) ? (string) $proforma_template['url'] : '')
+            : '';
         $proforma_url = self::build_document_download_url($post_id, 'proforma');
         $transfer_iban = self::get_transfer_iban();
 
@@ -3738,6 +3834,7 @@ class GuaranteeRestController
             'condicionado_url' => $condicionado_url,
             'proforma_template_url' => $proforma_template_url,
             'proforma_url'     => $proforma_url,
+            'proforma_settings' => $proforma_settings,
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
             'notify_url'       => set_url_scheme($notify_url, $scheme),
