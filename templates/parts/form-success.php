@@ -4,6 +4,11 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Rest\GuaranteeRestController;
+?>
+<?php
+$proforma_settings = GuaranteeRestController::get_proforma_feature_settings();
+$show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pantalla_exito']);
 ?>
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
@@ -12,15 +17,24 @@ use GarantiasOnline360VO\Svg;
     <p class="form-success__subtitle" data-plan></p>
     <p class="form-success__message" hidden></p>
 
+    <div class="form-success__docs" hidden>
+        <?php if ($show_proforma_on_success) : ?>
+            <a href="#" class="document-card" data-doc="proforma" hidden>
+                <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+                <span class="document-card__title"></span>
+            </a>
+        <?php endif; ?>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+    </div>
+
     <div class="form-success__payment" hidden>
         <div class="form-success__transfer" hidden>
-            <h3 class="form-success__transfer-title">
-                <?php echo Svg::icon('info', 'form-success__transfer-icon'); ?>
-                Transferencia bancaria
-            </h3>
             <p class="form-success__transfer-note">
                 <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
-                <span class="form-success__transfer-note-text">Realiza el pago antes de la fecha límite indicada.</span>
+                <span class="form-success__transfer-note-text">Realiza la transferencia antes del 6 de diciembre.</span>
             </p>
             <table class="form-success__transfer-table">
                 <tbody>
@@ -39,7 +53,7 @@ use GarantiasOnline360VO\Svg;
                 </tbody>
             </table>
             <p class="form-success__transfer-instructions">
-                Puedes remitir el justificante desde tu panel de gestión de garantías o enviarlo por correo electrónico a
+                Puedes remitir el justificante desde tu panel de gestión o enviarlo por correo a
                 <a
                     href="mailto:garantias@360vo.es"
                     data-email-link
@@ -53,17 +67,6 @@ use GarantiasOnline360VO\Svg;
     <div class="form-success__loading">
         <span class="form-success__loading-text">Generando documentos…</span>
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
-    </div>
-    <div class="form-success__docs" hidden>
-        <p class="form-success__docs-message" hidden></p>
-        <a href="#" class="document-card" data-doc="certificate" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <a href="#" class="document-card" data-doc="proforma" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
     </div>
     <div class="form-success__actions">
         <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>

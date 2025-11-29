@@ -1385,6 +1385,8 @@ background: var(--go-color-00c0ff);
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .form__plan--premium .form__plan-conditions,
@@ -2522,6 +2524,7 @@ margin-top: .5rem;
     max-width: 800px;
     margin: 0 auto;
     padding: 1.5rem;
+    padding-top: 3rem;
     padding-bottom: 4rem;
   }
 
@@ -2553,6 +2556,7 @@ margin-top: .5rem;
     color: var(--color-primary);
   }
   .form-success__subtitle {
+    display: none;
     margin: 0 0 1.5rem;
     text-align: center;
     font-size: 1.5rem;
@@ -2610,13 +2614,13 @@ margin-top: .5rem;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem 1.5rem;
+    justify-content: center;
+    gap: 1rem;
     margin: 1.75rem 0;
-    padding: 1.25rem 1.5rem;
+    padding: 0;
     background: var(--surface);
     border-radius: .9rem;
-    border: 1px solid var(--go-color-e2e8f0);
+    border: none;
     box-shadow: 0 12px 28px rgba(var(--go-color-0f172a-rgb), .08);
   }
 
@@ -2647,6 +2651,16 @@ margin-top: .5rem;
     flex: 0 0 auto;
   }
 
+  .form-success__docs .document-card {
+    background: #fff;
+    border: 2px solid #000;
+    height: 56px;
+    padding-inline: 1rem;
+    padding-block: 0;
+    flex-direction: row;
+    color: #000;
+  }
+
   .document-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 14px 30px rgba(var(--go-color-0f172a-rgb), .16);
@@ -2665,6 +2679,13 @@ margin-top: .5rem;
     height: 2rem;
     margin-bottom: .75rem;
     color: var(--color-primary);
+  }
+
+  .form-success__docs .document-card .document-card__icon {
+    height: 1.5rem;
+    width: 1.5rem;
+    margin-bottom: 0;
+    margin-right: .5rem;
   }
 
   .document-card__title {
@@ -2800,22 +2821,23 @@ margin-top: .5rem;
   }
 
   .form-success__transfer-note {
-    background: var(--go-color-fffbe6);
-    color: var(--go-color-92400e);
-    padding: .75rem;
-    border-left: 4px solid var(--go-color-f59e0b);
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 500;
+    background: #000;
+    color: #fff;
+    padding: 1rem 1.25rem;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.05rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: .5rem;
+    gap: .65rem;
     margin-bottom: 1rem;
+    box-shadow: none;
   }
 
   .form-success__transfer-note-icon {
-    width: 1rem;
-    height: 1rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .form-success__transfer-table {
@@ -3009,6 +3031,12 @@ margin-top: .5rem;
     box-shadow: none;
 }
 
+:root[data-theme='dark'] .form-success__docs .document-card {
+    background: #000;
+    border-color: #fff;
+    color: #fff;
+}
+
 :root[data-theme='dark'] .document-card:hover,
 :root[data-theme='dark'] .document-card:focus-visible {
     border-color: rgba(191, 219, 254, 0.55);
@@ -3076,10 +3104,9 @@ margin-top: .5rem;
 }
 
 :root[data-theme='dark'] .form-success__transfer-note {
-    background: rgba(61, 46, 16, 0.85);
-    color: #fbd38d;
-    border-left-color: #d69e2e;
-}
+    background: #fff;
+    color: #000;
+  }
 
 :root[data-theme='dark'] .form-success__transfer-table th {
     color: rgba(226, 232, 240, 0.95);
