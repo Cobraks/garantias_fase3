@@ -11,6 +11,7 @@ import {
         getMisGarantiasUrl,
         getNuevaGarantiaUrl,
         getDocumentUrl,
+        getProformaFeatureSettings,
 } from "./config.js";
 import { AVAILABLE_DOCS } from "./docs-config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
@@ -28,6 +29,21 @@ const CHANNEL_NORMALIZATION = {
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
+
+const ROLE_NORMALIZATION = {
+        ...CHANNEL_NORMALIZATION,
+        profesionales: "profesional",
+        particulares: "particular",
+        gestorias: "gestoria",
+};
+
+const ADMIN_EQUIVALENT_ROLES = new Set([
+        "admin",
+        "go_garantias",
+        "go_director_comercial",
+]);
+
+const COMMERCIAL_ROLES = new Set(["go_comercial", "comercial"]);
 
 function buildEconomicBreakdownFromDom(normalizePriceFn) {
         const container = document.querySelector("#final-summary .contratacion-summary__list");
@@ -283,11 +299,66 @@ function encodeSignaturePayload(payload) {
         }
 }
 
+function normalizeProfessionalRole(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return ROLE_NORMALIZATION[key] || "";
+}
+
+function isAdminLikeRole(value) {
+        return ADMIN_EQUIVALENT_ROLES.has(String(value || "").toLowerCase());
+}
+
+function isCommercialRole(value) {
+        return COMMERCIAL_ROLES.has(String(value || "").toLowerCase());
+}
+
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
         if (!form) return;
 
         console.log("[AUTOSAVE] init module");
+
+        function normalizeProformaSettings(raw = {}) {
+                const allowedRolesRaw = Array.isArray(raw.allowedRoles)
+                        ? raw.allowedRoles
+                        : Array.isArray(raw.allowed_roles)
+                        ? raw.allowed_roles
+                        : [];
+
+                return {
+                        enabled: raw.enabled !== false,
+                        allowedRoles: allowedRolesRaw
+                                .map((role) => normalizeProfessionalRole(role))
+                                .filter(Boolean),
+                };
+        }
+
+        let proformaSettings = normalizeProformaSettings(
+                getProformaFeatureSettings()
+        );
+
+        console.log("[Proforma] Ajustes proforma", {
+                rawProformaSettings: getProformaFeatureSettings(),
+                proformaSettings,
+        });
+
+        function updateProformaSettings(raw = null) {
+                if (!raw || typeof raw !== "object") return;
+                proformaSettings = normalizeProformaSettings(raw);
+                console.log("[Proforma] Ajustes actualizados", {
+                        proformaSettings,
+                        raw,
+                });
+        }
+
+        let proformaFlowEnabled = false;
+        let lastProformaLog = {
+                generalEnabled: null,
+                role: null,
+                active: null,
+                allowed: null,
+        };
 
         const vehiculoFields = [
                 "tipo_vehiculo",
@@ -328,6 +399,117 @@ export default function initAutosave() {
                 "cilindrada",
                 "codigo_postal",
         ];
+
+        function buildProformaRoleContext() {
+                const rawRole = (getUserRole() || "").toLowerCase();
+                const normalizedBase = normalizeProfessionalRole(rawRole);
+                const usuarioSelect = document.getElementById("usuario-rol");
+                const selectedUserRole = normalizeProfessionalRole(
+                        usuarioSelect?.selectedOptions?.[0]?.dataset?.role || ""
+                );
+                const canalSelect = document.getElementById("canal-venta");
+                const channelRole = normalizeProfessionalRole(canalSelect ? canalSelect.value : "");
+
+                return {
+                        rawRole,
+                        normalizedBase,
+                        selectedUserRole,
+                        channelRole,
+                };
+        }
+
+        function resolveProfessionalRoleFromContext(context = buildProformaRoleContext()) {
+                if (context.selectedUserRole) {
+                        return context.selectedUserRole;
+                }
+
+                if (context.channelRole) {
+                        return context.channelRole;
+                }
+
+                if (
+                        context.normalizedBase &&
+                        !isAdminLikeRole(context.rawRole) &&
+                        !isCommercialRole(context.rawRole)
+                ) {
+                        return context.normalizedBase;
+                }
+
+                return "";
+        }
+
+        function evaluateProformaFlow(reason = "") {
+                const generalEnabled = Boolean(proformaSettings.enabled);
+                const roleContext = buildProformaRoleContext();
+                const targetRole = resolveProfessionalRoleFromContext(roleContext);
+                const roleAllowed =
+                        generalEnabled &&
+                        Boolean(targetRole) &&
+                        proformaSettings.allowedRoles.includes(targetRole);
+                const active = generalEnabled && roleAllowed;
+
+                if (
+                        lastProformaLog.generalEnabled !== generalEnabled ||
+                        lastProformaLog.role !== targetRole ||
+                        lastProformaLog.active !== active ||
+                        lastProformaLog.allowed !== roleAllowed
+                ) {
+                        console.log("[Proforma] Evaluación", {
+                                generalEnabled,
+                                targetRole: targetRole || "",
+                                roleAllowed,
+                                allowedRoles: proformaSettings.allowedRoles,
+                                canalVenta: roleContext.channelRole,
+                                usuarioSeleccionado:
+                                        document.getElementById("usuario-rol")?.value || "",
+                                usuarioRole: roleContext.selectedUserRole,
+                                rawRole: roleContext.rawRole,
+                                baseRole: roleContext.normalizedBase,
+                                active,
+                                reason: reason || undefined,
+                        });
+                        lastProformaLog = {
+                                generalEnabled,
+                                role: targetRole,
+                                active,
+                                allowed: roleAllowed,
+                        };
+                }
+
+                proformaFlowEnabled = active;
+                return active;
+        }
+
+        function shouldProcessProforma(reason = "") {
+                return evaluateProformaFlow(reason);
+        }
+
+        evaluateProformaFlow("init");
+
+        const canalVentaSelect = document.getElementById("canal-venta");
+        if (canalVentaSelect) {
+                canalVentaSelect.addEventListener("change", () => {
+                        console.log("[Proforma] Cambio canal de venta", {
+                                value: canalVentaSelect.value || "",
+                                rolDerivado: resolveProfessionalRoleFromContext(),
+                        });
+                        evaluateProformaFlow("canal_venta_change");
+                });
+        }
+
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
+                        const option = usuarioSelect.selectedOptions?.[0];
+                        console.log("[Proforma] Cambio de usuario seleccionado", {
+                                value: usuarioSelect.value || "",
+                                label: option?.textContent?.trim() || "",
+                                role: normalizeProfessionalRole(option?.dataset?.role || ""),
+                                rolDerivado: resolveProfessionalRoleFromContext(),
+                        });
+                        evaluateProformaFlow("usuario_change");
+                });
+        }
 
         const normalizePrice = (str) => {
                 if (typeof str !== "string") return str;
@@ -1205,6 +1387,13 @@ export default function initAutosave() {
         }
 
         function queueProformaGeneration(rawArgs) {
+                if (!shouldProcessProforma("queue")) {
+                        console.log(
+                                "[Proforma] Proforma desactivada para el flujo actual; se omite generación"
+                        );
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
                 const signature = computeProformaSignature(rawArgs);
                 if (!signature) {
                         return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
@@ -1302,6 +1491,10 @@ export default function initAutosave() {
         }
 
         function scheduleProformaGeneration(rawArgs, { immediate = false } = {}) {
+                if (!shouldProcessProforma("schedule")) {
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
                 const args = normalizeProformaArgs(rawArgs);
                 const task = () => queueProformaGeneration(args);
                 if (immediate) {
@@ -3513,6 +3706,10 @@ export default function initAutosave() {
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                                 console.log("[AUTOSAVE] stored draftUuid", draftUuid);
                         }
+                        if (json.proforma_settings) {
+                                updateProformaSettings(json.proforma_settings);
+                                evaluateProformaFlow("autosave_settings");
+                        }
                         if (json.trashed_cancelled_id) {
                                 cancelledPlateConfirmed = true;
                                 const plateInput = document.getElementById("matricula");
@@ -3546,25 +3743,27 @@ export default function initAutosave() {
                         const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
                         const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
 
-                        const proformaArgs = json.proforma_template_url
-                                ? {
-                                          draftId,
-                                          templateUrl: json.proforma_template_url,
-                                          items: listadoDescuentosRecargos,
-                                          coverageLabel: buildCoverageLabel(garantia),
-                                          matricula: datosVehiculo?.matricula || "",
-                                          marca: datosVehiculo?.marca || "",
-                                          modelo: datosVehiculo?.modelo || "",
-                                          emissionDate: emissionIso,
-                                          dueDate: dueIso,
-                                          vendorInfo,
-                                          paymentMethod: garantia?.metodo_pago || "",
-                                          transferIban:
-                                                  typeof json.transfer_iban === "string"
-                                                          ? json.transfer_iban.trim()
-                                                          : "",
-                                  }
-                                : null;
+                        const proformaHabilitada = shouldProcessProforma("autosave_response");
+                        const proformaArgs =
+                                proformaHabilitada && json.proforma_template_url
+                                        ? {
+                                                  draftId,
+                                                  templateUrl: json.proforma_template_url,
+                                                  items: listadoDescuentosRecargos,
+                                                  coverageLabel: buildCoverageLabel(garantia),
+                                                  matricula: datosVehiculo?.matricula || "",
+                                                  marca: datosVehiculo?.marca || "",
+                                                  modelo: datosVehiculo?.modelo || "",
+                                                  emissionDate: emissionIso,
+                                                  dueDate: dueIso,
+                                                  vendorInfo,
+                                                  paymentMethod: garantia?.metodo_pago || "",
+                                                  transferIban:
+                                                          typeof json.transfer_iban === "string"
+                                                                  ? json.transfer_iban.trim()
+                                                                  : "",
+                                          }
+                                        : null;
 
                         if (!finalize && certificateArgs) {
                                 scheduleCertificateGeneration(certificateArgs, {

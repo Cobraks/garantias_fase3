@@ -477,6 +477,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $icon_pdf_html = Svg::icon('pdf');
     $icon_save_html = Svg::icon('save');
     $reclamation_url = ReclamationDocument::get_url();
+    $proforma_settings = GuaranteeRestController::get_proforma_feature_settings();
 
     $current_user_labels = UserProfileResolver::get_vendor_labels((int) $current_user->ID);
     $current_user_company_name = (string) ($current_user_labels['company_name'] ?? '');
@@ -552,6 +553,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             },
             features: {
                 exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
+            },
+            proforma: {
+                enabled: <?php echo ! empty($proforma_settings['enabled']) ? 'true' : 'false'; ?>,
+                allowedRoles: <?php echo wp_json_encode($proforma_settings['allowed_roles'] ?? []); ?>
             }
         };
     </script>

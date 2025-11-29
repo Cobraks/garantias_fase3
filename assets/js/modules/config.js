@@ -74,3 +74,25 @@ export function getDocumentUrl(key) {
         const value = docs[key];
         return typeof value === "string" ? value : "";
 }
+
+export function getProformaFeatureSettings() {
+        const raw = getRawConfig().proforma || {};
+        const rawAllowedRoles = Array.isArray(raw.allowedRoles)
+                ? raw.allowedRoles
+                : Array.isArray(raw.allowed_roles)
+                ? raw.allowed_roles
+                : [];
+        const hasAllowedRoles =
+                Array.isArray(raw.allowedRoles) ||
+                Array.isArray(raw.allowed_roles) ||
+                Object.prototype.hasOwnProperty.call(raw, "allowedRoles") ||
+                Object.prototype.hasOwnProperty.call(raw, "allowed_roles");
+        const allowedRoles = rawAllowedRoles.map((role) =>
+                String(role || "").toLowerCase()
+        );
+
+        return {
+                enabled: raw.enabled !== false,
+                ...(hasAllowedRoles ? { allowedRoles } : {}),
+        };
+}
