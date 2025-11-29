@@ -2738,7 +2738,7 @@ margin-top: .5rem;
 
   .form-success__details-link,
   .form-success__new {
-    display: inline-flex;
+    display: none;
     align-items: center;
     justify-content: center;
     gap: .5rem;
@@ -2798,9 +2798,9 @@ margin-top: .5rem;
   .form-success__payment {
     /* background: var(--surface); */
     background: var(--surface);
-    border: 1px solid var(--go-color-e5e7eb);
-    border-radius: 10px;
-    padding: 1.5rem;
+    border: none;
+    border-radius: 0;
+    padding: 0;
     margin: 0 0 1.5rem;
     position: relative;
   }
@@ -3096,8 +3096,10 @@ margin-top: .5rem;
 
 :root[data-theme='dark'] .form-success__payment {
     background: rgba(27, 31, 40, 0.92);
-    border-color: rgba(148, 163, 184, 0.28);
-}
+    border: none;
+    border-radius: 0;
+    padding: 0;
+  }
 
 :root[data-theme='dark'] .form-success__transfer-title {
     color: rgba(226, 232, 240, 0.95);
