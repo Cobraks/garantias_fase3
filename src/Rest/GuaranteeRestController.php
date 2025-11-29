@@ -29,6 +29,7 @@ class GuaranteeRestController
     const ADDITIONAL_DOCS_FIELD = 'garantia_contratada_documentacion_add_document';
     const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
     const CANCELLED_CERTIFICATE_HASH_META = 'documentacion_certificado_cancelado_hash';
+    const PROFORMA_HASH_META = 'documentacion_proforma_hash';
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
@@ -41,6 +42,9 @@ class GuaranteeRestController
         'png'  => 'image/png',
     ];
     const RECEIPT_MAX_BYTES = 10485760; // 10 MB
+
+    private const OPTION_GROUP_DOCUMENTATION = 'documentacion';
+    private const OPTION_FIELD_PROFORMA_TEMPLATE = 'base_proforma';
 
     private static $cache_hooks_registered = false;
     private static $list_cache_invalidated = [];
@@ -277,6 +281,20 @@ class GuaranteeRestController
                 [
                     'methods'             => WP_REST_Server::CREATABLE,
                     'callback'            => [__CLASS__, 'upload_certificate'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/proforma',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'upload_proforma'],
                     'permission_callback' => [__CLASS__, 'can_edit'],
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
@@ -758,6 +776,28 @@ class GuaranteeRestController
                         delete_post_meta($id, self::CANCELLED_CERTIFICATE_HASH_META);
                     }
                 }
+
+                $mime = 'application/pdf';
+                break;
+            case 'proforma':
+                $proforma_hash = get_post_meta($id, self::PROFORMA_HASH_META, true);
+                if (!$proforma_hash) {
+                    error_log('[download_document] no proforma hash for ' . $id);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+
+                $binary = PrivateDocsManager::retrieve($proforma_hash, 'pdf');
+                if (!$binary) {
+                    error_log('[download_document] retrieval failed ' . $proforma_hash);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+
+                $info = self::get_plan_info($id);
+                $filename = self::normalize_document_filename(sprintf(
+                    'Factura proforma %s %s.pdf',
+                    $info['plan'],
+                    $info['matricula']
+                ));
 
                 $mime = 'application/pdf';
                 break;
@@ -1285,6 +1325,17 @@ class GuaranteeRestController
                 'cancel_date'   => $cancel_date,
             ],
             [
+                'key'           => 'proforma',
+                'title'         => __('Factura proforma', 'garantias-online-360vo'),
+                'routeType'     => 'proforma',
+                'is_private'    => true,
+                'extension'     => 'pdf',
+                'allowed_roles' => [],
+                'allowed_users' => [],
+                'filename'      => '',
+                'source'        => 'static',
+            ],
+            [
                 'key'           => 'cobertura',
                 'title'         => __('Cobertura', 'garantias-online-360vo'),
                 'routeType'     => 'cobertura',
@@ -1379,6 +1430,7 @@ class GuaranteeRestController
         $detail['certificate_url'] = '';
         $detail['cobertura_url'] = '';
         $detail['condicionado_url'] = '';
+        $detail['proforma_url'] = '';
 
         foreach ($documents as $doc) {
             if (!isset($doc['key'])) {
@@ -1387,6 +1439,9 @@ class GuaranteeRestController
             switch ($doc['key']) {
                 case 'certificate':
                     $detail['certificate_url'] = $doc['url'] ?? '';
+                    break;
+                case 'proforma':
+                    $detail['proforma_url'] = $doc['url'] ?? '';
                     break;
                 case 'cobertura':
                     $detail['cobertura_url'] = $doc['url'] ?? '';
@@ -1743,6 +1798,12 @@ class GuaranteeRestController
                     return '';
                 }
                 break;
+            case 'proforma':
+                $hash = get_post_meta($id, self::PROFORMA_HASH_META, true);
+                if (!$hash) {
+                    return '';
+                }
+                break;
             case 'condicionado':
             case 'cobertura':
                 $source = self::get_public_document_source($id, $type);
@@ -1760,6 +1821,67 @@ class GuaranteeRestController
         }
         $scheme = wp_parse_url(home_url(), PHP_URL_SCHEME);
         return set_url_scheme($url, $scheme);
+    }
+
+    private static function get_proforma_template_source(): array
+    {
+        $result = [
+            'url'      => '',
+            'id'       => 0,
+            'filename' => '',
+        ];
+
+        if (! function_exists('get_field')) {
+            return $result;
+        }
+
+        $file = get_field(self::OPTION_FIELD_PROFORMA_TEMPLATE, SettingsPage::SUBMENU_SLUG);
+        if (! $file) {
+            $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, SettingsPage::SUBMENU_SLUG);
+            if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE])) {
+                $file = $documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE];
+            }
+        }
+
+        if (! $file) {
+            $file = get_field(self::OPTION_FIELD_PROFORMA_TEMPLATE, 'option');
+        }
+
+        if (! $file) {
+            $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, 'option');
+            if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE])) {
+                $file = $documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE];
+            }
+        }
+
+        if (is_array($file)) {
+            if (! empty($file['url'])) {
+                $result['url'] = esc_url_raw((string) $file['url']);
+            }
+            if (! empty($file['ID'])) {
+                $result['id'] = (int) $file['ID'];
+                if ($result['url'] === '') {
+                    $url = wp_get_attachment_url($result['id']);
+                    if ($url) {
+                        $result['url'] = esc_url_raw($url);
+                    }
+                }
+            }
+            if (! empty($file['filename'])) {
+                $result['filename'] = sanitize_file_name((string) $file['filename']);
+            } elseif (! empty($file['title'])) {
+                $result['filename'] = sanitize_file_name((string) $file['title']);
+            } elseif ($result['id']) {
+                $path = get_attached_file($result['id']);
+                if ($path) {
+                    $result['filename'] = sanitize_file_name(basename($path));
+                }
+            }
+        } elseif (is_string($file) && $file !== '') {
+            $result['url'] = esc_url_raw($file);
+        }
+
+        return $result;
     }
 
     private static function hydrate_detail_document_urls(array $detail, $id)
@@ -1853,6 +1975,43 @@ class GuaranteeRestController
         $url = self::build_document_download_url($id, 'certificado');
         GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'certificado');
         return new WP_REST_Response(['certificate_url' => $url], 201);
+    }
+
+    public static function upload_proforma($request)
+    {
+        $id = (int) $request['id'];
+        if (!$id || get_post_type($id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $binary = $request->get_body();
+        if ($binary === '') {
+            $binary = file_get_contents('php://input');
+        }
+        if ($binary === '' || $binary === false) {
+            return new WP_Error('empty_pdf', __('PDF no recibido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $signature = '';
+        if (isset($_SERVER['HTTP_X_GO360_PROFORMA_SIGNATURE'])) {
+            $signature = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_GO360_PROFORMA_SIGNATURE']));
+        }
+
+        $hash = PrivateDocsManager::store($binary, 'pdf');
+        if (!$hash) {
+            return new WP_Error('store_error', __('No se pudo guardar la factura proforma', 'garantias-online-360vo'), ['status' => 500]);
+        }
+
+        update_post_meta($id, self::PROFORMA_HASH_META, $hash);
+        if ($signature !== '') {
+            update_post_meta($id, '_go360_proforma_signature', $signature);
+            error_log('[PROFORMA] Stored signature for ID ' . $id . ' hash ' . $hash);
+        }
+
+        $url = self::build_document_download_url($id, 'proforma');
+        GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'proforma');
+
+        return new WP_REST_Response(['proforma_url' => $url], 201);
     }
 
     public static function confirm_transfer($request)
@@ -3562,6 +3721,9 @@ class GuaranteeRestController
 
         $cobertura_url = self::build_document_download_url($post_id, 'cobertura');
         $condicionado_url = self::build_document_download_url($post_id, 'condicionado');
+        $proforma_template = self::get_proforma_template_source();
+        $proforma_template_url = isset($proforma_template['url']) ? (string) $proforma_template['url'] : '';
+        $proforma_url = self::build_document_download_url($post_id, 'proforma');
         $transfer_iban = self::get_transfer_iban();
 
         $notify_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/notify');
@@ -3574,6 +3736,8 @@ class GuaranteeRestController
             'template_url'     => $template_url,
             'cobertura_url'    => $cobertura_url,
             'condicionado_url' => $condicionado_url,
+            'proforma_template_url' => $proforma_template_url,
+            'proforma_url'     => $proforma_url,
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
             'notify_url'       => set_url_scheme($notify_url, $scheme),
