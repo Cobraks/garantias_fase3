@@ -2817,9 +2817,9 @@ margin-top: .5rem;
 
   .form-success__transfer-note {
     background: linear-gradient(135deg, #ffe6e6, #fff3f3);
-    color: var(--go-color-7f1d1d);
+    color: #7f1d1d;
     padding: 1rem 1.25rem;
-    border-left: 6px solid var(--color-primary);
+    border-left: 6px solid #e2001b;
     border: 1px solid #f5c2c7;
     border-radius: 10px;
     font-size: 1.05rem;
@@ -2828,7 +2828,7 @@ margin-top: .5rem;
     align-items: center;
     gap: .65rem;
     margin-bottom: 1rem;
-    box-shadow: 0 14px 30px rgba(var(--go-color-0f172a-rgb), .08);
+    box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
   }
 
   .form-success__transfer-note-icon {
