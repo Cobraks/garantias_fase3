@@ -2738,7 +2738,7 @@ margin-top: .5rem;
 
   .form-success__details-link,
   .form-success__new {
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: .5rem;
@@ -2776,6 +2776,7 @@ margin-top: .5rem;
     color: var(--go-color-475569);
     border-color: var(--go-color-cbd5e1);
     border-width: 1px;
+    display: none;
   }
 
   .form-success__new:hover,
@@ -2801,7 +2802,7 @@ margin-top: .5rem;
     border: none;
     border-radius: 0;
     padding: 0;
-    margin: 0 0 1.5rem;
+    margin: 2.5rem 0 1.5rem;
     position: relative;
   }
 
