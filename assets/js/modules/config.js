@@ -74,3 +74,14 @@ export function getDocumentUrl(key) {
         const value = docs[key];
         return typeof value === "string" ? value : "";
 }
+
+export function getProformaFeatureSettings() {
+        const raw = getRawConfig().proforma || {};
+        const allowedRoles = Array.isArray(raw.allowedRoles)
+                ? raw.allowedRoles.map((role) => String(role || "").toLowerCase())
+                : [];
+        return {
+                enabled: raw.enabled !== false,
+                allowedRoles,
+        };
+}

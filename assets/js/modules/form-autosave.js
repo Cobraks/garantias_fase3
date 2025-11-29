@@ -11,6 +11,7 @@ import {
         getMisGarantiasUrl,
         getNuevaGarantiaUrl,
         getDocumentUrl,
+        getProformaFeatureSettings,
 } from "./config.js";
 import { AVAILABLE_DOCS } from "./docs-config.js";
 import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
@@ -28,6 +29,21 @@ const CHANNEL_NORMALIZATION = {
         gestoria: "gestoria",
         go_gestoria: "gestoria",
 };
+
+const ROLE_NORMALIZATION = {
+        ...CHANNEL_NORMALIZATION,
+        profesionales: "profesional",
+        particulares: "particular",
+        gestorias: "gestoria",
+};
+
+const ADMIN_EQUIVALENT_ROLES = new Set([
+        "admin",
+        "go_garantias",
+        "go_director_comercial",
+]);
+
+const COMMERCIAL_ROLES = new Set(["go_comercial", "comercial"]);
 
 function buildEconomicBreakdownFromDom(normalizePriceFn) {
         const container = document.querySelector("#final-summary .contratacion-summary__list");
@@ -283,11 +299,51 @@ function encodeSignaturePayload(payload) {
         }
 }
 
+function normalizeProfessionalRole(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return ROLE_NORMALIZATION[key] || "";
+}
+
+function isAdminLikeRole(value) {
+        return ADMIN_EQUIVALENT_ROLES.has(String(value || "").toLowerCase());
+}
+
+function isCommercialRole(value) {
+        return COMMERCIAL_ROLES.has(String(value || "").toLowerCase());
+}
+
 export default function initAutosave() {
         const form = document.getElementById("form-garantia");
         if (!form) return;
 
         console.log("[AUTOSAVE] init module");
+
+        const rawProformaSettings = getProformaFeatureSettings();
+        const proformaSettings = {
+                enabled: rawProformaSettings.enabled !== false,
+                allowedRoles: Array.isArray(rawProformaSettings.allowedRoles)
+                        ? rawProformaSettings.allowedRoles
+                                  .map((role) => normalizeProfessionalRole(role))
+                                  .filter(Boolean)
+                        : [],
+        };
+
+        if (proformaSettings.allowedRoles.length === 0) {
+                proformaSettings.allowedRoles = [
+                        "profesional",
+                        "particular",
+                        "gestoria",
+                ];
+        }
+
+        let proformaFlowEnabled = false;
+        let lastProformaLog = {
+                generalEnabled: null,
+                role: null,
+                active: null,
+                allowed: null,
+        };
 
         const vehiculoFields = [
                 "tipo_vehiculo",
@@ -328,6 +384,82 @@ export default function initAutosave() {
                 "cilindrada",
                 "codigo_postal",
         ];
+
+        function resolveProfessionalRoleFromContext() {
+                const rawRole = (getUserRole() || "").toLowerCase();
+                const normalizedBase = normalizeProfessionalRole(rawRole);
+
+                if (normalizedBase && !isAdminLikeRole(rawRole) && !isCommercialRole(rawRole)) {
+                        return normalizedBase;
+                }
+
+                const canalSelect = document.getElementById("canal-venta");
+                const channelRole = normalizeProfessionalRole(canalSelect ? canalSelect.value : "");
+                if (channelRole) {
+                        return channelRole;
+                }
+
+                return normalizedBase;
+        }
+
+        function isRoleAllowedForProforma(role) {
+                if (!role) return false;
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return true;
+                }
+                return proformaSettings.allowedRoles.includes(role);
+        }
+
+        function evaluateProformaFlow(reason = "") {
+                const generalEnabled = Boolean(proformaSettings.enabled);
+                const targetRole = resolveProfessionalRoleFromContext();
+                const roleAllowed = isRoleAllowedForProforma(targetRole);
+                const active = generalEnabled && roleAllowed && Boolean(targetRole);
+
+                if (
+                        lastProformaLog.generalEnabled !== generalEnabled ||
+                        lastProformaLog.role !== targetRole ||
+                        lastProformaLog.active !== active ||
+                        lastProformaLog.allowed !== roleAllowed
+                ) {
+                        console.log("[PROFORMA] Evaluación proforma", {
+                                generalEnabled,
+                                targetRole: targetRole || "",
+                                roleAllowed,
+                                active,
+                                reason: reason || undefined,
+                        });
+                        lastProformaLog = {
+                                generalEnabled,
+                                role: targetRole,
+                                active,
+                                allowed: roleAllowed,
+                        };
+                }
+
+                proformaFlowEnabled = active;
+                return active;
+        }
+
+        function shouldProcessProforma(reason = "") {
+                return evaluateProformaFlow(reason);
+        }
+
+        evaluateProformaFlow("init");
+
+        const canalVentaSelect = document.getElementById("canal-venta");
+        if (canalVentaSelect) {
+                canalVentaSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("canal_venta_change");
+                });
+        }
+
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("usuario_change");
+                });
+        }
 
         const normalizePrice = (str) => {
                 if (typeof str !== "string") return str;
@@ -1205,6 +1337,11 @@ export default function initAutosave() {
         }
 
         function queueProformaGeneration(rawArgs) {
+                if (!shouldProcessProforma("queue")) {
+                        console.log("[PROFORMA] Proforma desactivada para el flujo actual; se omite generación");
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
                 const signature = computeProformaSignature(rawArgs);
                 if (!signature) {
                         return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
@@ -1302,6 +1439,10 @@ export default function initAutosave() {
         }
 
         function scheduleProformaGeneration(rawArgs, { immediate = false } = {}) {
+                if (!shouldProcessProforma("schedule")) {
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
                 const args = normalizeProformaArgs(rawArgs);
                 const task = () => queueProformaGeneration(args);
                 if (immediate) {
@@ -3546,25 +3687,27 @@ export default function initAutosave() {
                         const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
                         const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
 
-                        const proformaArgs = json.proforma_template_url
-                                ? {
-                                          draftId,
-                                          templateUrl: json.proforma_template_url,
-                                          items: listadoDescuentosRecargos,
-                                          coverageLabel: buildCoverageLabel(garantia),
-                                          matricula: datosVehiculo?.matricula || "",
-                                          marca: datosVehiculo?.marca || "",
-                                          modelo: datosVehiculo?.modelo || "",
-                                          emissionDate: emissionIso,
-                                          dueDate: dueIso,
-                                          vendorInfo,
-                                          paymentMethod: garantia?.metodo_pago || "",
-                                          transferIban:
-                                                  typeof json.transfer_iban === "string"
-                                                          ? json.transfer_iban.trim()
-                                                          : "",
-                                  }
-                                : null;
+                        const proformaHabilitada = shouldProcessProforma("autosave_response");
+                        const proformaArgs =
+                                proformaHabilitada && json.proforma_template_url
+                                        ? {
+                                                  draftId,
+                                                  templateUrl: json.proforma_template_url,
+                                                  items: listadoDescuentosRecargos,
+                                                  coverageLabel: buildCoverageLabel(garantia),
+                                                  matricula: datosVehiculo?.matricula || "",
+                                                  marca: datosVehiculo?.marca || "",
+                                                  modelo: datosVehiculo?.modelo || "",
+                                                  emissionDate: emissionIso,
+                                                  dueDate: dueIso,
+                                                  vendorInfo,
+                                                  paymentMethod: garantia?.metodo_pago || "",
+                                                  transferIban:
+                                                          typeof json.transfer_iban === "string"
+                                                                  ? json.transfer_iban.trim()
+                                                                  : "",
+                                          }
+                                        : null;
 
                         if (!finalize && certificateArgs) {
                                 scheduleCertificateGeneration(certificateArgs, {
