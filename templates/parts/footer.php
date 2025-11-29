@@ -100,6 +100,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $list_cache_generation = class_exists(GuaranteeRestController::class)
         ? GuaranteeRestController::get_list_cache_generation_snapshot()
         : 1;
+    $proforma_settings = class_exists(GuaranteeRestController::class)
+        ? GuaranteeRestController::get_proforma_feature_settings()
+        : [];
     $icon_pdf_html = Svg::icon('pdf');
     $icon_download_html = Svg::icon('download');
     $icon_plus_html = Svg::icon('plus');
@@ -132,6 +135,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             documents: {
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"
             },
+            proforma: <?php echo wp_json_encode($proforma_settings); ?>,
             features: {
                 exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
             },
@@ -140,7 +144,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             }
         };
     </script>
-    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.min.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
 <?php if ($is_breakdowns_page ?? false) : ?>

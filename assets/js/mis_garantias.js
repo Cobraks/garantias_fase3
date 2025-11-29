@@ -9738,14 +9738,20 @@ const ADD_DOC_KEY = "add-document";
     })();
     const traccionRowHtml = `<li class="detail__item${recargoClass("traccion")}"><strong>Tracción:</strong> ${traccionValue}</li>`;
     const proformaOptions =
-        goConfig && goConfig.proforma && goConfig.proforma.options
+        goConfig && goConfig.proforma && typeof goConfig.proforma.options === "object"
             ? goConfig.proforma.options
             : {};
-    const shouldShowProformaDocs = proformaOptions.mostrar_en_documentos === true;
+    const shouldShowProformaDocs =
+        (goConfig && goConfig.proforma && goConfig.proforma.showInDocuments === true) ||
+        proformaOptions.mostrar_en_documentos === true;
 
     console.log(
         `[Proforma]: Mostrar en documentación? ${shouldShowProformaDocs ? "Sí" : "No"}`,
-        { options: proformaOptions }
+        {
+            options: proformaOptions,
+            showInDocumentsFlag:
+                goConfig && goConfig.proforma ? goConfig.proforma.showInDocuments : undefined,
+        }
     );
 
     const docsSource = Array.isArray(data.documents)
