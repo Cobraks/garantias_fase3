@@ -80,8 +80,12 @@ export function getProformaFeatureSettings() {
         const allowedRoles = Array.isArray(raw.allowedRoles)
                 ? raw.allowedRoles.map((role) => String(role || "").toLowerCase())
                 : [];
+        const professionalPaymentModes = Array.isArray(raw.professionalPaymentModes)
+                ? raw.professionalPaymentModes.map((mode) => String(mode || "").toLowerCase())
+                : [];
         return {
                 enabled: raw.enabled !== false,
                 allowedRoles,
+                professionalPaymentModes,
         };
 }

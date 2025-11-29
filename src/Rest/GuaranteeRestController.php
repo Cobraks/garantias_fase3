@@ -49,6 +49,7 @@ class GuaranteeRestController
     private const OPTION_SUBGROUP_PROFORMA = 'factura_proforma';
     private const OPTION_FIELD_PROFORMA_ENABLED = 'activar_proforma_general';
     private const OPTION_FIELD_PROFORMA_TARGETS = 'activar_para';
+    private const OPTION_FIELD_PROFORMA_SHOW_PROFESSIONALS = 'mostrar_a_profesionales';
 
     private static $cache_hooks_registered = false;
     private static $list_cache_invalidated = [];
@@ -1899,6 +1900,7 @@ class GuaranteeRestController
         $defaults = [
             'enabled'       => true,
             'allowed_roles' => ['profesional', 'particular', 'gestoria'],
+            'professional_payment_modes' => ['transferencia', 'domiciliacion'],
         ];
 
         if (! function_exists('get_field')) {
@@ -1922,6 +1924,7 @@ class GuaranteeRestController
 
         $enabled_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_ENABLED] ?? null;
         $targets_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_TARGETS] ?? null;
+        $show_to_professionals_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_SHOW_PROFESSIONALS] ?? null;
 
         $enabled = $enabled_raw === null ? $defaults['enabled'] : (bool) $enabled_raw;
 
@@ -1944,9 +1947,31 @@ class GuaranteeRestController
             }
         }
 
+        $professional_payment_modes = [];
+        if (is_array($show_to_professionals_raw)) {
+            foreach ($show_to_professionals_raw as $item) {
+                $value = is_array($item)
+                    ? ($item['value'] ?? ($item['label'] ?? ''))
+                    : $item;
+
+                $normalized = self::normalize_proforma_payment_mode($value);
+                if ($normalized) {
+                    $professional_payment_modes[] = $normalized;
+                }
+            }
+        } elseif (is_string($show_to_professionals_raw) && $show_to_professionals_raw !== '') {
+            $normalized = self::normalize_proforma_payment_mode($show_to_professionals_raw);
+            if ($normalized) {
+                $professional_payment_modes[] = $normalized;
+            }
+        }
+
         $cached = [
             'enabled'       => $enabled,
             'allowed_roles' => array_values(array_unique($allowed_roles)),
+            'professional_payment_modes' => $professional_payment_modes
+                ? array_values(array_unique($professional_payment_modes))
+                : $defaults['professional_payment_modes'],
         ];
 
         return $cached;
@@ -1974,6 +1999,21 @@ class GuaranteeRestController
 
         $key = sanitize_key($value);
         return $map[$key] ?? '';
+    }
+
+    private static function normalize_proforma_payment_mode($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $key = sanitize_key($value);
+
+        if ($key === 'domiciliacion') {
+            return 'domiciliacion';
+        }
+
+        return $key === 'transferencia' ? 'transferencia' : '';
     }
 
     private static function hydrate_detail_document_urls(array $detail, $id)

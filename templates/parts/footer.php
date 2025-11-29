@@ -556,7 +556,8 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             },
             proforma: {
                 enabled: <?php echo ! empty($proforma_settings['enabled']) ? 'true' : 'false'; ?>,
-                allowedRoles: <?php echo wp_json_encode($proforma_settings['allowed_roles'] ?? []); ?>
+                allowedRoles: <?php echo wp_json_encode($proforma_settings['allowed_roles'] ?? []); ?>,
+                professionalPaymentModes: <?php echo wp_json_encode($proforma_settings['professional_payment_modes'] ?? []); ?>
             }
         };
     </script>
