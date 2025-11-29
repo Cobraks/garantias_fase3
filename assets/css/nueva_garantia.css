@@ -2816,11 +2816,11 @@ margin-top: .5rem;
   }
 
   .form-success__transfer-note {
-    background: linear-gradient(135deg, rgba(var(--go-color-e2001b-rgb), .08), rgba(var(--go-color-e2001b-rgb), .03));
+    background: linear-gradient(135deg, #ffe6e6, #fff3f3);
     color: var(--go-color-7f1d1d);
     padding: 1rem 1.25rem;
     border-left: 6px solid var(--color-primary);
-    border: 1px solid rgba(var(--go-color-e2001b-rgb), .18);
+    border: 1px solid #f5c2c7;
     border-radius: 10px;
     font-size: 1.05rem;
     font-weight: 700;
@@ -3094,7 +3094,7 @@ margin-top: .5rem;
 }
 
 :root[data-theme='dark'] .form-success__transfer-note {
-    background: rgba(61, 46, 16, 0.85);
+    background: linear-gradient(135deg, #3a0c0c, #240707);
     color: #fbd38d;
     border-left-color: #d69e2e;
 }

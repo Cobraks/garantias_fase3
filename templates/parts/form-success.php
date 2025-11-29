@@ -18,16 +18,16 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
     <p class="form-success__message" hidden></p>
 
     <div class="form-success__docs" hidden>
-        <a href="#" class="document-card" data-doc="certificate" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
         <?php if ($show_proforma_on_success) : ?>
             <a href="#" class="document-card" data-doc="proforma" hidden>
                 <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
                 <span class="document-card__title"></span>
             </a>
         <?php endif; ?>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
     </div>
 
     <div class="form-success__payment" hidden>
