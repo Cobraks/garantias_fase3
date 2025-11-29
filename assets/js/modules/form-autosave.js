@@ -3191,8 +3191,7 @@ export default function initAutosave() {
                                 ? `Gracias por contratar la garantía ${cleanPlan}.`
                                 : "Gracias por contratar tu garantía.";
                         message.textContent =
-                                `${intro} Estamos preparando la documentación y recibirás un correo de confirmación en unos instantes. ` +
-                                "Puedes descargarla ahora o acceder cuando quieras desde Mis Garantías.";
+                                `${intro} Puedes descargar la documentación ahora o acceder cuando quieras desde Mis Garantías.`;
                         message.hidden = false;
                 }
                 const loading = successBlock.querySelector(

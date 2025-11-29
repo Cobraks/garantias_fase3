@@ -19,13 +19,9 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
 
     <div class="form-success__payment" hidden>
         <div class="form-success__transfer" hidden>
-            <h3 class="form-success__transfer-title">
-                <?php echo Svg::icon('info', 'form-success__transfer-icon'); ?>
-                Transferencia bancaria
-            </h3>
             <p class="form-success__transfer-note">
                 <?php echo Svg::icon('warning', 'form-success__transfer-note-icon'); ?>
-                <span class="form-success__transfer-note-text">Realiza el pago antes de la fecha límite indicada.</span>
+                <span class="form-success__transfer-note-text">Realiza la transferencia antes del 6 de diciembre.</span>
             </p>
             <table class="form-success__transfer-table">
                 <tbody>
@@ -44,7 +40,7 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
                 </tbody>
             </table>
             <p class="form-success__transfer-instructions">
-                Puedes remitir el justificante desde tu panel de gestión de garantías o enviarlo por correo electrónico a
+                Puedes remitir el justificante desde tu panel de gestión o enviarlo por correo a
                 <a
                     href="mailto:garantias@360vo.es"
                     data-email-link
