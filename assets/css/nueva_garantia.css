@@ -2612,7 +2612,7 @@ margin-top: .5rem;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 1rem 1.5rem;
     margin: 1.75rem 0;
     padding: 0;
@@ -2816,22 +2816,24 @@ margin-top: .5rem;
   }
 
   .form-success__transfer-note {
-    background: var(--go-color-fffbe6);
-    color: var(--go-color-92400e);
-    padding: .75rem;
-    border-left: 4px solid var(--go-color-f59e0b);
-    border-radius: 6px;
-    font-size: 1rem;
-    font-weight: 500;
+    background: linear-gradient(135deg, rgba(var(--go-color-e2001b-rgb), .08), rgba(var(--go-color-e2001b-rgb), .03));
+    color: var(--go-color-7f1d1d);
+    padding: 1rem 1.25rem;
+    border-left: 6px solid var(--color-primary);
+    border: 1px solid rgba(var(--go-color-e2001b-rgb), .18);
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
-    gap: .5rem;
+    gap: .65rem;
     margin-bottom: 1rem;
+    box-shadow: 0 14px 30px rgba(var(--go-color-0f172a-rgb), .08);
   }
 
   .form-success__transfer-note-icon {
-    width: 1rem;
-    height: 1rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
 
   .form-success__transfer-table {

@@ -17,6 +17,19 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
     <p class="form-success__subtitle" data-plan></p>
     <p class="form-success__message" hidden></p>
 
+    <div class="form-success__docs" hidden>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
+            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+            <span class="document-card__title"></span>
+        </a>
+        <?php if ($show_proforma_on_success) : ?>
+            <a href="#" class="document-card" data-doc="proforma" hidden>
+                <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+                <span class="document-card__title"></span>
+            </a>
+        <?php endif; ?>
+    </div>
+
     <div class="form-success__payment" hidden>
         <div class="form-success__transfer" hidden>
             <p class="form-success__transfer-note">
@@ -54,18 +67,6 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
     <div class="form-success__loading">
         <span class="form-success__loading-text">Generando documentos…</span>
         <span class="form-success__loading-spinner" aria-hidden="true"></span>
-    </div>
-    <div class="form-success__docs" hidden>
-        <a href="#" class="document-card" data-doc="certificate" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
-        <?php if ($show_proforma_on_success) : ?>
-            <a href="#" class="document-card" data-doc="proforma" hidden>
-                <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-                <span class="document-card__title"></span>
-            </a>
-        <?php endif; ?>
     </div>
     <div class="form-success__actions">
         <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>
