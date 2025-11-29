@@ -404,6 +404,11 @@ export default function initAutosave() {
                 gestoria: "Gestorías",
         };
 
+        console.log("[Proforma] Ajustes iniciales", {
+                enabled: proformaSettings.enabled,
+                allowedRoles: proformaSettings.allowedRoles,
+                raw: rawProformaSettings,
+        });
         console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
         console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
 

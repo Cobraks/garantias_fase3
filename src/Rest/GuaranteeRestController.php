@@ -1940,10 +1940,6 @@ class GuaranteeRestController
             }
         }
 
-        if (empty($allowed_roles)) {
-            $allowed_roles = $defaults['allowed_roles'];
-        }
-
         $cached = [
             'enabled'       => $enabled,
             'allowed_roles' => array_values(array_unique($allowed_roles)),
