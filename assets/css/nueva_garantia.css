@@ -1385,6 +1385,8 @@ background: var(--go-color-00c0ff);
   display: flex;
   flex-direction: column;
   gap: 0;
+  width: 100%;
+  margin-inline: auto;
 }
 
 .form__plan--premium .form__plan-conditions,
