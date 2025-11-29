@@ -323,19 +323,15 @@ export default function initAutosave() {
         const proformaSettings = {
                 enabled: rawProformaSettings.enabled !== false,
                 allowedRoles: Array.isArray(rawProformaSettings.allowedRoles)
-                        ? rawProformaSettings.allowedRoles
-                                  .map((role) => normalizeProfessionalRole(role))
-                                  .filter(Boolean)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.allowedRoles
+                                                  .map((role) => normalizeProfessionalRole(role))
+                                                  .filter(Boolean),
+                                  ),
+                          )
                         : [],
         };
-
-        if (proformaSettings.allowedRoles.length === 0) {
-                proformaSettings.allowedRoles = [
-                        "profesional",
-                        "particular",
-                        "gestoria",
-                ];
-        }
 
         let proformaFlowEnabled = false;
         let lastProformaLog = {
@@ -402,10 +398,29 @@ export default function initAutosave() {
                 return normalizedBase;
         }
 
+        const PROFORMA_ROLE_LABELS = {
+                profesional: "Profesionales",
+                particular: "Particulares",
+                gestoria: "Gestorías",
+        };
+
+        console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
+        console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
+
+        function formatProformaRolesLabel() {
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return "Ninguno";
+                }
+
+                return proformaSettings.allowedRoles
+                        .map((role) => PROFORMA_ROLE_LABELS[role] || role)
+                        .join(", ");
+        }
+
         function isRoleAllowedForProforma(role) {
                 if (!role) return false;
                 if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
-                        return true;
+                        return false;
                 }
                 return proformaSettings.allowedRoles.includes(role);
         }
@@ -457,6 +472,11 @@ export default function initAutosave() {
         const usuarioSelect = document.getElementById("usuario-rol");
         if (usuarioSelect) {
                 usuarioSelect.addEventListener("change", () => {
+                        const selectedOption = usuarioSelect.options[usuarioSelect.selectedIndex];
+                        const userLabel = selectedOption?.textContent?.trim() || "Usuario";
+                        const userRole = resolveProfessionalRoleFromContext() || "";
+
+                        console.log(`[Proforma] ${userLabel}: Rol ${userRole || "desconocido"}`);
                         evaluateProformaFlow("usuario_change");
                 });
         }
