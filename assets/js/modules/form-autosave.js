@@ -439,11 +439,7 @@ function applyProformaPresentation(flags = {}) {
         proformaPresentation = { ...DEFAULT_PROFORMA_PRESENTATION, ...flags };
 }
 
-async function resolveProformaEligibility({
-        channelRole,
-        vendorUserId,
-        fallbackPaymentMethod = "",
-} = {}) {
+async function resolveProformaEligibility({ channelRole, fallbackPaymentMethod = "" } = {}) {
         const defaultResult = {
                 allowed: true,
                 presentation: { ...DEFAULT_PROFORMA_PRESENTATION },
@@ -466,16 +462,7 @@ async function resolveProformaEligibility({
         const transferIban = normalizeText(globalConfig.transferIban || "");
         const hasBaseTemplate = Boolean(globalConfig.baseDocument);
 
-        const paymentPref = await (async () => {
-                if (!vendorUserId) return resolvePaymentPreference({ fallbackMethod: fallbackPaymentMethod });
-                try {
-                        const acf = await fetchUserAcf(vendorUserId);
-                        return resolvePaymentPreference({ userAcf: acf, fallbackMethod: fallbackPaymentMethod });
-                } catch (err) {
-                        console.warn("[AUTOSAVE] resolveProformaEligibility payment fallback", err);
-                        return resolvePaymentPreference({ fallbackMethod: fallbackPaymentMethod });
-                }
-        })();
+        const paymentPref = resolvePaymentPreference({ fallbackMethod: fallbackPaymentMethod });
 
         const normalizedPaymentMethod = paymentPref.normalizedMethod || defaultResult.normalizedPaymentMethod;
 
@@ -3845,11 +3832,8 @@ export default function initAutosave() {
                         const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
                         const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
 
-                        const vendorUserId =
-                                garantia?.concesionario_empresa_profesional || getCurrentUserId();
                         const proformaEligibility = await resolveProformaEligibility({
                                 channelRole: garantia?.canal_venta || vendorInfo?.role || "",
-                                vendorUserId,
                                 fallbackPaymentMethod: garantia?.metodo_pago || "",
                         });
                         applyProformaPresentation(proformaEligibility.presentation);
