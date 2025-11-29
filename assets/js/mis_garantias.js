@@ -9743,6 +9743,11 @@ const ADD_DOC_KEY = "add-document";
             : {};
     const shouldShowProformaDocs = proformaOptions.mostrar_en_documentos === true;
 
+    console.log(
+        `[Proforma]: Mostrar en documentación? ${shouldShowProformaDocs ? "Sí" : "No"}`,
+        { options: proformaOptions }
+    );
+
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
