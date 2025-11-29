@@ -57,12 +57,12 @@ $show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pa
     </div>
     <div class="form-success__docs" hidden>
         <p class="form-success__docs-message" hidden></p>
-        <a href="#" class="document-card document-card--success" data-doc="certificate" hidden>
+        <a href="#" class="document-card" data-doc="certificate" hidden>
             <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
             <span class="document-card__title"></span>
         </a>
         <?php if ($show_proforma_on_success) : ?>
-            <a href="#" class="document-card document-card--success" data-doc="proforma" hidden>
+            <a href="#" class="document-card" data-doc="proforma" hidden>
                 <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
                 <span class="document-card__title"></span>
             </a>
