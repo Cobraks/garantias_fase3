@@ -1928,7 +1928,11 @@ class GuaranteeRestController
         $allowed_roles = [];
         if (is_array($targets_raw)) {
             foreach ($targets_raw as $target) {
-                $normalized = self::normalize_proforma_role($target);
+                $value = is_array($target)
+                    ? ($target['value'] ?? ($target['label'] ?? ''))
+                    : $target;
+
+                $normalized = self::normalize_proforma_role($value);
                 if ($normalized) {
                     $allowed_roles[] = $normalized;
                 }
