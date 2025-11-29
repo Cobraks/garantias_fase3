@@ -369,6 +369,10 @@ async function loadUsuariosPorCanal(channelSlug, { keepValue = false } = {}) {
                                 const option = document.createElement("option");
                                 option.value = user.id;
                                 option.textContent = buildUserLabel(user, channelSlug);
+                                option.dataset.role =
+                                        getChannelSlug(user.role) ||
+                                        getChannelSlug(user.channel) ||
+                                        channelSlug || "";
                                 option.dataset.companyName =
                                         user.company_name || user.company?.name || "";
                                 option.dataset.personalName =
