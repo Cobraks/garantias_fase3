@@ -1318,6 +1318,8 @@ class GuaranteeRestController
 
         $is_cancelled = self::is_cancelled_state($post_id);
         $cancel_date = self::get_cancellation_date($post_id);
+        $proforma_settings = self::get_proforma_feature_settings();
+        $show_proforma_in_documents = ! empty($proforma_settings['options']['mostrar_en_documentos']);
 
         $static_docs = [
             [
@@ -1335,7 +1337,10 @@ class GuaranteeRestController
                 'is_cancelled_certificate' => $is_cancelled,
                 'cancel_date'   => $cancel_date,
             ],
-            [
+        ];
+
+        if ($show_proforma_in_documents) {
+            $static_docs[] = [
                 'key'           => 'proforma',
                 'title'         => __('Factura proforma', 'garantias-online-360vo'),
                 'routeType'     => 'proforma',
@@ -1345,29 +1350,31 @@ class GuaranteeRestController
                 'allowed_users' => [],
                 'filename'      => '',
                 'source'        => 'static',
-            ],
-            [
-                'key'           => 'cobertura',
-                'title'         => __('Cobertura', 'garantias-online-360vo'),
-                'routeType'     => 'cobertura',
-                'is_private'    => false,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ],
-            [
-                'key'           => 'condicionado',
-                'title'         => __('Condicionado', 'garantias-online-360vo'),
-                'routeType'     => 'condicionado',
-                'is_private'    => false,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ],
+            ];
+        }
+
+        $static_docs[] = [
+            'key'           => 'cobertura',
+            'title'         => __('Cobertura', 'garantias-online-360vo'),
+            'routeType'     => 'cobertura',
+            'is_private'    => false,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
+        ];
+
+        $static_docs[] = [
+            'key'           => 'condicionado',
+            'title'         => __('Condicionado', 'garantias-online-360vo'),
+            'routeType'     => 'condicionado',
+            'is_private'    => false,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
         ];
 
         foreach ($static_docs as $doc) {

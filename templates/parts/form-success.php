@@ -4,6 +4,11 @@ if (! defined('ABSPATH')) {
 }
 
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Rest\GuaranteeRestController;
+?>
+<?php
+$proforma_settings = GuaranteeRestController::get_proforma_feature_settings();
+$show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pantalla_exito']);
 ?>
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>
@@ -60,10 +65,12 @@ use GarantiasOnline360VO\Svg;
             <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
             <span class="document-card__title"></span>
         </a>
-        <a href="#" class="document-card" data-doc="proforma" hidden>
-            <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
-            <span class="document-card__title"></span>
-        </a>
+        <?php if ($show_proforma_on_success) : ?>
+            <a href="#" class="document-card" data-doc="proforma" hidden>
+                <span class="document-card__icon" aria-hidden="true"><?php echo Svg::icon('pdf'); ?></span>
+                <span class="document-card__title"></span>
+            </a>
+        <?php endif; ?>
     </div>
     <div class="form-success__actions">
         <a href="<?php echo esc_url(home_url('/garantias-online/nueva-garantia/')); ?>" class="form-success__new" data-reset-draft>Añadir nueva garantía</a>

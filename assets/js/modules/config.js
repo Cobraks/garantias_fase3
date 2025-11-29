@@ -93,6 +93,7 @@ export function getProformaFeatureSettings() {
                                 ? true
                                 : Boolean(raw.highlightTotal),
                 showOnSuccessScreen: options.mostrar_en_pantalla_exito === true,
+                showInDocuments: options.mostrar_en_documentos === true,
                 options,
         };
 }
