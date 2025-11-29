@@ -17,6 +17,15 @@ import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 
 const pdfCache = new Map();
+const acfOptionsCache = { promise: null, data: null };
+const userAcfCache = new Map();
+const DEFAULT_PROFORMA_PRESENTATION = {
+        subrayar_total: true,
+        mostrar_en_documentos: true,
+        mostrar_en_pantalla_exito: true,
+        enviar_por_correo: false,
+};
+let proformaPresentation = { ...DEFAULT_PROFORMA_PRESENTATION };
 
 const CHANNEL_NORMALIZATION = {
         profesional: "profesional",
@@ -100,6 +109,160 @@ function normalizeChannel(value) {
         return CHANNEL_NORMALIZATION[key] || "";
 }
 
+function toIsoDateString(input) {
+        const date = input instanceof Date ? input : new Date(input);
+        if (Number.isNaN(date.getTime())) return "";
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+}
+
+function normalizeText(value) {
+        if (typeof value === "string") {
+                return value.trim();
+        }
+        if (value === null || value === undefined) return "";
+        return String(value).trim();
+}
+
+function normalizeArray(values) {
+        if (Array.isArray(values)) return values;
+        if (values === undefined || values === null || values === "") return [];
+        return [values];
+}
+
+function normalizeCheckbox(values = []) {
+        return normalizeArray(values)
+                .map((value) => normalizeText(value).toLowerCase())
+                .filter(Boolean);
+}
+
+function normalizeBool(value, { fallback = false } = {}) {
+        if (value === true || value === false) return value;
+        if (typeof value === "string") {
+                const normalized = value.trim().toLowerCase();
+                if (normalized === "1" || normalized === "true" || normalized === "yes") return true;
+                if (normalized === "0" || normalized === "false" || normalized === "no") return false;
+        }
+        return fallback;
+}
+
+function normalizeVendorInfo(raw = {}) {
+        const normalized = {
+                role: normalizeText(raw.role || raw.channel || ""),
+                name: normalizeText(raw.name || ""),
+                companyName: normalizeText(raw.companyName || ""),
+                personalName: normalizeText(raw.personalName || ""),
+                cif: normalizeText(raw.cif || ""),
+                email: normalizeText(raw.email || ""),
+                phone: normalizeText(raw.phone || ""),
+                address: {
+                        street: normalizeText(raw.address?.street || ""),
+                        zip: normalizeText(raw.address?.zip || ""),
+                        city: normalizeText(raw.address?.city || ""),
+                        province: normalizeText(raw.address?.province || ""),
+                },
+        };
+
+        if (!normalized.role) {
+                normalized.role = "";
+        }
+
+        if (!normalized.name) {
+                normalized.name = normalized.companyName || normalized.personalName || "";
+        }
+
+        if (normalized.address.city && normalized.address.province) {
+                const samePlace =
+                        normalized.address.city.localeCompare(normalized.address.province, undefined, {
+                                sensitivity: "base",
+                        }) === 0;
+                if (samePlace) {
+                        normalized.address.province = normalized.address.city;
+                }
+        }
+
+        return normalized;
+}
+
+function pickFirstNonEmpty(candidates = []) {
+        for (const candidate of candidates) {
+                const text = normalizeText(candidate);
+                if (text) return text;
+        }
+        return "";
+}
+
+function buildVendorInfoFromResponse(raw = {}, fallbackChannel = "") {
+        const detail = raw.detail || raw || {};
+        const company = detail.vendor_company || raw.vendor_company || {};
+        const address = company.address || {};
+        const channelSlug = normalizeChannel(
+                fallbackChannel ||
+                        detail.canal_venta_value ||
+                        detail.canal_venta ||
+                        raw.canal_venta_value ||
+                        raw.canal_venta ||
+                        company?.type?.value ||
+                        company?.type?.label ||
+                        ""
+        );
+        const role = channelSlug === "particular" ? "particular" : "profesional";
+
+        const personalFirst = normalizeText(detail.concesionario_personal_first || "");
+        const personalLast = normalizeText(detail.concesionario_personal_last || "");
+        const personalFull = [personalFirst, personalLast].filter(Boolean).join(" ");
+
+        const vendorInfo = {
+                role,
+                name: role === "particular" ? pickFirstNonEmpty([detail.concesionario_personal, personalFull]) : "",
+                companyName: pickFirstNonEmpty([
+                        company.legal_name,
+                        company.trade_name,
+                        company.name,
+                        detail.concesionario,
+                        raw.concesionario,
+                ]),
+                personalName: pickFirstNonEmpty([
+                        detail.concesionario_personal,
+                        personalFull,
+                        raw.concesionario_personal,
+                ]),
+                cif: pickFirstNonEmpty([
+                        company.tax_id,
+                        detail.cif,
+                        raw.cif,
+                        detail.vendor_tax_id,
+                        raw.vendor_tax_id,
+                ]),
+                email: pickFirstNonEmpty([
+                        detail.email_vendedor,
+                        raw.email_vendedor,
+                        detail.email_vendedor_registro,
+                        raw.email_vendedor_registro,
+                ]),
+                phone: pickFirstNonEmpty([detail.telefono_vendedor, raw.telefono_vendedor]),
+                address: {
+                        street: pickFirstNonEmpty([address.street]),
+                        zip: pickFirstNonEmpty([address.zip]),
+                        city: pickFirstNonEmpty([address.city]),
+                        province: pickFirstNonEmpty([address.state]),
+                },
+        };
+
+        return normalizeVendorInfo(vendorInfo);
+}
+
+function addDays(baseDate, days) {
+        const date = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate);
+        if (Number.isNaN(date.getTime())) return null;
+        date.setDate(date.getDate() + days);
+        return date;
+}
+
 async function loadStaticPdf(url, options = {}) {
         if (!url) return null;
 
@@ -125,6 +288,203 @@ async function loadStaticPdf(url, options = {}) {
                 pdfCache.set(cacheKey, bytes);
         }
         return bytes;
+}
+
+async function fetchAcfOptions() {
+        if (acfOptionsCache.data) return acfOptionsCache.data;
+        if (acfOptionsCache.promise) return acfOptionsCache.promise;
+
+        const url = `${getRestRoot()}acf/v3/options/options`;
+        const headers = {};
+        const nonce = getRestNonce();
+        if (nonce) headers["X-WP-Nonce"] = nonce;
+        acfOptionsCache.promise = fetch(url, { headers })
+                .then((res) => {
+                        if (!res.ok) {
+                                throw new Error(`HTTP ${res.status}`);
+                        }
+                        return res.json();
+                })
+                .then((json) => {
+                        const acf = json?.acf || {};
+                        acfOptionsCache.data = acf;
+                        return acf;
+                })
+                .catch((err) => {
+                        console.warn("[AUTOSAVE] fetchAcfOptions failed", err);
+                        acfOptionsCache.data = {};
+                        return {};
+                })
+                .finally(() => {
+                        acfOptionsCache.promise = null;
+                });
+
+        return acfOptionsCache.promise;
+}
+
+async function fetchUserAcf(userId) {
+        if (!userId) return {};
+        if (userAcfCache.has(userId)) {
+                return userAcfCache.get(userId);
+        }
+
+        const url = `${getRestRoot()}acf/v3/users/${userId}`;
+        const headers = {};
+        const nonce = getRestNonce();
+        if (nonce) headers["X-WP-Nonce"] = nonce;
+
+        const promise = fetch(url, { headers })
+                .then((res) => {
+                        if (!res.ok) {
+                                throw new Error(`HTTP ${res.status}`);
+                        }
+                        return res.json();
+                })
+                .then((json) => json?.acf || {})
+                .catch((err) => {
+                        console.warn("[AUTOSAVE] fetchUserAcf failed", { userId, err });
+                        return {};
+                });
+
+        userAcfCache.set(userId, promise);
+        return promise.then((data) => {
+                userAcfCache.set(userId, data);
+                return data;
+        });
+}
+
+function normalizePresentationFlags(raw = {}) {
+        const normalized = { ...DEFAULT_PROFORMA_PRESENTATION };
+        const source = raw.presentacion_notificaciones || raw.flags || raw;
+        const selected = normalizeCheckbox(source);
+        const hasSelection = selected.length > 0;
+        Object.keys(DEFAULT_PROFORMA_PRESENTATION).forEach((key) => {
+                if (hasSelection) {
+                        normalized[key] = selected.includes(key);
+                }
+        });
+        return normalized;
+}
+
+function mergePresentationFlags(baseFlags = {}, overrideFlags = {}) {
+        const merged = { ...DEFAULT_PROFORMA_PRESENTATION, ...normalizePresentationFlags(baseFlags) };
+        Object.keys(DEFAULT_PROFORMA_PRESENTATION).forEach((key) => {
+                if (typeof overrideFlags[key] === "boolean") {
+                        merged[key] = overrideFlags[key];
+                }
+        });
+        return merged;
+}
+
+function normalizePaymentMethod(value) {
+        const normalized = normalizeText(value).toLowerCase();
+        if (!normalized) return "";
+        if (normalized.includes("domic")) return "domiciliacion";
+        if (normalized.includes("transfer")) return "transferencia";
+        return normalized;
+}
+
+function resolvePaymentPreference({ userAcf = {}, fallbackMethod = "" } = {}) {
+        const gestionPagos = userAcf.gestion_pagos || {};
+        const gestionSepa = gestionPagos.gestion_sepa || {};
+        const estadoDocumentos = gestionSepa.estado_documentos || {};
+        const metodoPago = normalizeCheckbox(estadoDocumentos.metodo_de_pago);
+        const estadoSepa = normalizeCheckbox(estadoDocumentos.estado_sepa);
+        const hasDirectDebit = metodoPago.some((m) => m.includes("domiciliacion"));
+        const hasTransfer = metodoPago.includes("transferencia");
+        const sepaSigned = estadoSepa.includes("firmado");
+
+        let normalizedMethod = "";
+        if (hasDirectDebit || sepaSigned) {
+                normalizedMethod = "domiciliacion";
+        } else if (hasTransfer) {
+                normalizedMethod = "transferencia";
+        }
+
+        if (!normalizedMethod) {
+                normalizedMethod = normalizePaymentMethod(fallbackMethod);
+        }
+
+        return { normalizedMethod, estadoSepa, rawMetodo: metodoPago };
+}
+
+function normalizeProformaGlobalConfig(acf = {}) {
+        const facturacion = acf.facturacion || {};
+        const proforma = facturacion.factura_proforma || {};
+        const presentacion = normalizePresentationFlags(proforma.presentacion_notificaciones || {});
+        return {
+                enabled: normalizeBool(proforma.activar_proforma_general, { fallback: false }),
+                roles: normalizeCheckbox(proforma.activar_para),
+                showForProfessionals: normalizeCheckbox(proforma.mostrar_a_profesionales),
+                presentation: presentacion,
+                baseDocument: proforma.documentacion_base_proforma,
+                transferIban: normalizeText(facturacion.datos_bancarios?.iban_360vo || ""),
+        };
+}
+
+function applyProformaPresentation(flags = {}) {
+        proformaPresentation = { ...DEFAULT_PROFORMA_PRESENTATION, ...flags };
+}
+
+async function resolveProformaEligibility({
+        channelRole,
+        vendorUserId,
+        fallbackPaymentMethod = "",
+} = {}) {
+        const defaultResult = {
+                allowed: true,
+                presentation: { ...DEFAULT_PROFORMA_PRESENTATION },
+                normalizedPaymentMethod: normalizePaymentMethod(fallbackPaymentMethod),
+                transferIban: "",
+        };
+
+        let globalConfig = null;
+        try {
+                const optionsAcf = await fetchAcfOptions();
+                globalConfig = normalizeProformaGlobalConfig(optionsAcf || {});
+        } catch (err) {
+                console.warn("[AUTOSAVE] resolveProformaEligibility options error", err);
+        }
+
+        if (!globalConfig) return defaultResult;
+
+        const basePresentation = mergePresentationFlags(globalConfig.presentation);
+        const normalizedRole = normalizeChannel(channelRole) || "";
+        const transferIban = normalizeText(globalConfig.transferIban || "");
+        const hasBaseTemplate = Boolean(globalConfig.baseDocument);
+
+        const paymentPref = await (async () => {
+                if (!vendorUserId) return resolvePaymentPreference({ fallbackMethod: fallbackPaymentMethod });
+                try {
+                        const acf = await fetchUserAcf(vendorUserId);
+                        return resolvePaymentPreference({ userAcf: acf, fallbackMethod: fallbackPaymentMethod });
+                } catch (err) {
+                        console.warn("[AUTOSAVE] resolveProformaEligibility payment fallback", err);
+                        return resolvePaymentPreference({ fallbackMethod: fallbackPaymentMethod });
+                }
+        })();
+
+        const normalizedPaymentMethod = paymentPref.normalizedMethod || defaultResult.normalizedPaymentMethod;
+
+        let allowed = Boolean(globalConfig.enabled && hasBaseTemplate);
+
+        if (allowed && globalConfig.roles.length > 0 && !globalConfig.roles.includes(normalizedRole)) {
+                allowed = false;
+        }
+
+        if (allowed && normalizedRole === "profesional") {
+                const allowedModes = globalConfig.showForProfessionals;
+                if (allowedModes.length > 0) {
+                        allowed = allowedModes.includes(normalizedPaymentMethod);
+                }
+        }
+
+        return {
+                allowed,
+                presentation: basePresentation,
+                normalizedPaymentMethod,
+                transferIban,
+        };
 }
 
 function stableSerialize(value) {
@@ -371,6 +731,9 @@ export default function initAutosave() {
                 for (const doc of AVAILABLE_DOCS) {
                         const url = latestDocLinks?.[doc.key];
                         if (!url) continue;
+                        if (doc.key === "proforma" && !proformaPresentation.mostrar_en_pantalla_exito) {
+                                continue;
+                        }
                         const link = docsContainer.querySelector(
                                 `[data-doc="${doc.key}"]`
                         );
@@ -987,13 +1350,39 @@ export default function initAutosave() {
         }
 
         function computeProformaSignature(rawArgs = {}) {
-                const { templateUrl, items, coverageLabel } = normalizeProformaArgs(rawArgs);
+                const {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                        presentation,
+                } = normalizeProformaArgs(rawArgs);
 
                 if (!templateUrl || !items || items.length === 0) {
                         return "";
                 }
 
-                const payload = { templateUrl, items, coverageLabel };
+                const payload = {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                        presentation,
+                };
 
                 return encodeSignaturePayload(payload);
         }
@@ -1122,6 +1511,34 @@ export default function initAutosave() {
                 normalized.coverageLabel = typeof rawArgs.coverageLabel === "string"
                         ? rawArgs.coverageLabel.trim()
                         : "";
+                normalized.matricula = typeof rawArgs.matricula === "string"
+                        ? rawArgs.matricula.trim()
+                        : "";
+                normalized.marca = typeof rawArgs.marca === "string" ? rawArgs.marca.trim() : "";
+                normalized.modelo = typeof rawArgs.modelo === "string" ? rawArgs.modelo.trim() : "";
+
+                normalized.vendorInfo = normalizeVendorInfo(rawArgs.vendorInfo || {});
+
+                normalized.paymentMethod = typeof rawArgs.paymentMethod === "string"
+                        ? rawArgs.paymentMethod.trim()
+                        : "";
+                normalized.transferIban = typeof rawArgs.transferIban === "string"
+                        ? rawArgs.transferIban.trim()
+                        : "";
+
+                const rawPresentation =
+                        typeof rawArgs.presentation === "object" && rawArgs.presentation !== null
+                                ? rawArgs.presentation
+                                : {};
+                normalized.presentation = mergePresentationFlags(
+                        DEFAULT_PROFORMA_PRESENTATION,
+                        normalizePresentationFlags(rawPresentation)
+                );
+
+                const emissionIso = toIsoDateString(rawArgs.emissionDate);
+                const dueIso = toIsoDateString(rawArgs.dueDate);
+                normalized.emissionDate = emissionIso;
+                normalized.dueDate = dueIso;
 
                 return normalized;
         }
@@ -1156,6 +1573,15 @@ export default function initAutosave() {
                 templateUrl,
                 items,
                 coverageLabel: rawCoverageLabel,
+                matricula,
+                marca,
+                modelo,
+                emissionDate,
+                dueDate,
+                vendorInfo,
+                paymentMethod,
+                transferIban,
+                presentation,
                 signature,
         }) {
                 if (!draftId || !templateUrl || !Array.isArray(items) || items.length === 0) {
@@ -1192,6 +1618,83 @@ export default function initAutosave() {
                 });
                 const robotoMono = await pdfDoc.embedFont(robotoBytes);
                 const robotoMonoBold = await pdfDoc.embedFont(robotoBoldBytes);
+
+                let interRegular = null;
+                let interMedium = null;
+                let interBold = null;
+                let interExtraBold = null;
+                let interExtraBoldDisplay = null;
+                try {
+                        const interRegularUrl = new URL("../../fonts/Inter_18pt-Regular.ttf", import.meta.url);
+                        const interRegularBytes = await loadStaticPdf(interRegularUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-regular",
+                        });
+                        if (interRegularBytes) {
+                                interRegular = await pdfDoc.embedFont(interRegularBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Regular load failed", err);
+                }
+                try {
+                        const interMediumUrl = new URL("../../fonts/Inter_18pt-Medium.ttf", import.meta.url);
+                        const interMediumBytes = await loadStaticPdf(interMediumUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-medium",
+                        });
+                        if (interMediumBytes) {
+                                interMedium = await pdfDoc.embedFont(interMediumBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Medium load failed", err);
+                }
+                try {
+                        const interBoldUrl = new URL("../../fonts/Inter_18pt-Bold.ttf", import.meta.url);
+                        const interBoldBytes = await loadStaticPdf(interBoldUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-bold",
+                        });
+                        if (interBoldBytes) {
+                                interBold = await pdfDoc.embedFont(interBoldBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter Bold load failed", err);
+                }
+                try {
+                        const interExtraBoldUrl = new URL(
+                                "../../fonts/Inter_18pt-ExtraBold.ttf",
+                                import.meta.url
+                        );
+                        const interExtraBoldBytes = await loadStaticPdf(interExtraBoldUrl.href, {
+                                cache: true,
+                                cacheKey: "font:inter-18pt-extrabold",
+                        });
+                        if (interExtraBoldBytes) {
+                                interExtraBold = await pdfDoc.embedFont(interExtraBoldBytes);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter ExtraBold load failed", err);
+                }
+                try {
+                        const interExtraBoldDisplayUrl = new URL(
+                                "../../fonts/Inter_28pt-ExtraBold.ttf",
+                                import.meta.url
+                        );
+                        const interExtraBoldDisplayBytes = await loadStaticPdf(
+                                interExtraBoldDisplayUrl.href,
+                                {
+                                        cache: true,
+                                        cacheKey: "font:inter-28pt-extrabold",
+                                }
+                        );
+                        if (interExtraBoldDisplayBytes) {
+                                interExtraBoldDisplay = await pdfDoc.embedFont(
+                                        interExtraBoldDisplayBytes
+                                );
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] Inter 28pt ExtraBold load failed", err);
+                }
 
                 const numberFormatter = new Intl.NumberFormat("es-ES", {
                         minimumFractionDigits: 2,
@@ -1251,20 +1754,329 @@ export default function initAutosave() {
                         return null;
                 };
 
-		const conceptoRect = resolveRect("concepto_1");
-		const importeRect = resolveRect("importe_1");
-		const mmToPt = (mm) => (mm * 72) / 25.4;
-                const totalHighlightSvgPath =
-                        "M160.3,26.55c-6.71-.67-13.79-.23-20.46.54-9.23,1.07-18.54,1.14-27.82,1.13-9.75-.01-19.48.25-29.22-.29-26.12-1.46-52.59-2.72-78.65.35L1.58,10.04h2.57c26.06-3.06,52.53-1.81,78.65-.35,9.75.54,19.47.28,29.22.29,9.28.01,18.58-.06,27.82-1.13,6.67-.77,15.29-1.54,22-.87l-1.54,18.56Z";
+                const resolveAnyRect = (...names) => {
+                        for (const name of names) {
+                                if (!name) continue;
+                                const rect = resolveRect(name);
+                                if (rect) return { name, rect };
+                        }
+                        return null;
+                };
 
+                const conceptoRect = resolveRect("concepto_1");
+                const importeRect = resolveRect("importe_1");
+                const mmToPt = (mm) => (mm * 72) / 25.4;
                 const coverageLabel = (rawCoverageLabel || "").trim();
                 const defaultRowHeight = mmToPt(12.7);
-		const rowHeight =
-				(conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
-		const fontSize = 10;
-		const borderThickness = 0.35;
+                const rowHeight =
+                                (conceptoRect?.height || importeRect?.height || defaultRowHeight) * 1;
+                const fontSize = 10;
+                const borderThickness = 0.35;
+                const normalizedVendorInfo = normalizeVendorInfo(vendorInfo || {});
+                const normalizedPaymentMethod = typeof paymentMethod === "string"
+                        ? paymentMethod.trim().toLowerCase()
+                        : "";
+                const normalizedTransferIban = typeof transferIban === "string"
+                        ? transferIban.trim()
+                        : "";
 
-		const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
+                const parseDateValue = (value) => {
+                        if (!value) return null;
+                        const date = value instanceof Date ? value : new Date(value);
+                        return Number.isNaN(date.getTime()) ? null : date;
+                };
+
+                const formatShortEsDate = (value) => {
+                        const date = parseDateValue(value);
+                        if (!date) return "";
+                        const months = [
+                                "ene.",
+                                "feb.",
+                                "mar.",
+                                "abr.",
+                                "may.",
+                                "jun.",
+                                "jul.",
+                                "ago.",
+                                "sep.",
+                                "oct.",
+                                "nov.",
+                                "dic.",
+                        ];
+                        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+                };
+
+                const resolvedEmissionLabel =
+                        formatShortEsDate(emissionDate) || formatShortEsDate(new Date());
+                const resolvedDueLabel =
+                        formatShortEsDate(dueDate) || formatShortEsDate(addDays(new Date(), 2));
+
+                const refEmisionRect = resolveRect("ref_emision");
+                if (refEmisionRect) {
+                        const labelFont =
+                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const valueFont = interRegular || robotoMono;
+                        const referenceLines = [
+                                {
+                                        label: "Ref.",
+                                        value: (matricula || "").trim(),
+                                },
+                                {
+                                        label: "Emisión:",
+                                        value: resolvedEmissionLabel,
+                                },
+                                {
+                                        label: "Vencimiento:",
+                                        value: resolvedDueLabel,
+                                        color: PDFLib.rgb(0.8, 0, 0),
+                                },
+                        ];
+
+                        const referenceFontSize = 10;
+                        const referenceLineHeight = 12;
+                        const baseY = refEmisionRect.y;
+                        const extraSpacing = mmToPt(1);
+                        const afterSpacingByIndex = {
+                                0: extraSpacing, // Ref.
+                                1: extraSpacing, // Emisión
+                                2: extraSpacing, // Vencimiento
+                        };
+
+                        const cumulativeOffsets = [];
+                        let offset = 0;
+                        for (let i = referenceLines.length - 1; i >= 0; i -= 1) {
+                                cumulativeOffsets[i] = offset;
+                                offset += referenceLineHeight + (afterSpacingByIndex[i] || 0);
+                        }
+
+                        referenceLines.forEach((line, index) => {
+                                const y = baseY + cumulativeOffsets[index];
+                                const color = line.color || PDFLib.rgb(0, 0, 0);
+                                const labelText = line.label ? `${line.label} ` : "";
+                                const labelWidth = labelFont.widthOfTextAtSize(
+                                        labelText,
+                                        referenceFontSize
+                                );
+                                const valueText = (line.value || "").trim();
+                                const valueWidth = valueFont.widthOfTextAtSize(
+                                        valueText,
+                                        referenceFontSize
+                                );
+                                const totalWidth = labelWidth + valueWidth;
+                                const x = refEmisionRect.x + refEmisionRect.width - totalWidth;
+
+                                page.drawText(labelText, {
+                                        x,
+                                        y,
+                                        size: referenceFontSize,
+                                        font: labelFont,
+                                        color,
+                                });
+
+                                page.drawText(valueText, {
+                                        x: x + labelWidth,
+                                        y,
+                                        size: referenceFontSize,
+                                        font: valueFont,
+                                        color,
+                                });
+                        });
+                }
+
+                const objetoCoberturaRect = resolveRect("objeto_cobertura");
+                if (objetoCoberturaRect) {
+                        const baseFont = interRegular || robotoMono;
+                        const boldFont = interBold || interRegular || robotoMonoBold || robotoMono;
+                        const textSize = 10;
+                        const matriculaLabel = (matricula || "").trim();
+                        const marcaModeloLabel = [marca, modelo]
+                                .map((value) => (value || "").trim())
+                                .filter(Boolean)
+                                .join(" ");
+                        const segments = [
+                                { text: "Vehículo objeto de la cobertura: ", font: baseFont },
+                        ];
+
+                        if (matriculaLabel) {
+                                segments.push({ text: matriculaLabel, font: boldFont });
+                        }
+
+                        if (matriculaLabel && marcaModeloLabel) {
+                                segments.push({ text: " - ", font: baseFont });
+                        }
+
+                        if (marcaModeloLabel) {
+                                segments.push({ text: marcaModeloLabel, font: boldFont });
+                        }
+
+                        let cursorX = objetoCoberturaRect.x;
+                        const cursorY = objetoCoberturaRect.y;
+                        segments.forEach(({ text, font }) => {
+                                if (!text) return;
+                                const width = font.widthOfTextAtSize(text, textSize);
+                                page.drawText(text, {
+                                        x: cursorX,
+                                        y: cursorY,
+                                        size: textSize,
+                                        font,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                });
+                                cursorX += width;
+                        });
+                }
+
+                const vendorAnchor = resolveAnyRect(
+                        "datos_cliente",
+                        "datos_vendedor",
+                        "vendedor",
+                        "canal_venta",
+                        "datos_canal_venta",
+                        "canal_de_venta"
+                );
+
+                if (vendorAnchor?.rect) {
+                        const { rect, name: vendorFieldName } = vendorAnchor;
+                        const isParticular = normalizedVendorInfo.role === "particular";
+                        const mediumFont =
+                                interMedium || interBold || interRegular || robotoMonoBold || robotoMono;
+                        const regularFont = interRegular || robotoMono;
+                        const defaultLineHeight = 12;
+                        const firstLineHeight = 16.8;
+                        const gapAfterFirst = mmToPt(2);
+                        const gapAfterLine = mmToPt(1);
+                        const lines = [];
+
+                        const nameLine = isParticular
+                                ? normalizedVendorInfo.name || normalizedVendorInfo.personalName
+                                : normalizedVendorInfo.companyName || normalizedVendorInfo.name;
+                        if (nameLine) {
+                                lines.push({
+                                        text: nameLine,
+                                        font: mediumFont,
+                                        size: 14,
+                                        lineHeight: firstLineHeight,
+                                        gap: gapAfterFirst,
+                                });
+                        }
+
+                        if (!isParticular && normalizedVendorInfo.cif) {
+                                lines.push({
+                                        text: normalizedVendorInfo.cif,
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        const contactParts = [
+                                normalizedVendorInfo.email,
+                                normalizedVendorInfo.phone,
+                        ].filter(Boolean);
+                        if (contactParts.length) {
+                                lines.push({
+                                        text: contactParts.join("    "),
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        const addressParts = [];
+                        if (normalizedVendorInfo.address?.street) {
+                                addressParts.push(normalizedVendorInfo.address.street);
+                        }
+                        if (normalizedVendorInfo.address?.zip) {
+                                addressParts.push(normalizedVendorInfo.address.zip);
+                        }
+                        const city = normalizedVendorInfo.address?.city;
+                        const province = normalizedVendorInfo.address?.province;
+                        if (city) {
+                                addressParts.push(city);
+                        }
+                        if (
+                                province &&
+                                (!city || province.localeCompare(city, undefined, { sensitivity: "base" }) !== 0)
+                        ) {
+                                addressParts.push(province);
+                        }
+
+                        if (addressParts.length) {
+                                lines.push({
+                                        text: addressParts.join(", "),
+                                        font: regularFont,
+                                        size: 10,
+                                        lineHeight: defaultLineHeight,
+                                        gap: gapAfterLine,
+                                });
+                        }
+
+                        if (lines.length) {
+                                const baseY = rect.y;
+                                const cumulativeOffsets = [];
+                                let offset = 0;
+
+                                for (let i = lines.length - 1; i >= 0; i -= 1) {
+                                        cumulativeOffsets[i] = offset;
+                                        const lineHeight =
+                                                typeof lines[i].lineHeight === "number"
+                                                        ? lines[i].lineHeight
+                                                        : defaultLineHeight;
+                                        const spacing = lines[i].gap ?? gapAfterLine;
+                                        offset += lineHeight + spacing;
+                                }
+
+                                lines.forEach((line, index) => {
+                                        const y = baseY + cumulativeOffsets[index];
+                                        const x = rect.x;
+                                        page.drawText(line.text, {
+                                                x,
+                                                y,
+                                                size: line.size,
+                                                font: line.font,
+                                                color: PDFLib.rgb(0, 0, 0),
+                                        });
+                                });
+                        }
+
+                        if (vendorFieldName) {
+                                try {
+                                        form.removeField(vendorFieldName);
+                                } catch (err) {
+                                        console.warn("[AUTOSAVE] vendor field cleanup", vendorFieldName, err);
+                                }
+                        }
+                }
+
+                const showTotalHighlight = presentation?.subrayar_total !== false;
+                let totalHighlightImg = null;
+                let totalHighlightImgTargetWidth = 0;
+                if (showTotalHighlight) {
+                        try {
+                                const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
+                                const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
+                                        cache: true,
+                                        cacheKey: "img:total-highlight",
+                                });
+                                if (totalHighlightImgBytes) {
+                                        totalHighlightImg = await pdfDoc.embedPng(
+                                                totalHighlightImgBytes instanceof Uint8Array
+                                                        ? totalHighlightImgBytes
+                                                        : new Uint8Array(totalHighlightImgBytes)
+                                        );
+                                        const baseDims = totalHighlightImg.scale(1);
+                                        totalHighlightImgTargetWidth =
+                                                baseDims && baseDims.height > 0
+                                                        ? (rowHeight / baseDims.height) * baseDims.width
+                                                        : 0;
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Missing total highlight asset", err);
+                        }
+                }
+
+                const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
                         const concepto = (item.concepto || "").trim();
                         const valor = item.valor;
                         return concepto || valor === 0 || Number.isFinite(Number(valor));
@@ -1307,7 +2119,7 @@ export default function initAutosave() {
                 const penultimateIndex = Math.max(0, lastIndex - 1);
 
                 const baseImponibleIndex = preparedItems.findIndex(
-                        (item) => (item.concepto || "").trim() === "Base imponible"
+                        (item = {}) => (item.concepto || "").trim().toLowerCase() === "base imponible"
                 );
 
                 let rowsDrawn = 0;
@@ -1321,20 +2133,41 @@ export default function initAutosave() {
                         }
                         const baseLineGap = 2;
                         const coverageNudge = 1;
-                        const textSize = fontSize;
+                        const isLast = index === lastIndex;
+                        const textSize = isLast ? 12 : fontSize;
 
                         let concepto = (item.concepto || "").trim();
                         const rawValor = item.valor;
                         const valor = rawValor === 0 ? 0 : Number(rawValor);
                         const hasValor = rawValor === 0 || Number.isFinite(valor);
                         const importe = hasValor ? `${numberFormatter.format(valor)} \u20ac` : "";
-                        const isBaseImponible = index === baseImponibleIndex;
+                        const conceptoLower = concepto.toLowerCase();
+                        const isBaseImponible = conceptoLower === "base imponible";
+                        const isIvaRow = conceptoLower.startsWith("iva");
                         const isOddRow = rowsDrawn % 2 === 1;
-                        const isLast = index === lastIndex;
                         const isPenultimate = index === penultimateIndex;
                         const alignRight = isLast || isPenultimate || isBaseImponible;
-                        const useBold = isLast;
-                        const textFont = useBold ? robotoMonoBold : robotoMono;
+                        const conceptUseBold = isLast;
+                        const importeUseBold = isLast || isBaseImponible || isIvaRow;
+                        const useExtraBold = isLast;
+                        const conceptRegularFont = robotoMono || interRegular;
+                        const conceptBoldFont = robotoMonoBold || conceptRegularFont;
+                        const conceptExtraBoldFont = robotoMonoBold || conceptBoldFont;
+                        const importeRegularFont = robotoMono || interRegular || conceptRegularFont;
+                        const importeBoldFont = robotoMonoBold || importeRegularFont;
+                        const importeExtraBoldFont = interExtraBoldDisplay || interExtraBold || importeBoldFont;
+                        const conceptFont =
+                                useExtraBold
+                                        ? conceptExtraBoldFont
+                                        : conceptUseBold
+                                          ? conceptBoldFont
+                                          : conceptRegularFont;
+                        const importeFont =
+                                useExtraBold
+                                        ? importeExtraBoldFont
+                                        : importeUseBold
+                                          ? importeBoldFont
+                                          : importeRegularFont;
                         const textColor = isLast
                                 ? PDFLib.rgb(0.8, 0, 0)
                                 : PDFLib.rgb(0, 0, 0);
@@ -1346,7 +2179,7 @@ export default function initAutosave() {
                                 ? splitIntoLines(
                                           concepto,
                                           Math.max(10, conceptoMaxWidth),
-                                          textFont,
+                                          conceptFont,
                                           textSize
                                   )
                                 : [];
@@ -1373,35 +2206,34 @@ export default function initAutosave() {
                                         y: currentY,
                                         width: importeRight - conceptoCellLeft,
                                         height: rowHeight,
-                                        color: PDFLib.rgb(0.995, 0.995, 0.995),
+                                        color: PDFLib.rgb(0.97, 0.97, 0.97),
                                 });
                         }
 
                         if (isLast) {
-                                const svgViewWidth = 164.47;
-                                const svgViewHeight = 36;
-                                const extraRight = mmToPt(3);
-                                const targetHeight = mmToPt(12.6);
-                                const scale = targetHeight / svgViewHeight;
-                                const scaledWidth = svgViewWidth * scale;
-                                const scaledHeight = targetHeight;
-                                const highlightX = importeRight - scaledWidth + extraRight;
 
-                                // Derive the row bounds regardless of whether `currentY` represents the top or bottom.
-                                const rowBottom = Math.min(currentY, currentY - rowHeight);
-                                const highlightY = rowBottom + (rowHeight - scaledHeight) / 2;
-
-                                page.drawSvgPath(totalHighlightSvgPath, {
-                                        x: highlightX,
-                                        y: highlightY,
-                                        scale,
-                                        color: PDFLib.rgb(1, 1, 0.5960784314),
-                                });
+                                if (totalHighlightImg && totalHighlightImgTargetWidth > 0) {
+                                        const inset = 1;
+                                        const availableWidth = importeRight - conceptoCellLeft - inset;
+                                        const svgWidth = Math.min(availableWidth, totalHighlightImgTargetWidth);
+                                        if (svgWidth > 0) {
+                                                const svgScale = svgWidth / totalHighlightImgTargetWidth;
+                                                const svgHeight = rowHeight * svgScale;
+                                                const svgX = importeRight - svgWidth - inset;
+                                                const svgY = currentY;
+                                                page.drawImage(totalHighlightImg, {
+                                                        x: svgX,
+                                                        y: svgY,
+                                                        width: svgWidth,
+                                                        height: svgHeight,
+                                                });
+                                        }
+                                }
                         }
 
                         if (conceptoLines.length > 0) {
                                 conceptoLines.forEach((line, lineIndex) => {
-                                        const width = textFont.widthOfTextAtSize(line, textSize);
+                                        const width = conceptFont.widthOfTextAtSize(line, textSize);
                                         const x = alignRight
                                                 ? conceptoRight - conceptoPadding - width
                                                 : conceptoX;
@@ -1411,37 +2243,21 @@ export default function initAutosave() {
                                                 x,
                                                 y,
                                                 size: textSize,
-                                                font: textFont,
+                                                font: conceptFont,
                                                 color: textColor,
                                         });
                                 });
                         }
 
                         if (importe) {
-                                const width = textFont.widthOfTextAtSize(importe, textSize);
+                                const width = importeFont.widthOfTextAtSize(importe, textSize);
                                 const targetX = importeRight - importePadding - width;
                                 page.drawText(importe, {
                                         x: targetX,
                                         y: importeY,
                                         size: textSize,
-                                        font: textFont,
+                                        font: importeFont,
                                         color: textColor,
-                                });
-                        }
-
-                        if (!isLast) {
-                                const isBorderBeforeBase =
-                                        baseImponibleIndex > 0 && index === baseImponibleIndex - 1;
-                                const lineColor = isBorderBeforeBase
-                                        ? PDFLib.rgb(0, 0, 0)
-                                        : PDFLib.rgb(0.5, 0.5, 0.5);
-                                page.drawLine({
-                                        start: { x: conceptoCellLeft, y: currentY },
-                                        end: { x: importeRight, y: currentY },
-                                        thickness: borderThickness,
-                                        color: lineColor,
-                                        dashArray: isBorderBeforeBase ? undefined : [3, 3],
-                                        dashPhase: isBorderBeforeBase ? undefined : 0,
                                 });
                         }
 
@@ -1474,6 +2290,68 @@ export default function initAutosave() {
                         });
                 }
 
+                if (rowsDrawn > 0) {
+                        const isParticularRole = normalizedVendorInfo.role === "particular";
+                        const isDirectDebit =
+                                !isParticularRole &&
+                                (normalizedPaymentMethod === "domiciliacion" ||
+                                        normalizedPaymentMethod === "domiciliacion_bancaria");
+                        const paymentLabel = isDirectDebit
+                                ? "Domiciliación bancaria"
+                                : "Transferencia bancaria";
+                        const showIbanBox = !isDirectDebit;
+                        const paymentBoxY = currentY + mmToPt(1);
+                        const paymentBoxHeight = rowHeight;
+                        const tableWidth = importeRight - conceptoCellLeft;
+                        const leftBoxWidth = showIbanBox ? tableWidth / 2 : tableWidth;
+                        const rightBoxWidth = showIbanBox ? tableWidth - leftBoxWidth : 0;
+                        const leftBoxPadding = mmToPt(5);
+                        const rightBoxPadding = mmToPt(5);
+                        const lineHeight = 10;
+                        const textY = paymentBoxY + (paymentBoxHeight - lineHeight) / 2;
+                        const boldFont = interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const regularFont = interRegular || robotoMono;
+
+                        const drawSegments = (segments, startX) => {
+                                let cursorX = startX;
+                                segments.forEach(({ text, font }) => {
+                                        if (!text) return;
+                                        page.drawText(text, {
+                                                x: cursorX,
+                                                y: textY,
+                                                size: lineHeight,
+                                                font: font || regularFont,
+                                                color: PDFLib.rgb(0, 0, 0),
+                                        });
+                                        cursorX += (font || regularFont).widthOfTextAtSize(text, lineHeight);
+                                });
+                        };
+
+                        drawSegments(
+                                [
+                                        { text: "Forma de pago: ", font: boldFont },
+                                        { text: paymentLabel, font: regularFont },
+                                ],
+                                conceptoCellLeft + leftBoxPadding
+                        );
+
+                        if (showIbanBox) {
+                                const ibanSegments = [
+                                        { text: "IBAN: ", font: boldFont },
+                                        { text: normalizedTransferIban, font: regularFont },
+                                ];
+                                const totalWidth = ibanSegments.reduce(
+                                        (acc, seg) =>
+                                                acc + (seg.font || regularFont).widthOfTextAtSize(seg.text || "", lineHeight),
+                                        0
+                                );
+                                const rightBoxX = conceptoCellLeft + leftBoxWidth;
+                                const startX =
+                                        rightBoxX + Math.max(rightBoxPadding, rightBoxWidth - totalWidth - rightBoxPadding);
+                                drawSegments(ibanSegments, startX);
+                        }
+                }
+
                 try {
                         form.removeField("concepto_1");
                 } catch (err) {
@@ -1481,6 +2359,16 @@ export default function initAutosave() {
                 }
                 try {
                         form.removeField("importe_1");
+                } catch (err) {
+                        // ignore
+                }
+                try {
+                        form.removeField("ref_emision");
+                } catch (err) {
+                        // ignore
+                }
+                try {
+                        form.removeField("objeto_cobertura");
                 } catch (err) {
                         // ignore
                 }
@@ -1530,12 +2418,18 @@ export default function initAutosave() {
                 estadoGarantia,
                 firmaSello,
                 proformaArgs,
+                proformaAllowed,
+                proformaPresentation,
         }) {
                 const docLinks = {
                         condicionado: responseJson.condicionado_url || "",
                         cobertura: responseJson.cobertura_url || "",
                         proforma: responseJson.proforma_url || "",
                 };
+
+                if (proformaPresentation) {
+                        applyProformaPresentation(proformaPresentation);
+                }
 
                 if (docLinks.condicionado || docLinks.cobertura) {
                         updateSuccessDocuments(docLinks);
@@ -1567,14 +2461,56 @@ export default function initAutosave() {
                                 });
                 }
 
-                const normalizedProformaArgs = proformaArgs || {
-                        draftId,
-                        templateUrl: responseJson.proforma_template_url || "",
-                        items: [],
-                        coverageLabel: buildCoverageLabel(garantia),
-                };
+                        const fallbackReferenceBaseDate = new Date();
+                        const resolvedVendorInfo = proformaArgs?.vendorInfo
+                                ? normalizeVendorInfo(proformaArgs.vendorInfo)
+                                : buildVendorInfoFromResponse(responseJson, garantia?.canal_venta);
+                        const normalizedProformaArgs = proformaArgs
+                                ? {
+                                          ...proformaArgs,
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  proformaArgs.paymentMethod ||
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof proformaArgs.transferIban === "string"
+                                                          ? proformaArgs.transferIban
+                                                          : typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                          presentation:
+                                                  proformaArgs.presentation ||
+                                                  proformaPresentation ||
+                                                  DEFAULT_PROFORMA_PRESENTATION,
+                                  }
+                                : {
+                                          draftId,
+                                          templateUrl: responseJson.proforma_template_url || "",
+                                          items: [],
+                                          coverageLabel: buildCoverageLabel(garantia),
+                                          matricula: datosVehiculo?.matricula || "",
+                                          marca: datosVehiculo?.marca || "",
+                                          modelo: datosVehiculo?.modelo || "",
+                                          emissionDate: toIsoDateString(fallbackReferenceBaseDate),
+                                          dueDate: toIsoDateString(addDays(fallbackReferenceBaseDate, 2)),
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                          presentation: proformaPresentation || DEFAULT_PROFORMA_PRESENTATION,
+                                  };
+
+                const shouldGenerateProforma = proformaAllowed !== false;
 
                 if (
+                        shouldGenerateProforma &&
                         normalizedProformaArgs.templateUrl &&
                         Array.isArray(normalizedProformaArgs.items) &&
                         normalizedProformaArgs.items.length > 0
@@ -2865,12 +3801,44 @@ export default function initAutosave() {
                                   }
                                 : null;
 
-                        const proformaArgs = json.proforma_template_url
+                        const referenceBaseDate = new Date();
+                        const emissionIso = toIsoDateString(referenceBaseDate);
+                        const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
+                        const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
+
+                        const vendorUserId =
+                                garantia?.concesionario_empresa_profesional || getCurrentUserId();
+                        const proformaEligibility = await resolveProformaEligibility({
+                                channelRole: garantia?.canal_venta || vendorInfo?.role || "",
+                                vendorUserId,
+                                fallbackPaymentMethod: garantia?.metodo_pago || "",
+                        });
+                        applyProformaPresentation(proformaEligibility.presentation);
+                        const resolvedTransferIban =
+                                proformaEligibility.transferIban ||
+                                (typeof json.transfer_iban === "string"
+                                        ? json.transfer_iban.trim()
+                                        : "");
+
+                        const proformaArgs =
+                                json.proforma_template_url && proformaEligibility.allowed
                                 ? {
                                           draftId,
                                           templateUrl: json.proforma_template_url,
                                           items: listadoDescuentosRecargos,
                                           coverageLabel: buildCoverageLabel(garantia),
+                                          matricula: datosVehiculo?.matricula || "",
+                                          marca: datosVehiculo?.marca || "",
+                                          modelo: datosVehiculo?.modelo || "",
+                                          emissionDate: emissionIso,
+                                          dueDate: dueIso,
+                                          vendorInfo,
+                                          paymentMethod:
+                                                  proformaEligibility.normalizedPaymentMethod ||
+                                                  garantia?.metodo_pago ||
+                                                  "",
+                                          transferIban: resolvedTransferIban,
+                                          presentation: proformaEligibility.presentation,
                                   }
                                 : null;
 
@@ -2895,8 +3863,16 @@ export default function initAutosave() {
                                         certificate: latestCertificateUrl || "",
                                         condicionado: json.condicionado_url || "",
                                         cobertura: json.cobertura_url || "",
-                                        proforma: latestProformaUrl || json.proforma_url || "",
                                 };
+                                if (
+                                        proformaEligibility.allowed &&
+                                        proformaEligibility.presentation?.mostrar_en_documentos
+                                ) {
+                                        const proformaUrl = latestProformaUrl || json.proforma_url || "";
+                                        if (proformaUrl) {
+                                                docLinks.proforma = proformaUrl;
+                                        }
+                                }
                                 const extras = {
                                         transferIban:
                                                 typeof json.transfer_iban === "string"
@@ -2931,6 +3907,8 @@ export default function initAutosave() {
                                         estadoGarantia: payload.estado_garantia || {},
                                         firmaSello,
                                         proformaArgs,
+                                        proformaAllowed: proformaEligibility.allowed,
+                                        proformaPresentation: proformaEligibility.presentation,
                                 });
                                 if (json.notify_url && draftUuid) {
                                         triggerContractNotice(json.notify_url, draftUuid);
