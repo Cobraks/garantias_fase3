@@ -368,8 +368,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     padding-top: 0;
     padding-inline: 1.25rem;
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--go-color-f4f4f4, #f4f4f4);
-    color: #1c1b1f;
+color: var(--go-color-f4f4f4, #f4f4f4);
+    background: #1c1b1f;
 }
 
 
@@ -411,8 +411,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
 }
 
 .guarantees-bottom-bar__button.is-active .guarantees-bottom-bar__icon {
-    background: rgba(15, 23, 42, 0.12);
-    color: #1c1b1f;
+background: rgb(95, 95, 95);
+  color: #fff;
 }
 
 .guarantees-bottom-bar__icon svg {
@@ -491,8 +491,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     width: 6rem;
     height: 6rem;
     border-radius: 1.75rem;
-    background: var(--primary-color-soft);
-    color: var(--primary-color-strong);
+background: var(--scrollbar-thumb);
+  color: var(--surface);
     box-shadow:
         0px 1px 3px 1px rgba(0, 0, 0, 0.15),
         0px 1px 2px 0px rgba(0, 0, 0, 0.3);
@@ -4842,7 +4842,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     }
 
     body {
-        padding-top: 0;
+        /* padding-top: 0; */
     }
 }
 
