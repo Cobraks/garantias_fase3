@@ -6485,7 +6485,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     section.guarantees-list {
         display: block;
         z-index: 99;
-        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
+        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height) + 1.5rem);
         overflow-y: auto;
         overflow-x: hidden;
         transition: max-height 300ms ease;
@@ -6705,7 +6705,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         top: calc(var(--alturaHeader) + var(--spacing-3));
         align-self: start;
         z-index: 220;
-        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
+        /* max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height)); */
         height: 100%;
         margin-top: 0;
         padding: 0;
