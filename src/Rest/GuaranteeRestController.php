@@ -1952,7 +1952,7 @@ class GuaranteeRestController
         return $result;
     }
 
-    private static function get_invoice_template_source(): array
+    public static function get_invoice_template_source(): array
     {
         $result = [
             'url'      => '',
