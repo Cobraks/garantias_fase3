@@ -1443,10 +1443,11 @@ if (($is_admin_user || $is_director || $is_professional)
         $confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
         $confirm_checkbox_name = $confirm_checkbox_id . '-field';
         ?>
-        <label class="confirm-modal__checkbox" hidden>
+        <label class="confirm-modal__checkbox" data-confirm-ack-wrapper hidden>
             <input
                 type="checkbox"
                 class="confirm-modal__checkbox-input"
+                data-confirm-ack
                 id="<?php echo esc_attr($confirm_checkbox_id); ?>"
                 name="<?php echo esc_attr($confirm_checkbox_name); ?>"
             />

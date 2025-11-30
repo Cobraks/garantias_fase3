@@ -4002,10 +4002,10 @@ const ADD_DOC_KEY = "add-document";
                         const fileNameEl = modal.querySelector(".confirm-modal__file-name");
                         const fileErrorEl = modal.querySelector(".confirm-modal__file-error");
                         const checkboxWrapper = modal.querySelector(
-                                ".confirm-modal__checkbox"
+                                "[data-confirm-ack-wrapper]"
                         );
                         const checkboxInput = modal.querySelector(
-                                ".confirm-modal__checkbox-input"
+                                "[data-confirm-ack]"
                         );
                         const checkboxLabel = modal.querySelector(
                                 ".confirm-modal__checkbox-label"
