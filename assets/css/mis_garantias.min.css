@@ -6908,7 +6908,7 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
     top: var(--spacing-3);
     /* max-width: calc(1440px - 3rem); */
     width: calc(100% - 3rem);
-    max-width:none;
+    max-width: 1600px;
   }
 
   .guarantees-container {
