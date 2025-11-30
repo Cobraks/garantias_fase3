@@ -6883,18 +6883,48 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     .detail__section--payment .detail__payment-note,
     .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td,
     .guarantee-detail__plan-name, .guarantee-detail__plan-price,
-    .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li 
+    .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li,
+    .guarantee-detail__hint
      {
         font-size: 0.8rem;
     }
 
-    .guarantee-detail__header h2 {
+    .guarantee-detail__header h2,
+    .guarantee-admin-summary__title {
         font-size: 1rem;
     }
 .guarantee-detail__badge {
     top: 1rem;
 }
 
+.kpi-value {
+  font-size: 1.25rem;
+}
+
+.kpi-trend {
+    padding-inline: 0;
+}
+
+.kpi-label svg {
+    display: none;
+}
+
+.donut-chart {
+    width: 100px;
+    height: 100px;  
+}
+
+.chart-total {
+    font-size: 1.5rem;
+}
+
+.chart-label {
+    font-size: .7rem;
+}
+
+.action-label {
+    font-size: .9rem;
+}
 
 }
 
@@ -6929,10 +6959,26 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
   }
 
 
+
+@media (min-width: 1600px) {
+
+.guarantee-detail__header h2 {
+    font-size: 1.5rem;
+}
+
+
+}
+
+
+
 @media (min-width: 1920px) {
 .top-bar, .container.guarantees-page {
     max-width: 1800px;
 }
+
+  .guarantee-detail__plan-title {
+    font-size: 1.05rem;
+  }
 
 }
 
