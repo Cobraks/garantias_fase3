@@ -1292,7 +1292,7 @@ background: var(--go-color-00c0ff);
   line-height: 1.5;
   margin-bottom: 1rem;
   width: 100%;
-  max-width: 360px;
+  max-width: 600px;
 }
 
 .form__plan-description > p {
@@ -1463,8 +1463,8 @@ background: var(--go-color-00c0ff);
   color: var(--go-color-000000, #000000);
 }
 
-.form__plan-conditions-item:nth-child(2) {
-  border-block: 1px solid var(--border-color, var(--card-border));
+.form__plan-conditions-item:last-child {
+  border-block: 1px solid var(--border-color);
   padding-block: 0.25rem;
 }
 
