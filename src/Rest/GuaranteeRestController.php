@@ -49,6 +49,13 @@ class GuaranteeRestController
     private const OPTION_SUBGROUP_PROFORMA = 'factura_proforma';
     private const OPTION_FIELD_PROFORMA_ENABLED = 'activar_proforma_general';
     private const OPTION_FIELD_PROFORMA_TARGETS = 'activar_para';
+    private const OPTION_FIELD_PROFORMA_SHOW_PROFESSIONALS = 'mostrar_a_profesionales';
+    private const PROFORMA_OPTION_KEYS = [
+        'subrayar_total',
+        'mostrar_en_documentos',
+        'mostrar_en_pantalla_exito',
+        'enviar_por_correo',
+    ];
 
     private static $cache_hooks_registered = false;
     private static $list_cache_invalidated = [];
@@ -1311,7 +1318,6 @@ class GuaranteeRestController
 
         $is_cancelled = self::is_cancelled_state($post_id);
         $cancel_date = self::get_cancellation_date($post_id);
-
         $static_docs = [
             [
                 'key'           => 'certificate',
@@ -1328,39 +1334,42 @@ class GuaranteeRestController
                 'is_cancelled_certificate' => $is_cancelled,
                 'cancel_date'   => $cancel_date,
             ],
-            [
-                'key'           => 'proforma',
-                'title'         => __('Factura proforma', 'garantias-online-360vo'),
-                'routeType'     => 'proforma',
-                'is_private'    => true,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ],
-            [
-                'key'           => 'cobertura',
-                'title'         => __('Cobertura', 'garantias-online-360vo'),
-                'routeType'     => 'cobertura',
-                'is_private'    => false,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ],
-            [
-                'key'           => 'condicionado',
-                'title'         => __('Condicionado', 'garantias-online-360vo'),
-                'routeType'     => 'condicionado',
-                'is_private'    => false,
-                'extension'     => 'pdf',
-                'allowed_roles' => [],
-                'allowed_users' => [],
-                'filename'      => '',
-                'source'        => 'static',
-            ],
+        ];
+
+        $static_docs[] = [
+            'key'           => 'proforma',
+            'title'         => __('Factura proforma', 'garantias-online-360vo'),
+            'routeType'     => 'proforma',
+            'is_private'    => true,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
+        ];
+
+        $static_docs[] = [
+            'key'           => 'cobertura',
+            'title'         => __('Cobertura', 'garantias-online-360vo'),
+            'routeType'     => 'cobertura',
+            'is_private'    => false,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
+        ];
+
+        $static_docs[] = [
+            'key'           => 'condicionado',
+            'title'         => __('Condicionado', 'garantias-online-360vo'),
+            'routeType'     => 'condicionado',
+            'is_private'    => false,
+            'extension'     => 'pdf',
+            'allowed_roles' => [],
+            'allowed_users' => [],
+            'filename'      => '',
+            'source'        => 'static',
         ];
 
         foreach ($static_docs as $doc) {
@@ -1899,6 +1908,13 @@ class GuaranteeRestController
         $defaults = [
             'enabled'       => true,
             'allowed_roles' => ['profesional', 'particular', 'gestoria'],
+            'professional_payment_modes' => ['transferencia', 'domiciliacion'],
+            'options' => [
+                'subrayar_total'          => true,
+                'mostrar_en_documentos'   => false,
+                'mostrar_en_pantalla_exito' => false,
+                'enviar_por_correo'       => false,
+            ],
         ];
 
         if (! function_exists('get_field')) {
@@ -1922,13 +1938,18 @@ class GuaranteeRestController
 
         $enabled_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_ENABLED] ?? null;
         $targets_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_TARGETS] ?? null;
+        $show_to_professionals_raw = $proforma_settings[self::OPTION_FIELD_PROFORMA_SHOW_PROFESSIONALS] ?? null;
 
         $enabled = $enabled_raw === null ? $defaults['enabled'] : (bool) $enabled_raw;
 
         $allowed_roles = [];
         if (is_array($targets_raw)) {
             foreach ($targets_raw as $target) {
-                $normalized = self::normalize_proforma_role($target);
+                $value = is_array($target)
+                    ? ($target['value'] ?? ($target['label'] ?? ''))
+                    : $target;
+
+                $normalized = self::normalize_proforma_role($value);
                 if ($normalized) {
                     $allowed_roles[] = $normalized;
                 }
@@ -1940,13 +1961,35 @@ class GuaranteeRestController
             }
         }
 
-        if (empty($allowed_roles)) {
-            $allowed_roles = $defaults['allowed_roles'];
+        $professional_payment_modes = [];
+        if (is_array($show_to_professionals_raw)) {
+            foreach ($show_to_professionals_raw as $item) {
+                $value = is_array($item)
+                    ? ($item['value'] ?? ($item['label'] ?? ''))
+                    : $item;
+
+                $normalized = self::normalize_proforma_payment_mode($value);
+                if ($normalized) {
+                    $professional_payment_modes[] = $normalized;
+                }
+            }
+        } elseif (is_string($show_to_professionals_raw) && $show_to_professionals_raw !== '') {
+            $normalized = self::normalize_proforma_payment_mode($show_to_professionals_raw);
+            if ($normalized) {
+                $professional_payment_modes[] = $normalized;
+            }
         }
+
+        $options = self::extract_proforma_options($proforma_settings, $defaults['options']);
 
         $cached = [
             'enabled'       => $enabled,
             'allowed_roles' => array_values(array_unique($allowed_roles)),
+            'professional_payment_modes' => $professional_payment_modes
+                ? array_values(array_unique($professional_payment_modes))
+                : $defaults['professional_payment_modes'],
+            'options' => $options,
+            'highlight_total' => $options['subrayar_total'] ?? $defaults['options']['subrayar_total'],
         ];
 
         return $cached;
@@ -1974,6 +2017,83 @@ class GuaranteeRestController
 
         $key = sanitize_key($value);
         return $map[$key] ?? '';
+    }
+
+    private static function normalize_proforma_payment_mode($value): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $key = sanitize_key($value);
+
+        if ($key === 'domiciliacion') {
+            return 'domiciliacion';
+        }
+
+        return $key === 'transferencia' ? 'transferencia' : '';
+    }
+
+    private static function extract_proforma_options(array $proforma_settings, array $defaults): array
+    {
+        $known_keys = self::PROFORMA_OPTION_KEYS;
+        $selected = [];
+        $source_found = false;
+
+        $collect = function ($value) use (&$selected, &$source_found, $known_keys) {
+            $normalized = self::normalize_proforma_option($value, $known_keys);
+            if ($normalized) {
+                $source_found = true;
+                $selected[$normalized] = true;
+            }
+        };
+
+        foreach ($proforma_settings as $key => $value) {
+            if (in_array($key, $known_keys, true)) {
+                $source_found = true;
+                if (!empty($value)) {
+                    $selected[$key] = true;
+                }
+            }
+
+            if (is_array($value)) {
+                foreach ($value as $innerValue) {
+                    if (is_array($innerValue)) {
+                        foreach ($innerValue as $nested) {
+                            $collect($nested);
+                        }
+                    } else {
+                        $collect($innerValue);
+                    }
+                }
+                continue;
+            }
+
+            $collect($value);
+        }
+
+        $options = [];
+        foreach ($defaults as $option_key => $default_value) {
+            if (!in_array($option_key, $known_keys, true)) {
+                continue;
+            }
+            $options[$option_key] = $source_found
+                ? !empty($selected[$option_key])
+                : (bool) $default_value;
+        }
+
+        return $options;
+    }
+
+    private static function normalize_proforma_option($value, array $known_keys): string
+    {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $key = sanitize_key($value);
+
+        return in_array($key, $known_keys, true) ? $key : '';
     }
 
     private static function hydrate_detail_document_urls(array $detail, $id)
