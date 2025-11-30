@@ -1578,6 +1578,8 @@ export default function initAutosave() {
                 const dueIso = toIsoDateString(rawArgs.dueDate);
                 normalized.emissionDate = emissionIso;
                 normalized.dueDate = dueIso;
+                normalized.coverageStart = toIsoDateString(rawArgs.coverageStart);
+                normalized.coverageEnd = toIsoDateString(rawArgs.coverageEnd);
 
                 return normalized;
         }
@@ -1621,6 +1623,8 @@ export default function initAutosave() {
                 modelo,
                 emissionDate,
                 dueDate,
+                coverageStart,
+                coverageEnd,
                 vendorInfo,
                 paymentMethod,
                 transferIban,
@@ -1928,7 +1932,8 @@ export default function initAutosave() {
                 const objetoCoberturaRect = resolveRect("objeto_cobertura");
                 if (objetoCoberturaRect) {
                         const baseFont = interRegular || robotoMono;
-                        const boldFont = interBold || interRegular || robotoMonoBold || robotoMono;
+                        const boldFont =
+                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
                         const textSize = 10;
                         const matriculaLabel = (matricula || "").trim();
                         const marcaModeloLabel = [marca, modelo]
@@ -1936,11 +1941,11 @@ export default function initAutosave() {
                                 .filter(Boolean)
                                 .join(" ");
                         const segments = [
-                                { text: "Vehículo objeto de la cobertura: ", font: baseFont },
+                                { text: "Vehículo objeto de la cobertura: ", font: boldFont },
                         ];
 
                         if (matriculaLabel) {
-                                segments.push({ text: matriculaLabel, font: boldFont });
+                                segments.push({ text: matriculaLabel, font: baseFont });
                         }
 
                         if (matriculaLabel && marcaModeloLabel) {
@@ -1948,11 +1953,44 @@ export default function initAutosave() {
                         }
 
                         if (marcaModeloLabel) {
-                                segments.push({ text: marcaModeloLabel, font: boldFont });
+                                segments.push({ text: marcaModeloLabel, font: baseFont });
                         }
 
                         let cursorX = objetoCoberturaRect.x;
                         const cursorY = objetoCoberturaRect.y;
+                        segments.forEach(({ text, font }) => {
+                                if (!text) return;
+                                const width = font.widthOfTextAtSize(text, textSize);
+                                page.drawText(text, {
+                                        x: cursorX,
+                                        y: cursorY,
+                                        size: textSize,
+                                        font,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                });
+                                cursorX += width;
+                        });
+                }
+
+                const periodoCoberturaRect = resolveRect("periodo_cobertura");
+                const coverageStartLabel = formatShortEsDate(coverageStart);
+                const coverageEndLabel = formatShortEsDate(coverageEnd);
+                if (periodoCoberturaRect && (coverageStartLabel || coverageEndLabel)) {
+                        const boldFont =
+                                interBold || interMedium || interRegular || robotoMonoBold || robotoMono;
+                        const regularFont = interRegular || robotoMono;
+                        const textSize = 10;
+                        const periodLabel = "Periodo de servicio";
+                        const periodValue = [coverageStartLabel, coverageEndLabel]
+                                .filter(Boolean)
+                                .join(" - ");
+                        const segments = [
+                                { text: `${periodLabel}: `, font: boldFont },
+                                { text: periodValue, font: regularFont },
+                        ];
+
+                        let cursorX = periodoCoberturaRect.x;
+                        const cursorY = periodoCoberturaRect.y;
                         segments.forEach(({ text, font }) => {
                                 if (!text) return;
                                 const width = font.widthOfTextAtSize(text, textSize);
@@ -3946,6 +3984,8 @@ export default function initAutosave() {
                                                   modelo: datosVehiculo?.modelo || "",
                                                   emissionDate: emissionIso,
                                                   dueDate: dueIso,
+                                                  coverageStart: payload.estado_garantia?.inicio,
+                                                  coverageEnd: payload.estado_garantia?.finalizacion,
                                                   vendorInfo,
                                                   paymentMethod: garantia?.metodo_pago || "",
                                                   transferIban:
