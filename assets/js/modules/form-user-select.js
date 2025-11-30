@@ -314,6 +314,7 @@ async function refreshMetodoPagoPorUsuario(targetUserId) {
                 container.classList.toggle("has-value", !!select.value);
         }
         updateSelectDataset(select);
+        select.dispatchEvent(new Event("change", { bubbles: true }));
         updateNextButtonState();
 }
 
