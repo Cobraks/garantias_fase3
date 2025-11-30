@@ -144,6 +144,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             }
         };
     </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 

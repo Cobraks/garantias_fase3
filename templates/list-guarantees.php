@@ -1112,6 +1112,18 @@ if (($is_admin_user || $is_director || $is_professional)
                                 <button
                                     type="button"
                                     class="management-actions__item"
+                                    data-management-action="generate-invoice">
+                                    <span class="management-actions__icon" aria-hidden="true">
+                                        <?php echo Svg::icon('generate_invoice'); ?>
+                                    </span>
+                                    <span class="management-actions__copy">
+                                        <strong><?php esc_html_e('Generar factura', 'garantias-online-360vo'); ?></strong>
+                                        <span class="management-actions__description"><?php esc_html_e('Preparar y enviar la factura al cliente', 'garantias-online-360vo'); ?></span>
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    class="management-actions__item"
                                     data-management-action="edit-wordpress">
                                     <span class="management-actions__icon" aria-hidden="true">
                                         <?php echo Svg::icon('wordpress_icon'); ?>
@@ -1356,6 +1368,46 @@ if (($is_admin_user || $is_director || $is_professional)
             <h2 id="confirm-modal-title" class="confirm-modal__title"></h2>
             <p class="confirm-modal__subtitle"></p>
             <p class="confirm-modal__message"></p>
+                <div class="confirm-modal__invoice" data-confirm-invoice-fields hidden>
+                    <div class="confirm-modal__field">
+                        <label class="confirm-modal__field-label" for="confirm-modal-invoice-reference">
+                            <?php esc_html_e('Referencia de la factura', 'garantias-online-360vo'); ?>
+                        </label>
+                        <input
+                            id="confirm-modal-invoice-reference"
+                            type="text"
+                            class="confirm-modal__input"
+                            data-confirm-invoice-reference
+                            placeholder="<?php esc_attr_e('Referencia de la factura', 'garantias-online-360vo'); ?>"
+                        />
+                    </div>
+                    <div class="confirm-modal__options" role="group" aria-label="<?php esc_attr_e('Preferencias de facturación', 'garantias-online-360vo'); ?>">
+                        <label class="confirm-modal__checkbox">
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-show-documentation
+                            />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Mostrar en documentación', 'garantias-online-360vo'); ?></span>
+                        </label>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper>
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-send-email
+                            />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Enviar al cliente por correo', 'garantias-online-360vo'); ?></span>
+                        </label>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-ack-wrapper>
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-ack
+                            />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Confirmo que quiero generar la factura.', 'garantias-online-360vo'); ?></span>
+                        </label>
+                    </div>
+                </div>
             <div class="confirm-modal__cancel-fields" hidden>
                 <label class="confirm-modal__field-label" for="confirm-modal-cancel-reason">
                     <?php esc_html_e('Motivo de la cancelación', 'garantias-online-360vo'); ?>
@@ -1395,14 +1447,15 @@ if (($is_admin_user || $is_director || $is_professional)
         $confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
         $confirm_checkbox_name = $confirm_checkbox_id . '-field';
         ?>
-        <label class="confirm-modal__checkbox" hidden>
+        <label class="confirm-modal__checkbox" data-confirm-ack-wrapper hidden>
             <input
                 type="checkbox"
                 class="confirm-modal__checkbox-input"
+                data-confirm-ack
                 id="<?php echo esc_attr($confirm_checkbox_id); ?>"
                 name="<?php echo esc_attr($confirm_checkbox_name); ?>"
             />
-            <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+            <span class="confirm-modal__checkbox-label" data-confirm-ack-label><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
         </label>
         <label class="confirm-modal__checkbox confirm-modal__checkbox--notify" hidden>
             <input

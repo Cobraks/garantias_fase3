@@ -3317,6 +3317,19 @@
     font-size: 0.95rem;
     font-weight: 600;
 }
+.confirm-modal__invoice {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0.75rem 0 0;
+}
+
+.confirm-modal__options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
 .confirm-modal__field {
     display: flex;
     flex-direction: column;
@@ -3382,6 +3395,36 @@
 
 .confirm-modal__checkbox-label {
     line-height: 1.5;
+}
+
+.confirm-modal__btn.is-loading {
+    position: relative;
+    color: rgba(255, 255, 255, 0.92);
+    padding-left: 1.9rem;
+}
+
+.confirm-modal__btn.is-loading::before {
+    content: "";
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    border-top-color: #fff;
+    animation: confirmModalSpin 1s linear infinite;
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    margin-top: -0.5rem;
+}
+
+@keyframes confirmModalSpin {
+    from {
+        transform: rotate(0);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .confirm-modal__actions {
