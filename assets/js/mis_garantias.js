@@ -3976,6 +3976,9 @@ const ADD_DOC_KEY = "add-document";
                         const invoiceReferenceInput = modal.querySelector(
                                 "[data-confirm-invoice-reference]"
                         );
+                        const invoiceSendEmailWrapper = modal.querySelector(
+                                "[data-confirm-invoice-send-email-wrapper]"
+                        );
                         const invoiceSendEmailInput = modal.querySelector(
                                 "[data-confirm-invoice-send-email]"
                         );
@@ -4082,6 +4085,9 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 if (invoiceReferenceInput) {
                                         invoiceReferenceInput.value = "";
+                                }
+                                if (invoiceSendEmailWrapper) {
+                                        invoiceSendEmailWrapper.hidden = true;
                                 }
                                 if (invoiceSendEmailInput) {
                                         invoiceSendEmailInput.checked = false;
@@ -4300,6 +4306,9 @@ const ADD_DOC_KEY = "add-document";
                                 isInvoiceMode = Boolean(cfg.invoiceMode);
                                 if (invoiceFields) {
                                         invoiceFields.hidden = !isInvoiceMode;
+                                }
+                                if (invoiceSendEmailWrapper) {
+                                        invoiceSendEmailWrapper.hidden = !isInvoiceMode;
                                 }
                                 requiresInvoiceReference = isInvoiceMode && Boolean(cfg.requireInvoiceReference);
                                 if (invoiceReferenceInput) {
