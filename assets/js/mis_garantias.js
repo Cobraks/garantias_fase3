@@ -4802,9 +4802,18 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const normalizeEstadoClaseValue = (value) =>
-                                typeof value === "string" ? value.toLowerCase().trim() : "";
+                                typeof value === "string"
+                                        ? value
+                                                      .toLowerCase()
+                                                      .trim()
+                                                      .replace(/\s+/g, "-")
+                                                      .replace(/_/g, "-")
+                                        : "";
                         const estadoDesdePanel = normalizeEstadoClaseValue(
                                 panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || ""
+                        );
+                        const estadoDesdeLabel = normalizeEstadoClaseValue(
+                                panel?.dataset?.estado || panel?.dataset?.state || ""
                         );
                         const estadoDesdeBadge = (() => {
                                 const badgeElement =
@@ -4835,7 +4844,7 @@ const ADD_DOC_KEY = "add-document";
                                         badgeElement.textContent || badgeElement.innerText || ""
                                 );
                         })();
-                        const estadoClase = estadoDesdePanel || estadoDesdeBadge;
+                        const estadoClase = estadoDesdePanel || estadoDesdeLabel || estadoDesdeBadge;
                         const isCancelled = estadoClase === "cancelada";
                         const isPendingPayment = estadoClase === "pendiente-pago";
                         const isActivated = estadoClase === "activada";
