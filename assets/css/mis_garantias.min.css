@@ -6920,6 +6920,7 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
    max-width: none;
     width: calc(100% - 3rem); 
     margin-inline: auto;
+      max-width: 1600px;
   }
 
   section.guarantees-list {
