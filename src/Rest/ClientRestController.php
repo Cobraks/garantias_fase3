@@ -595,21 +595,15 @@ class ClientRestController
             );
 
             $normalized_special[] = [
-                'tipo_de_garantia'      => [
-                    'value' => $type_value,
-                    'label' => $special_type_choices[$type_value],
-                ],
-                'nivel_garantia'        => [
-                    'value' => $level_value,
-                    'label' => $special_level_choices[$level_value],
-                ],
-                'precio_fijo'           => $price,
-                'excluir_resto_de_niveles' => ! empty($offer['excluir_resto_de_niveles']),
-                'duracion_maxima'       => [
-                    'value' => $duration_value,
-                    'label' => $duration_label,
-                ],
-                'estado'                => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+                'tipo_de_garantia'          => $type_value,
+                'tipo_de_garantia_label'    => $special_type_choices[$type_value],
+                'nivel_garantia'            => $level_value,
+                'nivel_garantia_label'      => $special_level_choices[$level_value],
+                'precio_fijo'               => $price,
+                'excluir_resto_de_niveles'  => ! empty($offer['excluir_resto_de_niveles']),
+                'duracion_maxima'           => $duration_value,
+                'duracion_maxima_label'     => $duration_label,
+                'estado'                    => isset($offer['estado']) ? (bool) $offer['estado'] : true,
             ];
         }
 
@@ -1618,14 +1612,14 @@ class ClientRestController
                 : (int) ($offer['tipo_de_garantia'] ?? 0);
             $type_label  = is_array($offer['tipo_de_garantia'] ?? null)
                 ? self::clean_text($offer['tipo_de_garantia']['label'] ?? '')
-                : '';
+                : self::clean_text($offer['tipo_de_garantia_label'] ?? '');
 
             $level_value = is_array($offer['nivel_garantia'] ?? null)
                 ? (int) ($offer['nivel_garantia']['value'] ?? 0)
                 : (int) ($offer['nivel_garantia'] ?? 0);
             $level_label = is_array($offer['nivel_garantia'] ?? null)
                 ? self::clean_text($offer['nivel_garantia']['label'] ?? '')
-                : '';
+                : self::clean_text($offer['nivel_garantia_label'] ?? '');
 
             $duration_raw   = $offer['duracion_maxima'] ?? null;
             $duration_value = is_array($duration_raw)
@@ -1633,7 +1627,7 @@ class ClientRestController
                 : (int) $duration_raw;
             $duration_label = is_array($duration_raw)
                 ? self::clean_text($duration_raw['label'] ?? '')
-                : '';
+                : self::clean_text($offer['duracion_maxima_label'] ?? '');
 
             if ($duration_label === '' && $duration_value > 0) {
                 $duration_label = sprintf(
