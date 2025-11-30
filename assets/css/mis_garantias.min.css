@@ -6922,3 +6922,12 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
   }
   }
+
+  @media (min-width: 1484px) {
+.top-bar,.main-grid.guarantees-page {
+    max-width: 1440px;
+}
+
+
+
+  }
