@@ -4008,7 +4008,7 @@ const ADD_DOC_KEY = "add-document";
                                 "[data-confirm-ack]"
                         );
                         const checkboxLabel = modal.querySelector(
-                                ".confirm-modal__checkbox-label"
+                                "[data-confirm-ack-label]"
                         );
                         const notifyCheckboxWrapper = modal.querySelector(
                                 ".confirm-modal__checkbox--notify"

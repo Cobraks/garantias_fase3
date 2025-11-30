@@ -1383,7 +1383,11 @@ if (($is_admin_user || $is_director || $is_professional)
                     </div>
                     <div class="confirm-modal__options" role="group" aria-label="<?php esc_attr_e('Preferencias de facturación', 'garantias-online-360vo'); ?>">
                         <label class="confirm-modal__checkbox">
-                            <input type="checkbox" class="confirm-modal__checkbox-input" data-confirm-invoice-show-documentation />
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-show-documentation
+                            />
                             <span class="confirm-modal__checkbox-label"><?php esc_html_e('Mostrar en documentación', 'garantias-online-360vo'); ?></span>
                         </label>
                         <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper>
@@ -1451,7 +1455,7 @@ if (($is_admin_user || $is_director || $is_professional)
                 id="<?php echo esc_attr($confirm_checkbox_id); ?>"
                 name="<?php echo esc_attr($confirm_checkbox_name); ?>"
             />
-            <span class="confirm-modal__checkbox-label"><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
+            <span class="confirm-modal__checkbox-label" data-confirm-ack-label><?php esc_html_e('He revisado esta información y confirmo la operación.', 'garantias-online-360vo'); ?></span>
         </label>
         <label class="confirm-modal__checkbox confirm-modal__checkbox--notify" hidden>
             <input
