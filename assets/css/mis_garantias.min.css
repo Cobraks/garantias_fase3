@@ -6897,3 +6897,18 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
 
 
 }
+
+
+@media (min-width: 1440px) {
+  .container.guarantees-page {
+top: calc(var(--alturaHeader) + var(--spacing-3));
+  }
+
+   .top-bar {
+    top: var(--spacing-3);
+  }
+
+  .guarantees-container {
+    padding-inline:0;
+  }
+  }
