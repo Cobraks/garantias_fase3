@@ -305,6 +305,15 @@ function normalizeProfessionalRole(value) {
         return ROLE_NORMALIZATION[key] || "";
 }
 
+function normalizeProformaPaymentMode(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        if (key === "domiciliación") return "domiciliacion";
+        if (key === "domiciliacion") return "domiciliacion";
+        if (key === "transferencia") return "transferencia";
+        return "";
+}
+
 function isAdminLikeRole(value) {
         return ADMIN_EQUIVALENT_ROLES.has(String(value || "").toLowerCase());
 }
@@ -323,19 +332,34 @@ export default function initAutosave() {
         const proformaSettings = {
                 enabled: rawProformaSettings.enabled !== false,
                 allowedRoles: Array.isArray(rawProformaSettings.allowedRoles)
-                        ? rawProformaSettings.allowedRoles
-                                  .map((role) => normalizeProfessionalRole(role))
-                                  .filter(Boolean)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.allowedRoles
+                                                  .map((role) => normalizeProfessionalRole(role))
+                                                  .filter(Boolean),
+                                  ),
+                          )
                         : [],
+                professionalPaymentModes: Array.isArray(rawProformaSettings.professionalPaymentModes)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.professionalPaymentModes
+                                                  .map((mode) => normalizeProformaPaymentMode(mode))
+                                                  .filter(Boolean),
+                                  ),
+                          )
+                        : [],
+                highlightTotal:
+                        rawProformaSettings.highlightTotal === undefined
+                                ? true
+                                : Boolean(rawProformaSettings.highlightTotal),
+                showOnSuccessScreen: Boolean(rawProformaSettings.showOnSuccessScreen),
+                sendByEmail: Boolean(
+                        rawProformaSettings.sendByEmail ||
+                                (rawProformaSettings.options &&
+                                        rawProformaSettings.options.enviar_por_correo === true)
+                ),
         };
-
-        if (proformaSettings.allowedRoles.length === 0) {
-                proformaSettings.allowedRoles = [
-                        "profesional",
-                        "particular",
-                        "gestoria",
-                ];
-        }
 
         let proformaFlowEnabled = false;
         let lastProformaLog = {
@@ -343,6 +367,8 @@ export default function initAutosave() {
                 role: null,
                 active: null,
                 allowed: null,
+                paymentMethod: null,
+                paymentAllowed: null,
         };
 
         const vehiculoFields = [
@@ -402,10 +428,87 @@ export default function initAutosave() {
                 return normalizedBase;
         }
 
+        const PROFORMA_ROLE_LABELS = {
+                profesional: "Profesionales",
+                particular: "Particulares",
+                gestoria: "Gestorías",
+        };
+
+        const PROFORMA_PAYMENT_LABELS = {
+                transferencia: "Transferencia",
+                domiciliacion: "Domiciliación",
+        };
+
+        console.log("[Proforma] Ajustes iniciales", {
+                enabled: proformaSettings.enabled,
+                allowedRoles: proformaSettings.allowedRoles,
+                professionalPaymentModes: proformaSettings.professionalPaymentModes,
+                highlightTotal: proformaSettings.highlightTotal,
+                showOnSuccessScreen: proformaSettings.showOnSuccessScreen,
+                raw: rawProformaSettings,
+        });
+        console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
+        console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
+        console.log("[Proforma]", `Mostrar a profesionales con: ${formatProformaPaymentsLabel()}`);
+        console.log(
+                "[Proforma]",
+                `Subrayar total: ${proformaSettings.highlightTotal ? "Sí" : "No"}`
+        );
+        console.log(
+                "[Proforma]",
+                `Mostrar proforma en pantalla de éxito: ${
+                        proformaSettings.showOnSuccessScreen ? "Sí" : "No"
+                }`
+        );
+        console.log(
+                "[Proforma]",
+                `Enviar por correo: ${proformaSettings.sendByEmail ? "Sí" : "No"}`
+        );
+
+        function formatProformaRolesLabel() {
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return "Ninguno";
+                }
+
+                return proformaSettings.allowedRoles
+                        .map((role) => PROFORMA_ROLE_LABELS[role] || role)
+                        .join(", ");
+        }
+
+        function formatProformaPaymentsLabel() {
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return "Ninguno";
+                if (proformaSettings.professionalPaymentModes.length === 0) return "Ninguno";
+
+                return proformaSettings.professionalPaymentModes
+                        .map((mode) => PROFORMA_PAYMENT_LABELS[mode] || mode)
+                        .join(", ");
+        }
+
+        function getCurrentProformaPaymentMethod() {
+                const metodoPagoEl = document.getElementById("metodo_pago");
+                if (!metodoPagoEl) return "";
+                return normalizeProformaPaymentMode(metodoPagoEl.value || "");
+        }
+
+        function isProfessionalPaymentAllowed(paymentMethod) {
+                if (!paymentMethod) return true;
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return true;
+                if (proformaSettings.professionalPaymentModes.length === 0) return true;
+
+                if (
+                        paymentMethod === "domiciliacion" &&
+                        !proformaSettings.professionalPaymentModes.includes("domiciliacion")
+                ) {
+                        return false;
+                }
+
+                return true;
+        }
+
         function isRoleAllowedForProforma(role) {
                 if (!role) return false;
                 if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
-                        return true;
+                        return false;
                 }
                 return proformaSettings.allowedRoles.includes(role);
         }
@@ -414,18 +517,29 @@ export default function initAutosave() {
                 const generalEnabled = Boolean(proformaSettings.enabled);
                 const targetRole = resolveProfessionalRoleFromContext();
                 const roleAllowed = isRoleAllowedForProforma(targetRole);
-                const active = generalEnabled && roleAllowed && Boolean(targetRole);
+                const paymentMethod = targetRole === "profesional" ? getCurrentProformaPaymentMethod() : "";
+                const paymentAllowed = targetRole === "profesional"
+                        ? isProfessionalPaymentAllowed(paymentMethod)
+                        : true;
+                const active = generalEnabled && roleAllowed && Boolean(targetRole) && paymentAllowed;
 
                 if (
                         lastProformaLog.generalEnabled !== generalEnabled ||
                         lastProformaLog.role !== targetRole ||
                         lastProformaLog.active !== active ||
-                        lastProformaLog.allowed !== roleAllowed
+                        lastProformaLog.allowed !== roleAllowed ||
+                        lastProformaLog.paymentMethod !== paymentMethod ||
+                        lastProformaLog.paymentAllowed !== paymentAllowed
                 ) {
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "";
                         console.log("[PROFORMA] Evaluación proforma", {
                                 generalEnabled,
                                 targetRole: targetRole || "",
                                 roleAllowed,
+                                paymentMethod: paymentLabel,
+                                paymentAllowed,
                                 active,
                                 reason: reason || undefined,
                         });
@@ -434,6 +548,8 @@ export default function initAutosave() {
                                 role: targetRole,
                                 active,
                                 allowed: roleAllowed,
+                                paymentMethod,
+                                paymentAllowed,
                         };
                 }
 
@@ -457,7 +573,28 @@ export default function initAutosave() {
         const usuarioSelect = document.getElementById("usuario-rol");
         if (usuarioSelect) {
                 usuarioSelect.addEventListener("change", () => {
+                        const selectedOption = usuarioSelect.options[usuarioSelect.selectedIndex];
+                        const userLabel = selectedOption?.textContent?.trim() || "Usuario";
+                        const userRole = resolveProfessionalRoleFromContext() || "";
+                        const paymentMethod = getCurrentProformaPaymentMethod();
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "desconocido";
+
+                        console.log(
+                                `[Proforma] ${userLabel}: Rol ${userRole || "desconocido"}` +
+                                        (userRole === "profesional"
+                                                ? ` | Método de pago ${paymentLabel}`
+                                                : ""),
+                        );
                         evaluateProformaFlow("usuario_change");
+                });
+        }
+
+        const metodoPagoSelect = document.getElementById("metodo_pago");
+        if (metodoPagoSelect) {
+                metodoPagoSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("metodo_pago_change");
                 });
         }
 
@@ -633,6 +770,9 @@ export default function initAutosave() {
                 const availableDocs = [];
                 let certificateReady = false;
                 for (const doc of AVAILABLE_DOCS) {
+                        if (doc.key === "proforma" && !proformaSettings.showOnSuccessScreen) {
+                                continue;
+                        }
                         const url = latestDocLinks?.[doc.key];
                         if (!url) continue;
                         const link = docsContainer.querySelector(
@@ -1949,26 +2089,28 @@ export default function initAutosave() {
 
                 let totalHighlightImg = null;
                 let totalHighlightImgTargetWidth = 0;
-                try {
-                        const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
-                        const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
-                                cache: true,
-                                cacheKey: "img:total-highlight",
-                        });
-                        if (totalHighlightImgBytes) {
-                                totalHighlightImg = await pdfDoc.embedPng(
-                                        totalHighlightImgBytes instanceof Uint8Array
-                                                ? totalHighlightImgBytes
-                                                : new Uint8Array(totalHighlightImgBytes)
-                                );
-                                const baseDims = totalHighlightImg.scale(1);
-                                totalHighlightImgTargetWidth =
-                                        baseDims && baseDims.height > 0
-                                                ? (rowHeight / baseDims.height) * baseDims.width
-                                                : 0;
+                if (proformaSettings.highlightTotal) {
+                        try {
+                                const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
+                                const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
+                                        cache: true,
+                                        cacheKey: "img:total-highlight",
+                                });
+                                if (totalHighlightImgBytes) {
+                                        totalHighlightImg = await pdfDoc.embedPng(
+                                                totalHighlightImgBytes instanceof Uint8Array
+                                                        ? totalHighlightImgBytes
+                                                        : new Uint8Array(totalHighlightImgBytes)
+                                        );
+                                        const baseDims = totalHighlightImg.scale(1);
+                                        totalHighlightImgTargetWidth =
+                                                baseDims && baseDims.height > 0
+                                                        ? (rowHeight / baseDims.height) * baseDims.width
+                                                        : 0;
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Missing total highlight asset", err);
                         }
-                } catch (err) {
-                        console.warn("[AUTOSAVE] Missing total highlight asset", err);
                 }
 
                 const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
@@ -3049,8 +3191,7 @@ export default function initAutosave() {
                                 ? `Gracias por contratar la garantía ${cleanPlan}.`
                                 : "Gracias por contratar tu garantía.";
                         message.textContent =
-                                `${intro} Estamos preparando la documentación y recibirás un correo de confirmación en unos instantes. ` +
-                                "Puedes descargarla ahora o acceder cuando quieras desde Mis Garantías.";
+                                `${intro} Puedes descargar la documentación ahora o acceder cuando quieras desde Mis Garantías.`;
                         message.hidden = false;
                 }
                 const loading = successBlock.querySelector(
@@ -3140,8 +3281,8 @@ export default function initAutosave() {
                                 );
                                 if (transferNote) {
                                         const message = deadlineLabel
-                                                ? `Realiza el pago antes del ${deadlineLabel}.`
-                                                : "Realiza el pago lo antes posible.";
+                                                ? `Realiza la transferencia antes del ${deadlineLabel}.`
+                                                : "Realiza la transferencia lo antes posible.";
                                         let noteTextNode = transferNote.querySelector(
                                                 ".form-success__transfer-note-text"
                                         );
