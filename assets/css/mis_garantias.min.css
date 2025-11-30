@@ -6957,6 +6957,11 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
   section.guarantees-list {
     max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
   }
+
+.guarantee-detail__badge {
+    top: var(--spacing-4);
+}
+
   }
 
 
