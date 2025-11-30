@@ -6987,6 +6987,18 @@ height: 150px;
 .guarantee-detail__hint {
     font-size: .9rem
 }
+  .guarantee-detail__plan-name, .guarantee-detail__plan-price{
+    font-size: 1.05rem;
+  }
+
+  .detail__section--payment .detail__payment-note {
+    font-size: 1rem;
+  }
+
+  
+  .detail__section--payment .detail__payment-note, .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td, .guarantee-detail__plan-name, .guarantee-detail__plan-price, .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li, .guarantee-detail__hint {
+    font-size: initial;
+  }
 
 }
 
@@ -6997,18 +7009,8 @@ height: 150px;
     max-width: 1800px;
 }
 
-  .guarantee-detail__plan-name, .guarantee-detail__plan-price{
-    font-size: 1.05rem;
-  }
-
-  .detail__section--payment .detail__payment-note {
-    font-size: 1rem;
-  }
 
 
-  .detail__section--payment .detail__payment-note, .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td, .guarantee-detail__plan-name, .guarantee-detail__plan-price, .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li, .guarantee-detail__hint {
-    font-size: initial;
-  }
 
 }
 
