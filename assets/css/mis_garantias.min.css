@@ -7005,6 +7005,14 @@ height: 150px;
     font-size: initial;
   }
 
+  .chart-total {
+    font-size: 2.2rem
+  }
+
+.chart-label {
+    font-size: .8rem;
+}
+
 }
 
 
