@@ -2876,9 +2876,13 @@ export default function initAutosave() {
                                 data.detail?.cliente_user_id,
                                 data.detail?.cliente?.id,
                                 data.detail?.cliente?.ID,
+                                data.detail?.cliente?.user_id,
+                                data.detail?.cliente?.usuario_id,
                                 data.detail?.comprador?.id,
                                 data.detail?.comprador_id,
                                 data.detail?.datos_cliente?.user_id,
+                                data.detail?.datos_cliente?.id,
+                                data.detail?.datos_cliente?.ID,
                                 data?.garantia_contratada?.cliente,
                         ];
                         const firstVendorId = pickFirstId(vendorIdCandidates);
@@ -2972,6 +2976,16 @@ export default function initAutosave() {
                                                 usuarioSelect.dispatchEvent(
                                                         new Event("change", { bubbles: true })
                                                 );
+                                        } else if (pendingSelectLabel) {
+                                                const option = document.createElement("option");
+                                                option.value = pendingSelectValue;
+                                                option.textContent = pendingSelectLabel;
+                                                usuarioSelect.appendChild(option);
+                                                option.selected = true;
+                                                usuarioSelect.value = pendingSelectValue;
+                                                usuarioSelect.dispatchEvent(
+                                                        new Event("change", { bubbles: true })
+                                                );
                                         }
                                 }
                         }
@@ -3031,7 +3045,12 @@ export default function initAutosave() {
                                 }
                         }
 
-                        const modalidadId = data?.garantia_contratada?.garantia;
+                        const modalidadId =
+                                data?.garantia_contratada?.garantia ??
+                                data?.garantia_contratada?.modalidad ??
+                                data?.modalidad_id ??
+                                data?.detail?.garantia_contratada?.garantia ??
+                                data?.detail?.garantia_contratada?.modalidad;
                         const savedMonths = data?.garantia_contratada?.meses_contratados;
                         if (modalidadId) {
                                 setSelectedModalidadId(String(modalidadId));
