@@ -368,8 +368,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     padding-top: 0;
     padding-inline: 1.25rem;
     padding-bottom: env(safe-area-inset-bottom);
-    background: var(--go-color-f4f4f4, #f4f4f4);
-    color: #1c1b1f;
+color: var(--go-color-f4f4f4, #f4f4f4);
+    background: #1c1b1f;
 }
 
 
@@ -411,8 +411,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
 }
 
 .guarantees-bottom-bar__button.is-active .guarantees-bottom-bar__icon {
-    background: rgba(15, 23, 42, 0.12);
-    color: #1c1b1f;
+background: rgb(95, 95, 95);
+  color: #fff;
 }
 
 .guarantees-bottom-bar__icon svg {
@@ -491,8 +491,8 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     width: 6rem;
     height: 6rem;
     border-radius: 1.75rem;
-    background: var(--primary-color-soft);
-    color: var(--primary-color-strong);
+background: var(--scrollbar-thumb);
+  color: var(--surface);
     box-shadow:
         0px 1px 3px 1px rgba(0, 0, 0, 0.15),
         0px 1px 2px 0px rgba(0, 0, 0, 0.3);
@@ -1829,7 +1829,8 @@ body.has-mobile-summary-open .column-resizer {
 
 .guarantee-detail__dialog {
     position: relative;
-    width: min(100%, 36rem);
+    /* width: min(100%, 36rem); */
+    width: 100%;
     height: 100%;
     max-height: 100%;
     background: var(--surface);
@@ -3941,6 +3942,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     }
 }
 
+
 .guarantee-detail__dialog {
     padding-top: 0;
     padding-inline: 1rem;
@@ -4698,6 +4700,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     position: relative;
     cursor: pointer;
     overflow: visible;
+    padding-left: .5rem;
 }
 
 .detail__transfer-table [data-copy-cell]::after {
@@ -4812,11 +4815,44 @@ tr.guarantees-table__row:not(.selected):hover td,
     transform: translate(-50%, 0);
 }
 
+
+@media (min-width: 960px) {
+    .guarantee-card {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        column-gap: 1rem;
+    }
+
+    .guarantee-card__details {
+        gap: 0;
+    }
+
+    .guarantee-card__footer {
+        flex-direction: column;
+        gap: 0;
+        align-items: end;
+    }
+
+    .guarantee-card__action {
+        padding-right: 0;
+    }
+
+    body.has-mobile-summary-open .guarantee-detail {
+        width: 100%;
+
+    }
+
+    body {
+        /* padding-top: 0; */
+    }
+}
+
+
 /* 4) ESCRITORIO ≥1024px: tabla clásica + detalle a la derecha */
 @media (min-width: 1024px) {
 
 .top-bar {
-    top: var(--spacing-3);
+    /* top: var(--spacing-3); */
 }
 
 .container {
@@ -4824,7 +4860,7 @@ tr.guarantees-table__row:not(.selected):hover td,
 }
 
     .guarantee-detail {
-        position: sticky;
+        /* position: sticky; */
         /* top: calc(var(--alturaHeader) + var(--spacing-2)); */
         align-self: start;
         z-index: 220;
@@ -5595,6 +5631,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--summary-muted);
     transition: color 0.3s ease;
     padding-inline: 1rem;
+    justify-content: center;
 }
 
 .kpi-trend svg {
@@ -6239,6 +6276,8 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         padding: 0;
         overflow: hidden;
         transition: top 300ms ease;
+       
+        top: var(--alturaHeader);
     }
 
     body.scrolled .container.guarantees-page {
@@ -6286,6 +6325,8 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         height: 100%;
         overflow: hidden;
         align-items: start;
+
+        padding-inline: 1.5rem;
     }
 
     .guarantees-mobile-search {
@@ -6445,7 +6486,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
     section.guarantees-list {
         display: block;
         z-index: 99;
-        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
+        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height) + 1.5rem);
         overflow-y: auto;
         overflow-x: hidden;
         transition: max-height 300ms ease;
@@ -6665,7 +6706,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         top: calc(var(--alturaHeader) + var(--spacing-3));
         align-self: start;
         z-index: 220;
-        max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
+        /* max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height)); */
         height: 100%;
         margin-top: 0;
         padding: 0;
@@ -6839,4 +6880,151 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         font-size: 0.8rem;
         font-weight: 400;
     }
+
+    .detail__section--payment .detail__payment-note,
+    .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td,
+    .guarantee-detail__plan-name, .guarantee-detail__plan-price,
+    .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li,
+    .guarantee-detail__hint
+     {
+        font-size: 0.8rem;
+    }
+
+    .guarantee-detail__header h2,
+    .guarantee-admin-summary__title {
+        font-size: 1rem;
+    }
+.guarantee-detail__badge {
+    top: 1rem;
 }
+
+.kpi-value {
+  font-size: 1.25rem;
+}
+
+.kpi-trend {
+    padding-inline: 0;
+}
+
+.kpi-label svg {
+    display: none;
+}
+
+.donut-chart {
+    width: 100px;
+    height: 100px;  
+}
+
+.chart-total {
+    font-size: 1.5rem;
+}
+
+.chart-label {
+    font-size: .7rem;
+}
+
+.action-label {
+    font-size: .9rem;
+}
+
+}
+
+
+@media (min-width: 1440px) {
+  .container.guarantees-page {
+top: calc(var(--alturaHeader) + var(--spacing-3));
+  }
+
+   .top-bar {
+    top: var(--spacing-3);
+    /* max-width: calc(1440px - 3rem); */
+    width: calc(100% - 3rem);
+    max-width: 1600px;
+  }
+
+  .guarantees-container {
+    padding-inline:0;
+  }
+
+ .container.guarantees-page {
+   /* max-width: calc(1440px - 3rem); */
+   max-width: none;
+    width: calc(100% - 3rem); 
+    margin-inline: auto;
+      max-width: 1600px;
+  }
+
+  section.guarantees-list {
+    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
+  }
+
+.guarantee-detail__badge {
+    top: var(--spacing-4);
+}
+
+  }
+
+
+
+@media (min-width: 1600px) {
+
+.guarantee-detail__header h2 {
+    font-size: 1.5rem;
+}
+
+.donut-chart {
+
+width: 150px;;
+height: 150px;  
+}
+
+.guarantee-admin-summary__title {
+    font-size: 1.25rem;
+}
+
+.kpi-value{
+    font-size: 1.75rem;
+}
+
+.kpi-label svg {
+    display:    flex;
+}
+.guarantee-detail__hint {
+    font-size: .9rem
+}
+  .guarantee-detail__plan-name, .guarantee-detail__plan-price{
+    font-size: 1.05rem;
+  }
+
+  .detail__section--payment .detail__payment-note {
+    font-size: 1rem;
+  }
+
+  
+  .detail__section--payment .detail__payment-note, .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td, .guarantee-detail__plan-name, .guarantee-detail__plan-price, .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li, .guarantee-detail__hint {
+    font-size: initial;
+  }
+
+  .chart-total {
+    font-size: 2.2rem
+  }
+
+.chart-label {
+    font-size: .8rem;
+}
+
+}
+
+
+
+@media (min-width: 1920px) {
+.top-bar, .container.guarantees-page {
+    max-width: 1800px;
+}
+
+
+
+
+}
+
+  
