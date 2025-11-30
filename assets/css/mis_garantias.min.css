@@ -6274,6 +6274,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         padding: 0;
         overflow: hidden;
         transition: top 300ms ease;
+       
     }
 
     body.scrolled .container.guarantees-page {
@@ -6321,6 +6322,8 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         height: 100%;
         overflow: hidden;
         align-items: start;
+
+        padding-inline: 1.5rem;
     }
 
     .guarantees-mobile-search {
