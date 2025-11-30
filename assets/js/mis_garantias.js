@@ -9737,12 +9737,31 @@ const ADD_DOC_KEY = "add-document";
         return "-";
     })();
     const traccionRowHtml = `<li class="detail__item${recargoClass("traccion")}"><strong>Tracción:</strong> ${traccionValue}</li>`;
+    const proformaOptions =
+        goConfig && goConfig.proforma && typeof goConfig.proforma.options === "object"
+            ? goConfig.proforma.options
+            : {};
+    const shouldShowProformaDocs =
+        (goConfig && goConfig.proforma && goConfig.proforma.showInDocuments === true) ||
+        proformaOptions.mostrar_en_documentos === true;
+
+    console.log(
+        `[Proforma]: Mostrar en documentación? ${shouldShowProformaDocs ? "Sí" : "No"}`,
+        {
+            options: proformaOptions,
+            showInDocumentsFlag:
+                goConfig && goConfig.proforma ? goConfig.proforma.showInDocuments : undefined,
+        }
+    );
+
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
         ? rowData.documents
         : [];
-    const docsData = docsSource
+    const docsData = (shouldShowProformaDocs
+        ? docsSource
+        : docsSource.filter((doc) => (doc && doc.key ? String(doc.key) : "") !== "proforma"))
         .map((doc) => {
             const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
             const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;

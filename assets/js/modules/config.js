@@ -80,8 +80,21 @@ export function getProformaFeatureSettings() {
         const allowedRoles = Array.isArray(raw.allowedRoles)
                 ? raw.allowedRoles.map((role) => String(role || "").toLowerCase())
                 : [];
+        const professionalPaymentModes = Array.isArray(raw.professionalPaymentModes)
+                ? raw.professionalPaymentModes.map((mode) => String(mode || "").toLowerCase())
+                : [];
+        const options = raw.options && typeof raw.options === "object" ? raw.options : {};
         return {
                 enabled: raw.enabled !== false,
                 allowedRoles,
+                professionalPaymentModes,
+                highlightTotal:
+                        raw.highlightTotal === undefined
+                                ? true
+                                : Boolean(raw.highlightTotal),
+                showOnSuccessScreen: options.mostrar_en_pantalla_exito === true,
+                showInDocuments: options.mostrar_en_documentos === true,
+                sendByEmail: options.enviar_por_correo === true,
+                options,
         };
 }
