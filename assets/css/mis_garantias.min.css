@@ -4700,6 +4700,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     position: relative;
     cursor: pointer;
     overflow: visible;
+    padding-left: .5rem;
 }
 
 .detail__transfer-table [data-copy-cell]::after {
@@ -6275,6 +6276,7 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         overflow: hidden;
         transition: top 300ms ease;
        
+        top: var(--alturaHeader);
     }
 
     body.scrolled .container.guarantees-page {
@@ -6877,4 +6879,21 @@ body.has-mobile-filters-open .guarantees-list__filters-fab {
         font-size: 0.8rem;
         font-weight: 400;
     }
+
+    .detail__section--payment .detail__payment-note,
+    .detail__transfer-table tr[data-copy-row] th, .detail__transfer-table tr[data-copy-row] td,
+    .guarantee-detail__plan-name, .guarantee-detail__plan-price,
+    .detail__billing-breakdown, .detail__billing-breakdown .detail__billing-amount, .detail__section li 
+     {
+        font-size: 0.8rem;
+    }
+
+    .guarantee-detail__header h2 {
+        font-size: 1rem;
+    }
+.guarantee-detail__badge {
+    top: 1rem;
+}
+
+
 }
