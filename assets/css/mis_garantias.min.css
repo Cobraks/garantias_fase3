@@ -5631,6 +5631,7 @@ tr.guarantees-table__row:not(.selected):hover td,
     color: var(--summary-muted);
     transition: color 0.3s ease;
     padding-inline: 1rem;
+    justify-content: center;
 }
 
 .kpi-trend svg {
@@ -6966,6 +6967,26 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
     font-size: 1.5rem;
 }
 
+.donut-chart {
+
+width: 150px;;
+height: 150px;  
+}
+
+.guarantee-admin-summary__title {
+    font-size: 1.25rem;
+}
+
+.kpi-value{
+    font-size: 1.75rem;
+}
+
+.kpi-label svg {
+    display:    flex;
+}
+.guarantee-detail__hint {
+    font-size: .9rem
+}
 
 }
 
