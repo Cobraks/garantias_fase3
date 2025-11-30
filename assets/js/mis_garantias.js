@@ -1,4 +1,5 @@
 import { AVAILABLE_DOCS } from "./modules/docs-config.js";
+import { generateDocumentPdf, encodeSignaturePayload } from "./modules/document-generator.js";
 
 const ADD_DOC_KEY = "add-document";
 
@@ -3336,27 +3337,195 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const resetLabel = context.resetLabel || confirmBtn.textContent || "Generar factura";
+                        const id = context.id || "";
+                        const detail = (id && detailCache.get(id)) || {};
+                        const row = context.row && context.row.isConnected ? context.row : id ? findRowById(id) : null;
+                        const panel = context.panel || document.querySelector(".guarantee-detail__panel.active");
+                        const templateUrl =
+                                detail.invoice_template_url ||
+                                detail.invoiceTemplateUrl ||
+                                (detail.detail ? detail.detail.invoice_template_url : "") ||
+                                "";
+                        const reference = (context.invoiceReference || "").trim();
+
+                        const ensureStatus = (msg) => {
+                                if (!statusEl) return;
+                                statusEl.textContent = msg || "";
+                                statusEl.hidden = !msg;
+                        };
+
+                        if (!templateUrl) {
+                                ensureStatus("No hay plantilla de factura disponible.");
+                                return;
+                        }
+                        if (!reference) {
+                                ensureStatus("Añade la referencia de la factura para continuar.");
+                                return;
+                        }
+
+                        const matricula =
+                                panel?.dataset?.matricula ||
+                                row?.dataset?.matricula ||
+                                detail.matricula ||
+                                "";
+                        const marca = detail.marca || row?.dataset?.marca || "";
+                        const modelo = detail.modelo || row?.dataset?.modelo || "";
+                        const coverageLabel =
+                                panel?.dataset?.coverage ||
+                                detail.plan ||
+                                detail.plan_nombre ||
+                                detail.coverage ||
+                                "";
+                        const rawPrice = detail.precio || row?.dataset?.precio || detail.precio_venta || "";
+                        const total = parsePriceToNumber(rawPrice);
+                        const safeTotal = Number.isFinite(total) ? total : 0;
+                        const base = Math.max(0, Math.round((safeTotal / 1.21) * 100) / 100);
+                        const iva = Math.max(0, Math.round((safeTotal - base) * 100) / 100);
+                        const items = [
+                                { concepto: coverageLabel || "Garantía", valor: base || safeTotal, destacado: false },
+                                { concepto: "IVA 21%", valor: iva, destacado: false },
+                                { concepto: "TOTAL", valor: base + iva || safeTotal, destacado: true },
+                        ];
+
+                        const paymentMethod = (detail.metodo_pago || row?.dataset?.metodoPago || "").toString();
+                        const transferIban = detail.transfer_iban || row?.dataset?.transferIban || "";
+                        const coverageStart =
+                                detail.desde ||
+                                detail.estado_garantia?.inicio ||
+                                row?.dataset?.desde ||
+                                "";
+                        const coverageEnd =
+                                detail.hasta ||
+                                detail.estado_garantia?.finalizacion ||
+                                row?.dataset?.hasta ||
+                                "";
+                        const today = new Date();
+                        const dueDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+                        const vendorInfo = {
+                                razonSocial:
+                                        detail.concesionario ||
+                                        (detail.vendor_company ? detail.vendor_company.trade_name : "") ||
+                                        (detail.vendor_company ? detail.vendor_company.name : "") ||
+                                        "",
+                                cif: (detail.vendor_company && detail.vendor_company.cif) || "",
+                                address:
+                                        (detail.vendor_company && detail.vendor_company.address) ||
+                                        (detail.vendor_company && detail.vendor_company.direccion) ||
+                                        "",
+                                postalCode:
+                                        (detail.vendor_company && detail.vendor_company.postal_code) ||
+                                        (detail.vendor_company && detail.vendor_company.cp) ||
+                                        "",
+                                city: (detail.vendor_company && detail.vendor_company.city) || "",
+                                province: (detail.vendor_company && detail.vendor_company.province) || "",
+                                phone: detail.telefono_vendedor || "",
+                                email: detail.email_vendedor || detail.email_vendedor_registro || "",
+                                role: detail.vendor_company_type_label || detail.vendor_company_type_value || "",
+                        };
+
+                        const generationArgs = {
+                                templateUrl,
+                                items,
+                                coverageLabel,
+                                matricula,
+                                marca,
+                                modelo,
+                                emissionDate: today,
+                                dueDate,
+                                coverageStart,
+                                coverageEnd,
+                                vendorInfo,
+                                paymentMethod,
+                                transferIban,
+                                referenceValue: reference,
+                                referenceLabel: "Ref.",
+                                highlightTotal: true,
+                        };
+
                         confirmBtn.classList.add("is-loading");
                         confirmBtn.textContent = "Generando factura";
                         confirmBtn.disabled = true;
                         if (cancelBtn) {
                                 cancelBtn.disabled = true;
                         }
-                        if (statusEl) {
-                                statusEl.textContent = "Generando factura...";
-                                statusEl.hidden = false;
-                        }
-                        window.setTimeout(() => {
+                        ensureStatus("Generando factura...");
+
+                        const modalEl = confirmBtn.closest(".confirm-modal");
+                        const messageEl = modalEl?.querySelector(".confirm-modal__message") || null;
+                        const invoiceFields = modalEl?.querySelector("[data-confirm-invoice-fields]");
+                        const titleEl = modalEl?.querySelector(".confirm-modal__title");
+
+                        const resetUi = () => {
                                 confirmBtn.classList.remove("is-loading");
                                 confirmBtn.textContent = resetLabel;
-                                if (cancelBtn) {
-                                        cancelBtn.disabled = false;
-                                }
-                                closeModal();
-                        }, 1800);
+                                confirmBtn.disabled = false;
+                                if (cancelBtn) cancelBtn.disabled = false;
+                        };
+
+                        generateDocumentPdf(generationArgs)
+                                .then((result) => {
+                                        if (!result || !result.pdfBytes) {
+                                                throw new Error("No se pudo generar la factura.");
+                                        }
+                                        const signature = result.signature || encodeSignaturePayload(generationArgs);
+                                        return fetch(`${restRoot}go/v1/guarantees/${id}/invoice`, {
+                                                method: "POST",
+                                                headers: {
+                                                        "X-WP-Nonce": restNonce,
+                                                        "X-Go360-Invoice-Signature": signature || "",
+                                                },
+                                                body: result.pdfBytes,
+                                        }).then(async (res) => {
+                                                const body = await res.json().catch(() => ({}));
+                                                if (!res.ok) {
+                                                        throw new Error(body?.message || "No se pudo generar la factura.");
+                                                }
+                                                return body;
+                                        });
+                                })
+                                .then((body) => {
+                                        const invoiceUrl = body.invoice_url || "";
+                                        ensureStatus(invoiceUrl ? "Factura generada correctamente." : "");
+                                        if (messageEl) {
+                                                messageEl.textContent = "";
+                                                messageEl.hidden = true;
+                                        }
+                                        if (invoiceFields) {
+                                                invoiceFields.hidden = true;
+                                        }
+                                        if (titleEl) {
+                                                titleEl.textContent = "Ver factura";
+                                        }
+                                        const viewLabel = reference ? `Ver factura ${reference}` : "Ver factura";
+                                        confirmBtn.textContent = viewLabel;
+                                        confirmBtn.classList.remove("is-loading");
+                                        confirmBtn.disabled = !invoiceUrl;
+                                        if (cancelBtn) {
+                                                cancelBtn.disabled = false;
+                                        }
+                                        context.intent = "view-invoice";
+                                        context.invoiceUrl = invoiceUrl;
+                                        context.invoiceReference = reference;
+                                        if (id) {
+                                                const cached = detailCache.get(id) || {};
+                                                cached.invoice_url = invoiceUrl;
+                                                cached.invoice_reference = reference;
+                                                detailCache.set(id, cached);
+                                        }
+                                })
+                                .catch((error) => {
+                                        console.error("[INVOICE] generation error", error);
+                                        ensureStatus(
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se pudo generar la factura."
+                                        );
+                                        resetUi();
+                                });
                 }
 
-                function runConfirmRequest(context) {
+
+function runConfirmRequest(context) {
                         if (!context) return;
                         if (context.intent === "trash") {
                                 runTrashRequest(context);
@@ -4534,6 +4703,11 @@ const ADD_DOC_KEY = "add-document";
                                         }
                                         if (context && context.intent === "cancel-guarantee") {
                                                 runCancelRequest(context, { confirmBtn, closeModal });
+                                                return;
+                                        }
+                                        if (context && context.intent === "view-invoice" && context.invoiceUrl) {
+                                                window.open(context.invoiceUrl, "_blank", "noopener");
+                                                closeModal();
                                                 return;
                                         }
                                         if (context && context.intent === "generate-invoice") {
@@ -6286,6 +6460,16 @@ const ADD_DOC_KEY = "add-document";
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
                         }).format(num);
+                }
+
+                function parsePriceToNumber(value) {
+                        if (value === null || value === undefined) return NaN;
+                        const normalized = String(value)
+                                .replace(/[^0-9,.-]/g, "")
+                                .replace(/\.(?=\d{3}(\D|$))/g, "")
+                                .replace(",", ".");
+                        const num = Number.parseFloat(normalized);
+                        return Number.isFinite(num) ? num : NaN;
                 }
 
                 function extractVendorType(value) {
