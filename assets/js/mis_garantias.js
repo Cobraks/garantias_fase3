@@ -4853,7 +4853,7 @@ const ADD_DOC_KEY = "add-document";
                                 estadoClase.indexOf("domiciliacion") !== -1;
                         const canShowInvoice =
                                 isActivated || isPendingDomiciliation || isPendingPayment;
-                        const toggleAction = (selector, shouldShow = true) => {
+                        const toggleAction = (selector, shouldShow = true, onShow) => {
                                 const cache = ensureManagementAction(selector);
                                 if (!cache || !cache.placeholder || !cache.placeholder.parentNode) {
                                         return;
@@ -4866,17 +4866,22 @@ const ADD_DOC_KEY = "add-document";
                                         return;
                                 }
 
+                                let target = existing;
+
                                 if (existing) {
                                         existing.hidden = false;
                                         existing.removeAttribute("aria-hidden");
-                                        return;
+                                } else {
+                                        target = cache.template.cloneNode(true);
+                                        cache.placeholder.parentNode.insertBefore(
+                                                target,
+                                                cache.placeholder.nextSibling
+                                        );
                                 }
 
-                                const clone = cache.template.cloneNode(true);
-                                cache.placeholder.parentNode.insertBefore(
-                                        clone,
-                                        cache.placeholder.nextSibling
-                                );
+                                if (typeof onShow === "function") {
+                                        onShow(target);
+                                }
                         };
 
                         toggleAction(
@@ -4887,9 +4892,20 @@ const ADD_DOC_KEY = "add-document";
                                 '[data-management-action="certificate-error"]',
                                 !isCancelled
                         );
+                        const shouldDisableInvoice = estadoClase === "sin-finalizar";
                         toggleAction(
                                 '[data-management-action="generate-invoice"]',
-                                !isCancelled && canShowInvoice
+                                !isCancelled && (canShowInvoice || shouldDisableInvoice),
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                shouldDisableInvoice
+                                        );
+                                        btn.toggleAttribute("disabled", shouldDisableInvoice);
+                                }
                         );
                 }
 
