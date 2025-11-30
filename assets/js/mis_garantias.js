@@ -1104,7 +1104,7 @@ const ADD_DOC_KEY = "add-document";
                         syncMobileHeaderCompensation();
                 }
 
-                function syncBottomBarState({ measure = false } = {}) {
+                function syncBottomBarState() {
                         if (!rootElement) {
                                 return;
                         }
@@ -1133,42 +1133,28 @@ const ADD_DOC_KEY = "add-document";
                                         "--guarantees-bottom-bar-height",
                                         "0px"
                                 );
-                                syncMobileViewportOffset();
+                                if (rootStyle) {
+                                        rootStyle.setProperty(
+                                                mobileViewportOffsetVar,
+                                                "0px"
+                                        );
+                                }
+                                syncMobileHeaderCompensation();
                                 return;
                         }
                         bottomBar.hidden = false;
-                        bottomBar.style.position = "fixed";
-                        bottomBar.style.left = "0";
-                        bottomBar.style.right = "0";
+                        bottomBar.style.position = "";
+                        bottomBar.style.left = "";
+                        bottomBar.style.right = "";
                         bottomBar.style.bottom = "";
-                        const updateHeight = () => {
-                                let height = 0;
-                                if (bottomBar) {
-                                        const rect = bottomBar.getBoundingClientRect();
-                                        if (
-                                                rect &&
-                                                Number.isFinite(rect.height) &&
-                                                rect.height > 0
-                                        ) {
-                                                height = Math.round(rect.height);
-                                        } else if (
-                                                Number.isFinite(bottomBar.scrollHeight) &&
-                                                bottomBar.scrollHeight > 0
-                                        ) {
-                                                height = Math.round(bottomBar.scrollHeight);
-                                        }
-                                }
-                                rootElement.style.setProperty(
-                                        "--guarantees-bottom-bar-height",
-                                        `${height}px`
-                                );
-                        };
-                        if (measure && typeof requestAnimationFrame === "function") {
-                                requestAnimationFrame(updateHeight);
-                        } else {
-                                updateHeight();
+                        rootElement.style.setProperty(
+                                "--guarantees-bottom-bar-height",
+                                "80px"
+                        );
+                        if (rootStyle) {
+                                rootStyle.setProperty(mobileViewportOffsetVar, "0px");
                         }
-                        syncMobileViewportOffset();
+                        syncMobileHeaderCompensation();
                 }
 
                 function setMobileNavState(state) {
@@ -1222,7 +1208,7 @@ const ADD_DOC_KEY = "add-document";
                                         ? explicitState
                                         : computeMobileNavState();
                         const state = setMobileNavState(target);
-                        syncBottomBarState({ measure: true });
+                        syncBottomBarState();
                         syncMobileQuickAddVisibility(state);
                         return state;
                 }
@@ -1867,7 +1853,7 @@ const ADD_DOC_KEY = "add-document";
                                 observeScrollEnd();
                                 syncSearchPlacement();
                                 syncSpinnerCompensation();
-                                syncBottomBarState({ measure: true });
+                                syncBottomBarState();
                                 syncMobileViewportOffset();
                         };
                         if (typeof desktopMediaQuery.addEventListener === "function") {
@@ -1937,7 +1923,7 @@ const ADD_DOC_KEY = "add-document";
                                 passive: true,
                         });
                         const handleResize = () => {
-                                syncBottomBarState({ measure: true });
+                                syncBottomBarState();
                                 syncMobileViewportOffset();
                         };
                         window.addEventListener("resize", handleResize, {
@@ -1963,7 +1949,7 @@ const ADD_DOC_KEY = "add-document";
                 }
 
                 syncSpinnerCompensation();
-                syncBottomBarState({ measure: true });
+                syncBottomBarState();
                 syncMobileViewportOffset();
 
                 function populateMonthSelect(select) {
@@ -9737,12 +9723,31 @@ const ADD_DOC_KEY = "add-document";
         return "-";
     })();
     const traccionRowHtml = `<li class="detail__item${recargoClass("traccion")}"><strong>Tracción:</strong> ${traccionValue}</li>`;
+    const proformaOptions =
+        goConfig && goConfig.proforma && typeof goConfig.proforma.options === "object"
+            ? goConfig.proforma.options
+            : {};
+    const shouldShowProformaDocs =
+        (goConfig && goConfig.proforma && goConfig.proforma.showInDocuments === true) ||
+        proformaOptions.mostrar_en_documentos === true;
+
+    console.log(
+        `[Proforma]: Mostrar en documentación? ${shouldShowProformaDocs ? "Sí" : "No"}`,
+        {
+            options: proformaOptions,
+            showInDocumentsFlag:
+                goConfig && goConfig.proforma ? goConfig.proforma.showInDocuments : undefined,
+        }
+    );
+
     const docsSource = Array.isArray(data.documents)
         ? data.documents
         : Array.isArray(rowData.documents)
         ? rowData.documents
         : [];
-    const docsData = docsSource
+    const docsData = (shouldShowProformaDocs
+        ? docsSource
+        : docsSource.filter((doc) => (doc && doc.key ? String(doc.key) : "") !== "proforma"))
         .map((doc) => {
             const key = typeof doc.key === "string" && doc.key !== "" ? doc.key : doc.row ? `extra-${doc.row}` : "";
             const base = key && docsConfigMap.has(key) ? docsConfigMap.get(key) : null;

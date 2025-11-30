@@ -364,7 +364,7 @@ section.guarantees-list::-webkit-scrollbar-thumb,
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    height: calc(var(--guarantees-bottom-bar-height) + env(safe-area-inset-bottom));
+    height: 80px;
     padding-top: 0;
     padding-inline: 1.25rem;
     padding-bottom: env(safe-area-inset-bottom);
@@ -473,10 +473,6 @@ section.guarantees-list::-webkit-scrollbar-thumb,
 .guarantees-bottom-bar__button:not(.is-active):hover .guarantees-bottom-bar__icon {
     background: rgba(15, 23, 42, 0.08);
     color: #1c1b1f;
-}
-
-.guarantees-bottom-bar {
-    bottom: var(--mobile-viewport-bottom-offset, 0px);
 }
 
 .guarantees-quick-add {
