@@ -6906,9 +6906,19 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
 
    .top-bar {
     top: var(--spacing-3);
+    max-width: calc(1440px - 3rem);
   }
 
   .guarantees-container {
     padding-inline:0;
+  }
+
+  .main-grid.guarantees-page {
+   max-width: calc(1440px - 3rem);
+    margin-inline: auto;
+  }
+
+  section.guarantees-list {
+    max-height: calc(100vh - var(--alturaHeader) - var(--spacing-4) - 8.5rem - var(--go-advanced-filters-height));
   }
   }
