@@ -4837,13 +4837,20 @@ const ADD_DOC_KEY = "add-document";
                         })();
                         const estadoClase = estadoDesdePanel || estadoDesdeBadge;
                         const isCancelled = estadoClase === "cancelada";
-                        const toggleAction = (selector) => {
+                        const isPendingPayment = estadoClase === "pendiente-pago";
+                        const isActivated = estadoClase === "activada";
+                        const isPendingDomiciliation =
+                                typeof estadoClase === "string" &&
+                                estadoClase.indexOf("domiciliacion") !== -1;
+                        const canShowInvoice =
+                                isActivated || isPendingDomiciliation || isPendingPayment;
+                        const toggleAction = (selector, shouldShow = true) => {
                                 const cache = ensureManagementAction(selector);
                                 if (!cache || !cache.placeholder || !cache.placeholder.parentNode) {
                                         return;
                                 }
                                 const existing = managementModal.querySelector(selector);
-                                if (isCancelled) {
+                                if (!shouldShow) {
                                         if (existing) {
                                                 existing.remove();
                                         }
@@ -4863,9 +4870,18 @@ const ADD_DOC_KEY = "add-document";
                                 );
                         };
 
-                        toggleAction('[data-management-action="cancel-for-nonpayment"]');
-                        toggleAction('[data-management-action="certificate-error"]');
-                        toggleAction('[data-management-action="generate-invoice"]');
+                        toggleAction(
+                                '[data-management-action="cancel-for-nonpayment"]',
+                                !isCancelled
+                        );
+                        toggleAction(
+                                '[data-management-action="certificate-error"]',
+                                !isCancelled
+                        );
+                        toggleAction(
+                                '[data-management-action="generate-invoice"]',
+                                !isCancelled && canShowInvoice
+                        );
                 }
 
                 function formatDateIsoLocal(value) {
