@@ -14,7 +14,11 @@ import {
         getProformaFeatureSettings,
 } from "./config.js";
 import { AVAILABLE_DOCS } from "./docs-config.js";
-import { getSelectedModalidadId, getVisibleModalidades } from "./form-state.js";
+import {
+        getSelectedModalidadId,
+        getVisibleModalidades,
+        setSelectedModalidadId,
+} from "./form-state.js";
 import { debounce, setError } from "./form-utils.js";
 
 const pdfCache = new Map();
@@ -305,6 +309,15 @@ function normalizeProfessionalRole(value) {
         return ROLE_NORMALIZATION[key] || "";
 }
 
+function normalizeProformaPaymentMode(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        if (key === "domiciliación") return "domiciliacion";
+        if (key === "domiciliacion") return "domiciliacion";
+        if (key === "transferencia") return "transferencia";
+        return "";
+}
+
 function isAdminLikeRole(value) {
         return ADMIN_EQUIVALENT_ROLES.has(String(value || "").toLowerCase());
 }
@@ -323,19 +336,34 @@ export default function initAutosave() {
         const proformaSettings = {
                 enabled: rawProformaSettings.enabled !== false,
                 allowedRoles: Array.isArray(rawProformaSettings.allowedRoles)
-                        ? rawProformaSettings.allowedRoles
-                                  .map((role) => normalizeProfessionalRole(role))
-                                  .filter(Boolean)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.allowedRoles
+                                                  .map((role) => normalizeProfessionalRole(role))
+                                                  .filter(Boolean),
+                                  ),
+                          )
                         : [],
+                professionalPaymentModes: Array.isArray(rawProformaSettings.professionalPaymentModes)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.professionalPaymentModes
+                                                  .map((mode) => normalizeProformaPaymentMode(mode))
+                                                  .filter(Boolean),
+                                  ),
+                          )
+                        : [],
+                highlightTotal:
+                        rawProformaSettings.highlightTotal === undefined
+                                ? true
+                                : Boolean(rawProformaSettings.highlightTotal),
+                showOnSuccessScreen: Boolean(rawProformaSettings.showOnSuccessScreen),
+                sendByEmail: Boolean(
+                        rawProformaSettings.sendByEmail ||
+                                (rawProformaSettings.options &&
+                                        rawProformaSettings.options.enviar_por_correo === true)
+                ),
         };
-
-        if (proformaSettings.allowedRoles.length === 0) {
-                proformaSettings.allowedRoles = [
-                        "profesional",
-                        "particular",
-                        "gestoria",
-                ];
-        }
 
         let proformaFlowEnabled = false;
         let lastProformaLog = {
@@ -343,6 +371,8 @@ export default function initAutosave() {
                 role: null,
                 active: null,
                 allowed: null,
+                paymentMethod: null,
+                paymentAllowed: null,
         };
 
         const vehiculoFields = [
@@ -402,10 +432,87 @@ export default function initAutosave() {
                 return normalizedBase;
         }
 
+        const PROFORMA_ROLE_LABELS = {
+                profesional: "Profesionales",
+                particular: "Particulares",
+                gestoria: "Gestorías",
+        };
+
+        const PROFORMA_PAYMENT_LABELS = {
+                transferencia: "Transferencia",
+                domiciliacion: "Domiciliación",
+        };
+
+        console.log("[Proforma] Ajustes iniciales", {
+                enabled: proformaSettings.enabled,
+                allowedRoles: proformaSettings.allowedRoles,
+                professionalPaymentModes: proformaSettings.professionalPaymentModes,
+                highlightTotal: proformaSettings.highlightTotal,
+                showOnSuccessScreen: proformaSettings.showOnSuccessScreen,
+                raw: rawProformaSettings,
+        });
+        console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
+        console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
+        console.log("[Proforma]", `Mostrar a profesionales con: ${formatProformaPaymentsLabel()}`);
+        console.log(
+                "[Proforma]",
+                `Subrayar total: ${proformaSettings.highlightTotal ? "Sí" : "No"}`
+        );
+        console.log(
+                "[Proforma]",
+                `Mostrar proforma en pantalla de éxito: ${
+                        proformaSettings.showOnSuccessScreen ? "Sí" : "No"
+                }`
+        );
+        console.log(
+                "[Proforma]",
+                `Enviar por correo: ${proformaSettings.sendByEmail ? "Sí" : "No"}`
+        );
+
+        function formatProformaRolesLabel() {
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return "Ninguno";
+                }
+
+                return proformaSettings.allowedRoles
+                        .map((role) => PROFORMA_ROLE_LABELS[role] || role)
+                        .join(", ");
+        }
+
+        function formatProformaPaymentsLabel() {
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return "Ninguno";
+                if (proformaSettings.professionalPaymentModes.length === 0) return "Ninguno";
+
+                return proformaSettings.professionalPaymentModes
+                        .map((mode) => PROFORMA_PAYMENT_LABELS[mode] || mode)
+                        .join(", ");
+        }
+
+        function getCurrentProformaPaymentMethod() {
+                const metodoPagoEl = document.getElementById("metodo_pago");
+                if (!metodoPagoEl) return "";
+                return normalizeProformaPaymentMode(metodoPagoEl.value || "");
+        }
+
+        function isProfessionalPaymentAllowed(paymentMethod) {
+                if (!paymentMethod) return true;
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return true;
+                if (proformaSettings.professionalPaymentModes.length === 0) return true;
+
+                if (
+                        paymentMethod === "domiciliacion" &&
+                        !proformaSettings.professionalPaymentModes.includes("domiciliacion")
+                ) {
+                        return false;
+                }
+
+                return true;
+        }
+
         function isRoleAllowedForProforma(role) {
                 if (!role) return false;
                 if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
-                        return true;
+                        return false;
                 }
                 return proformaSettings.allowedRoles.includes(role);
         }
@@ -414,18 +521,29 @@ export default function initAutosave() {
                 const generalEnabled = Boolean(proformaSettings.enabled);
                 const targetRole = resolveProfessionalRoleFromContext();
                 const roleAllowed = isRoleAllowedForProforma(targetRole);
-                const active = generalEnabled && roleAllowed && Boolean(targetRole);
+                const paymentMethod = targetRole === "profesional" ? getCurrentProformaPaymentMethod() : "";
+                const paymentAllowed = targetRole === "profesional"
+                        ? isProfessionalPaymentAllowed(paymentMethod)
+                        : true;
+                const active = generalEnabled && roleAllowed && Boolean(targetRole) && paymentAllowed;
 
                 if (
                         lastProformaLog.generalEnabled !== generalEnabled ||
                         lastProformaLog.role !== targetRole ||
                         lastProformaLog.active !== active ||
-                        lastProformaLog.allowed !== roleAllowed
+                        lastProformaLog.allowed !== roleAllowed ||
+                        lastProformaLog.paymentMethod !== paymentMethod ||
+                        lastProformaLog.paymentAllowed !== paymentAllowed
                 ) {
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "";
                         console.log("[PROFORMA] Evaluación proforma", {
                                 generalEnabled,
                                 targetRole: targetRole || "",
                                 roleAllowed,
+                                paymentMethod: paymentLabel,
+                                paymentAllowed,
                                 active,
                                 reason: reason || undefined,
                         });
@@ -434,6 +552,8 @@ export default function initAutosave() {
                                 role: targetRole,
                                 active,
                                 allowed: roleAllowed,
+                                paymentMethod,
+                                paymentAllowed,
                         };
                 }
 
@@ -457,7 +577,28 @@ export default function initAutosave() {
         const usuarioSelect = document.getElementById("usuario-rol");
         if (usuarioSelect) {
                 usuarioSelect.addEventListener("change", () => {
+                        const selectedOption = usuarioSelect.options[usuarioSelect.selectedIndex];
+                        const userLabel = selectedOption?.textContent?.trim() || "Usuario";
+                        const userRole = resolveProfessionalRoleFromContext() || "";
+                        const paymentMethod = getCurrentProformaPaymentMethod();
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "desconocido";
+
+                        console.log(
+                                `[Proforma] ${userLabel}: Rol ${userRole || "desconocido"}` +
+                                        (userRole === "profesional"
+                                                ? ` | Método de pago ${paymentLabel}`
+                                                : ""),
+                        );
                         evaluateProformaFlow("usuario_change");
+                });
+        }
+
+        const metodoPagoSelect = document.getElementById("metodo_pago");
+        if (metodoPagoSelect) {
+                metodoPagoSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("metodo_pago_change");
                 });
         }
 
@@ -633,6 +774,9 @@ export default function initAutosave() {
                 const availableDocs = [];
                 let certificateReady = false;
                 for (const doc of AVAILABLE_DOCS) {
+                        if (doc.key === "proforma" && !proformaSettings.showOnSuccessScreen) {
+                                continue;
+                        }
                         const url = latestDocLinks?.[doc.key];
                         if (!url) continue;
                         const link = docsContainer.querySelector(
@@ -1949,26 +2093,28 @@ export default function initAutosave() {
 
                 let totalHighlightImg = null;
                 let totalHighlightImgTargetWidth = 0;
-                try {
-                        const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
-                        const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
-                                cache: true,
-                                cacheKey: "img:total-highlight",
-                        });
-                        if (totalHighlightImgBytes) {
-                                totalHighlightImg = await pdfDoc.embedPng(
-                                        totalHighlightImgBytes instanceof Uint8Array
-                                                ? totalHighlightImgBytes
-                                                : new Uint8Array(totalHighlightImgBytes)
-                                );
-                                const baseDims = totalHighlightImg.scale(1);
-                                totalHighlightImgTargetWidth =
-                                        baseDims && baseDims.height > 0
-                                                ? (rowHeight / baseDims.height) * baseDims.width
-                                                : 0;
+                if (proformaSettings.highlightTotal) {
+                        try {
+                                const totalHighlightImgUrl = new URL("../../images/highlight.png", import.meta.url);
+                                const totalHighlightImgBytes = await loadStaticPdf(totalHighlightImgUrl.href, {
+                                        cache: true,
+                                        cacheKey: "img:total-highlight",
+                                });
+                                if (totalHighlightImgBytes) {
+                                        totalHighlightImg = await pdfDoc.embedPng(
+                                                totalHighlightImgBytes instanceof Uint8Array
+                                                        ? totalHighlightImgBytes
+                                                        : new Uint8Array(totalHighlightImgBytes)
+                                        );
+                                        const baseDims = totalHighlightImg.scale(1);
+                                        totalHighlightImgTargetWidth =
+                                                baseDims && baseDims.height > 0
+                                                        ? (rowHeight / baseDims.height) * baseDims.width
+                                                        : 0;
+                                }
+                        } catch (err) {
+                                console.warn("[AUTOSAVE] Missing total highlight asset", err);
                         }
-                } catch (err) {
-                        console.warn("[AUTOSAVE] Missing total highlight asset", err);
                 }
 
                 const preparedItems = (Array.isArray(items) ? items : []).filter((item = {}) => {
@@ -2495,16 +2641,23 @@ export default function initAutosave() {
                                 draftUuid = data.uuid;
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                         }
+                        const vehiclePayload = data.detail?.datos_vehiculo || data.datos_vehiculo || {};
                         const map = {
                                 tipo_vehiculo: data.tipo_value,
                                 marca: data.marca,
                                 modelo: data.modelo,
                                 kilometros: data.kilometros,
                                 fecha_primera_matriculacion: normalizeDateForInput(
-                                        data.fecha_primera_matriculacion ?? data.primera_matriculacion
+                                        data.fecha_primera_matriculacion ??
+                                                data.primera_matriculacion ??
+                                                vehiclePayload.fecha_primera_matriculacion ??
+                                                vehiclePayload.primera_matriculacion
                                 ),
                                 fecha_inicio_garantia: normalizeDateForInput(
-                                        data.desde ?? data.fecha_inicio ?? data.fecha_inicio_garantia
+                                        data.desde ??
+                                                data.fecha_inicio ??
+                                                data.fecha_inicio_garantia ??
+                                                data?.estado_garantia?.inicio
                                 ),
                                 matricula:
                                         data.matricula && data.matricula !== "-"
@@ -2514,8 +2667,16 @@ export default function initAutosave() {
                                 precio_venta: data.precio_venta,
                                 combustible: data.combustible_value,
                                 cambio: data.cambio_value,
-                                traccion: data.traccion,
-                                traccion_camion: data.traccion_camion,
+                                traccion:
+                                        data.traccion_value ??
+                                        data.traccion ??
+                                        vehiclePayload.traccion_value ??
+                                        vehiclePayload.traccion,
+                                traccion_camion:
+                                        data.traccion_camion_value ??
+                                        data.traccion_camion ??
+                                        vehiclePayload.traccion_camion_value ??
+                                        vehiclePayload.traccion_camion,
                                 potencia: data.potencia,
                                 potencia_kw: data.potencia_kw,
                                 cilindrada: data.cilindrada,
@@ -2527,6 +2688,8 @@ export default function initAutosave() {
                                 localidad: data.localidad_comprador,
                                 provincia: data.provincia_comprador,
                                 codigo_postal: data.codigo_postal_comprador,
+                                duracion: data?.garantia_contratada?.meses_contratados,
+                                metodo_pago: data?.garantia_contratada?.metodo_pago,
                         };
                         Object.entries(map).forEach(([id, val]) => {
                                 if (
@@ -2713,9 +2876,14 @@ export default function initAutosave() {
                                 data.detail?.cliente_user_id,
                                 data.detail?.cliente?.id,
                                 data.detail?.cliente?.ID,
+                                data.detail?.cliente?.user_id,
+                                data.detail?.cliente?.usuario_id,
                                 data.detail?.comprador?.id,
                                 data.detail?.comprador_id,
                                 data.detail?.datos_cliente?.user_id,
+                                data.detail?.datos_cliente?.id,
+                                data.detail?.datos_cliente?.ID,
+                                data?.garantia_contratada?.cliente,
                         ];
                         const firstVendorId = pickFirstId(vendorIdCandidates);
                         const firstCustomerId = pickFirstId(customerIdCandidates);
@@ -2808,6 +2976,16 @@ export default function initAutosave() {
                                                 usuarioSelect.dispatchEvent(
                                                         new Event("change", { bubbles: true })
                                                 );
+                                        } else if (pendingSelectLabel) {
+                                                const option = document.createElement("option");
+                                                option.value = pendingSelectValue;
+                                                option.textContent = pendingSelectLabel;
+                                                usuarioSelect.appendChild(option);
+                                                option.selected = true;
+                                                usuarioSelect.value = pendingSelectValue;
+                                                usuarioSelect.dispatchEvent(
+                                                        new Event("change", { bubbles: true })
+                                                );
                                         }
                                 }
                         }
@@ -2817,6 +2995,7 @@ export default function initAutosave() {
                                         data.canal_venta_value ||
                                         data.canal_venta ||
                                         data.channel ||
+                                        data?.garantia_contratada?.canal_venta ||
                                         "";
                                 let channelValue = "";
                                 if (channelSlug) {
@@ -2861,6 +3040,56 @@ export default function initAutosave() {
                                         );
                                 } else if (pendingSelectValue) {
                                         canalSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                }
+                        }
+
+                        const modalidadId =
+                                data?.garantia_contratada?.garantia ??
+                                data?.garantia_contratada?.modalidad ??
+                                data?.modalidad_id ??
+                                data?.detail?.garantia_contratada?.garantia ??
+                                data?.detail?.garantia_contratada?.modalidad;
+                        const savedMonths = data?.garantia_contratada?.meses_contratados;
+                        if (modalidadId) {
+                                setSelectedModalidadId(String(modalidadId));
+                                const formPlans = document.getElementById("formPlans");
+                                const planCard = formPlans?.querySelector(
+                                        `.form__plan[data-modalidad-id="${modalidadId}"]`
+                                );
+                                if (planCard) {
+                                        const plans = Array.from(
+                                                formPlans.querySelectorAll(".form__plan") || []
+                                        );
+                                        plans.forEach((p) => {
+                                                p.classList.remove("selected", "form__plan--no-selected");
+                                                const txt = p.querySelector(".form__plan-button-text");
+                                                if (txt) {
+                                                        txt.innerHTML =
+                                                                '<span class="form__plan-button-text--label">Seleccionar</span>';
+                                                }
+                                        });
+                                        planCard.classList.add("selected");
+                                        const selectedBtn = planCard.querySelector(
+                                                ".form__plan-button-text"
+                                        );
+                                        const checkIcon =
+                                                getIcon("check") ||
+                                                '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M6 10.5L3.5 8l-1 1 3.5 3.5L14.5 4l-1-1L6 10.5z"/></svg>';
+                                        if (selectedBtn) {
+                                                selectedBtn.innerHTML = `<span class="plan-button-icon" aria-hidden="true">${checkIcon}</span> <span class="form__plan-button-text--label">Seleccionada</span>`;
+                                        }
+                                        plans
+                                                .filter((p) => p !== planCard)
+                                                .forEach((p) => p.classList.add("form__plan--no-selected"));
+                                }
+                        }
+                        if (savedMonths) {
+                                const durationEl = document.getElementById("duracion");
+                                if (durationEl) {
+                                        durationEl.value = savedMonths;
+                                        durationEl.dispatchEvent(
                                                 new Event("change", { bubbles: true })
                                         );
                                 }
@@ -3018,11 +3247,16 @@ export default function initAutosave() {
                 if (!successBlock) return;
                 successBlock.style.display = "block";
                 requestAnimationFrame(() => successBlock.classList.add("is-visible"));
+                const cleanPlan =
+                        typeof planName === "string" && planName.trim()
+                                ? planName.trim()
+                                : "";
+                let planDescription = "";
                 const plan = successBlock.querySelector("[data-plan]");
                 if (plan) {
                         const parts = [];
-                        if (typeof planName === "string" && planName.trim()) {
-                                parts.push(planName.trim());
+                        if (cleanPlan) {
+                                parts.push(cleanPlan);
                         }
                         if (months) {
                                 const monthsNumber = Number(months);
@@ -3032,7 +3266,7 @@ export default function initAutosave() {
                                         parts.push(months.trim());
                                 }
                         }
-                        const planDescription = parts.join(" ");
+                        planDescription = parts.join(" ");
                         plan.textContent = planDescription
                                 ? `Cobertura ${planDescription}`
                                 : "Cobertura";
@@ -3041,16 +3275,28 @@ export default function initAutosave() {
                         ".form-success__message"
                 );
                 if (message) {
-                        const cleanPlan =
-                                typeof planName === "string" && planName.trim()
-                                        ? planName.trim()
-                                        : "";
-                        const intro = cleanPlan
-                                ? `Gracias por contratar la garantía ${cleanPlan}.`
-                                : "Gracias por contratar tu garantía.";
-                        message.textContent =
-                                `${intro} Estamos preparando la documentación y recibirás un correo de confirmación en unos instantes. ` +
-                                "Puedes descargarla ahora o acceder cuando quieras desde Mis Garantías.";
+                        const planLabel = planDescription || cleanPlan;
+                        message.innerHTML = "";
+                        const introSpan = document.createElement("span");
+                        introSpan.textContent = "Gracias por contratar la garantía ";
+                        message.append(introSpan);
+                        if (planLabel) {
+                                const strong = document.createElement("strong");
+                                strong.textContent = planLabel;
+                                message.append(strong);
+                                message.append(document.createTextNode(". "));
+                        } else {
+                                message.append(
+                                        document.createTextNode(
+                                                "tu garantía. "
+                                        )
+                                );
+                        }
+                        message.append(
+                                document.createTextNode(
+                                        "Puedes descargar la documentación ahora o acceder cuando quieras desde Mis Garantías."
+                                )
+                        );
                         message.hidden = false;
                 }
                 const loading = successBlock.querySelector(
@@ -3140,8 +3386,8 @@ export default function initAutosave() {
                                 );
                                 if (transferNote) {
                                         const message = deadlineLabel
-                                                ? `Realiza el pago antes del ${deadlineLabel}.`
-                                                : "Realiza el pago lo antes posible.";
+                                                ? `Realiza la transferencia antes del ${deadlineLabel}.`
+                                                : "Realiza la transferencia lo antes posible.";
                                         let noteTextNode = transferNote.querySelector(
                                                 ".form-success__transfer-note-text"
                                         );
