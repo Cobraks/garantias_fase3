@@ -3327,6 +3327,35 @@ const ADD_DOC_KEY = "add-document";
                         runConfirmRequest(context);
                 }
 
+                function runGenerateInvoice(context, controls = {}) {
+                        if (!context) {
+                                return;
+                        }
+                        const { confirmBtn, cancelBtn, closeModal, statusEl } = controls;
+                        if (!confirmBtn || typeof closeModal !== "function") {
+                                return;
+                        }
+                        const resetLabel = context.resetLabel || confirmBtn.textContent || "Generar factura";
+                        confirmBtn.classList.add("is-loading");
+                        confirmBtn.textContent = "Generando factura";
+                        confirmBtn.disabled = true;
+                        if (cancelBtn) {
+                                cancelBtn.disabled = true;
+                        }
+                        if (statusEl) {
+                                statusEl.textContent = "Generando factura...";
+                                statusEl.hidden = false;
+                        }
+                        window.setTimeout(() => {
+                                confirmBtn.classList.remove("is-loading");
+                                confirmBtn.textContent = resetLabel;
+                                if (cancelBtn) {
+                                        cancelBtn.disabled = false;
+                                }
+                                closeModal();
+                        }, 1800);
+                }
+
                 function runConfirmRequest(context) {
                         if (!context) return;
                         if (context.intent === "trash") {
@@ -3941,10 +3970,26 @@ const ADD_DOC_KEY = "add-document";
                         const titleEl = modal.querySelector(".confirm-modal__title");
                         const subtitleEl = modal.querySelector(".confirm-modal__subtitle");
                         const messageEl = modal.querySelector(".confirm-modal__message");
+                        const invoiceFields = modal.querySelector(
+                                "[data-confirm-invoice-fields]"
+                        );
+                        const invoiceReferenceInput = modal.querySelector(
+                                "[data-confirm-invoice-reference]"
+                        );
+                        const invoiceSendEmailInput = modal.querySelector(
+                                "[data-confirm-invoice-send-email]"
+                        );
+                        const invoiceAckInput = modal.querySelector(
+                                "[data-confirm-invoice-ack]"
+                        );
+                        const invoiceShowDocsInput = modal.querySelector(
+                                "[data-confirm-invoice-show-documentation]"
+                        );
                         const noteEl = modal.querySelector(".confirm-modal__note");
                         const notifyNoteEl = modal.querySelector(
                                 ".confirm-modal__note--notify"
                         );
+                        const statusEl = modal.querySelector(".confirm-modal__status");
                         const confirmBtn = modal.querySelector(
                                 ".confirm-modal__btn--confirm"
                         );
@@ -3957,13 +4002,13 @@ const ADD_DOC_KEY = "add-document";
                         const fileNameEl = modal.querySelector(".confirm-modal__file-name");
                         const fileErrorEl = modal.querySelector(".confirm-modal__file-error");
                         const checkboxWrapper = modal.querySelector(
-                                ".confirm-modal__checkbox"
+                                "[data-confirm-ack-wrapper]"
                         );
                         const checkboxInput = modal.querySelector(
-                                ".confirm-modal__checkbox-input"
+                                "[data-confirm-ack]"
                         );
                         const checkboxLabel = modal.querySelector(
-                                ".confirm-modal__checkbox-label"
+                                "[data-confirm-ack-label]"
                         );
                         const notifyCheckboxWrapper = modal.querySelector(
                                 ".confirm-modal__checkbox--notify"
@@ -3994,6 +4039,8 @@ const ADD_DOC_KEY = "add-document";
                         let requiresFile = false;
                         let requiresAcknowledgement = false;
                         let requiresReason = false;
+                        let requiresInvoiceReference = false;
+                        let isInvoiceMode = false;
                         let notifyNoteText = "";
                         let selectedFile = null;
                         let fileErrorMessage = "";
@@ -4030,6 +4077,26 @@ const ADD_DOC_KEY = "add-document";
                                         notifyCheckboxInput.checked;
                                 notifyNoteEl.textContent = shouldShow ? notifyNoteText : "";
                                 notifyNoteEl.hidden = !shouldShow;
+                        }
+
+                        function resetInvoiceFields() {
+                                if (invoiceFields) {
+                                        invoiceFields.hidden = true;
+                                }
+                                if (invoiceReferenceInput) {
+                                        invoiceReferenceInput.value = "";
+                                }
+                                if (invoiceSendEmailInput) {
+                                        invoiceSendEmailInput.checked = false;
+                                }
+                                if (invoiceAckInput) {
+                                        invoiceAckInput.checked = false;
+                                }
+                                if (invoiceShowDocsInput) {
+                                        invoiceShowDocsInput.checked = false;
+                                }
+                                requiresInvoiceReference = false;
+                                isInvoiceMode = false;
                         }
 
                         function populateCancelReasons(options, placeholder) {
@@ -4101,7 +4168,20 @@ const ADD_DOC_KEY = "add-document";
                                         !requiresReason ||
                                         (cancelSelect && cancelSelect.value !== "" && cancelSelect.value !== "undefined");
                                 const otherOk = !requiresOther || otherReasonValue !== "";
-                                confirmBtn.disabled = !(fileOk && ackOk && reasonOk && otherOk);
+                                const invoiceReferenceOk =
+                                        !isInvoiceMode ||
+                                        !requiresInvoiceReference ||
+                                        (invoiceReferenceInput
+                                                ? invoiceReferenceInput.value.trim() !== ""
+                                                : true);
+                                confirmBtn.disabled = !(
+                                        fileOk &&
+                                        ackOk &&
+                                        reasonOk &&
+                                        otherOk &&
+                                        invoiceReferenceOk &&
+                                        (!isInvoiceMode || (invoiceAckInput ? invoiceAckInput.checked : false))
+                                );
                         }
 
                         function syncCancelOtherReason() {
@@ -4128,6 +4208,10 @@ const ADD_DOC_KEY = "add-document";
                                 if (noteEl) {
                                         noteEl.textContent = "";
                                         noteEl.hidden = true;
+                                }
+                                if (statusEl) {
+                                        statusEl.textContent = "";
+                                        statusEl.hidden = true;
                                 }
                                 if (notifyNoteEl) {
                                         notifyNoteEl.textContent = "";
@@ -4160,6 +4244,7 @@ const ADD_DOC_KEY = "add-document";
                                 requiresFile = false;
                                 requiresAcknowledgement = false;
                                 requiresReason = false;
+                                resetInvoiceFields();
                                 notifyNoteText = "";
                                 resetFileState();
                                 if (checkboxInput) {
@@ -4211,6 +4296,10 @@ const ADD_DOC_KEY = "add-document";
                                         noteEl.textContent = cfg.note || "";
                                         noteEl.hidden = !hasNote;
                                 }
+                                if (statusEl) {
+                                        statusEl.textContent = "";
+                                        statusEl.hidden = true;
+                                }
                                 const reasonOptions = Array.isArray(cfg.reasonOptions)
                                         ? cfg.reasonOptions
                                         : [];
@@ -4219,6 +4308,29 @@ const ADD_DOC_KEY = "add-document";
                                         cancelFields.hidden = !requiresReason;
                                 }
                                 modal.classList.toggle("confirm-modal--requires-reason", requiresReason);
+                                isInvoiceMode = Boolean(cfg.invoiceMode);
+                                if (invoiceFields) {
+                                        invoiceFields.hidden = !isInvoiceMode;
+                                }
+                                requiresInvoiceReference = isInvoiceMode && Boolean(cfg.requireInvoiceReference);
+                                if (invoiceReferenceInput) {
+                                        invoiceReferenceInput.value = cfg.invoiceReference || "";
+                                        invoiceReferenceInput.placeholder =
+                                                cfg.invoiceReferencePlaceholder ||
+                                                invoiceReferenceInput.placeholder ||
+                                                "";
+                                }
+                                if (invoiceSendEmailInput) {
+                                        invoiceSendEmailInput.checked = Boolean(cfg.invoiceSendEmailChecked);
+                                }
+                                if (invoiceAckInput) {
+                                        invoiceAckInput.checked = false;
+                                }
+                                if (invoiceShowDocsInput) {
+                                        invoiceShowDocsInput.checked = Boolean(
+                                                cfg.invoiceShowDocumentationChecked
+                                        );
+                                }
                                 if (cancelOtherField) {
                                         cancelOtherField.hidden = true;
                                 }
@@ -4235,7 +4347,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 requiresFile = Boolean(cfg.requireFile);
                                 requiresAcknowledgement = Boolean(
-                                        cfg.requireAcknowledgement
+                                        !isInvoiceMode && cfg.requireAcknowledgement
                                 );
                                 if (uploadBlock) {
                                         uploadBlock.hidden = !requiresFile;
@@ -4361,6 +4473,18 @@ const ADD_DOC_KEY = "add-document";
                                 });
                         }
 
+                        if (invoiceReferenceInput) {
+                                invoiceReferenceInput.addEventListener("input", () => {
+                                        updateConfirmState();
+                                });
+                        }
+
+                        if (invoiceAckInput) {
+                                invoiceAckInput.addEventListener("change", () => {
+                                        updateConfirmState();
+                                });
+                        }
+
                         if (cancelBtn) {
                                 cancelBtn.addEventListener("click", () => {
                                         closeModal();
@@ -4396,9 +4520,29 @@ const ADD_DOC_KEY = "add-document";
                                                         ? cancelOtherInput.value.trim()
                                                         : "";
                                                 context.notifyCustomer = notifyCustomer;
+                                                if (isInvoiceMode) {
+                                                        context.invoiceReference = invoiceReferenceInput
+                                                                ? invoiceReferenceInput.value.trim()
+                                                                : "";
+                                                        context.invoiceSendEmail = invoiceSendEmailInput
+                                                                ? Boolean(invoiceSendEmailInput.checked)
+                                                                : false;
+                                                        context.invoiceShowDocumentation = invoiceShowDocsInput
+                                                                ? Boolean(invoiceShowDocsInput.checked)
+                                                                : false;
+                                                }
                                         }
                                         if (context && context.intent === "cancel-guarantee") {
                                                 runCancelRequest(context, { confirmBtn, closeModal });
+                                                return;
+                                        }
+                                        if (context && context.intent === "generate-invoice") {
+                                                runGenerateInvoice(context, {
+                                                        confirmBtn,
+                                                        cancelBtn,
+                                                        closeModal,
+                                                        statusEl,
+                                                });
                                                 return;
                                         }
                                         closeModal();
@@ -4658,9 +4802,18 @@ const ADD_DOC_KEY = "add-document";
                                 return;
                         }
                         const normalizeEstadoClaseValue = (value) =>
-                                typeof value === "string" ? value.toLowerCase().trim() : "";
+                                typeof value === "string"
+                                        ? value
+                                                      .toLowerCase()
+                                                      .trim()
+                                                      .replace(/\s+/g, "-")
+                                                      .replace(/_/g, "-")
+                                        : "";
                         const estadoDesdePanel = normalizeEstadoClaseValue(
                                 panel?.dataset?.estadoclase || panel?.dataset?.estadoClase || ""
+                        );
+                        const estadoDesdeLabel = normalizeEstadoClaseValue(
+                                panel?.dataset?.estado || panel?.dataset?.state || ""
                         );
                         const estadoDesdeBadge = (() => {
                                 const badgeElement =
@@ -4691,36 +4844,69 @@ const ADD_DOC_KEY = "add-document";
                                         badgeElement.textContent || badgeElement.innerText || ""
                                 );
                         })();
-                        const estadoClase = estadoDesdePanel || estadoDesdeBadge;
+                        const estadoClase = estadoDesdePanel || estadoDesdeLabel || estadoDesdeBadge;
                         const isCancelled = estadoClase === "cancelada";
-                        const toggleAction = (selector) => {
+                        const isPendingPayment = estadoClase === "pendiente-pago";
+                        const isActivated = estadoClase === "activada";
+                        const isPendingDomiciliation =
+                                typeof estadoClase === "string" &&
+                                estadoClase.indexOf("domiciliacion") !== -1;
+                        const canShowInvoice =
+                                isActivated || isPendingDomiciliation || isPendingPayment;
+                        const toggleAction = (selector, shouldShow = true, onShow) => {
                                 const cache = ensureManagementAction(selector);
                                 if (!cache || !cache.placeholder || !cache.placeholder.parentNode) {
                                         return;
                                 }
                                 const existing = managementModal.querySelector(selector);
-                                if (isCancelled) {
+                                if (!shouldShow) {
                                         if (existing) {
                                                 existing.remove();
                                         }
                                         return;
                                 }
 
+                                let target = existing;
+
                                 if (existing) {
                                         existing.hidden = false;
                                         existing.removeAttribute("aria-hidden");
-                                        return;
+                                } else {
+                                        target = cache.template.cloneNode(true);
+                                        cache.placeholder.parentNode.insertBefore(
+                                                target,
+                                                cache.placeholder.nextSibling
+                                        );
                                 }
 
-                                const clone = cache.template.cloneNode(true);
-                                cache.placeholder.parentNode.insertBefore(
-                                        clone,
-                                        cache.placeholder.nextSibling
-                                );
+                                if (typeof onShow === "function") {
+                                        onShow(target);
+                                }
                         };
 
-                        toggleAction('[data-management-action="cancel-for-nonpayment"]');
-                        toggleAction('[data-management-action="certificate-error"]');
+                        toggleAction(
+                                '[data-management-action="cancel-for-nonpayment"]',
+                                !isCancelled
+                        );
+                        toggleAction(
+                                '[data-management-action="certificate-error"]',
+                                !isCancelled
+                        );
+                        const shouldDisableInvoice = estadoClase === "sin-finalizar";
+                        toggleAction(
+                                '[data-management-action="generate-invoice"]',
+                                !isCancelled && (canShowInvoice || shouldDisableInvoice),
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                shouldDisableInvoice
+                                        );
+                                        btn.toggleAttribute("disabled", shouldDisableInvoice);
+                                }
+                        );
                 }
 
                 function formatDateIsoLocal(value) {
@@ -5396,6 +5582,37 @@ const ADD_DOC_KEY = "add-document";
                                 event.preventDefault();
                                 const action = actionButton.dataset.managementAction || "";
                                 const context = getActiveManagementContext();
+
+                                if (action === "generate-invoice") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        pendingConfirmContext = {
+                                                intent: "generate-invoice",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                        };
+                                        if (confirmModalController) {
+                                                confirmModalController.open({
+                                                        title: "Generar factura",
+                                                        subtitle,
+                                                        message:
+                                                                "Introduce la referencia de la factura y selecciona cómo compartirla con el cliente.",
+                                                        confirmLabel: "Generar factura",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Confirmo que quiero generar la factura.",
+                                                        invoiceMode: true,
+                                                        requireInvoiceReference: true,
+                                                        invoiceSendEmailChecked: true,
+                                                        invoiceShowDocumentationChecked: true,
+                                                });
+                                        }
+                                        return;
+                                }
 
                                 if (action === "delete-guarantee") {
                                         const safePlate = escapeHtml(context.plate || "");

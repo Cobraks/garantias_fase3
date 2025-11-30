@@ -1404,6 +1404,8 @@ export default function initAutosave() {
                         modelo,
                         emissionDate,
                         dueDate,
+                        coverageStart,
+                        coverageEnd,
                         vendorInfo,
                         paymentMethod,
                         transferIban,
@@ -1425,6 +1427,8 @@ export default function initAutosave() {
                         vendorInfo,
                         paymentMethod,
                         transferIban,
+                        coverageStart,
+                        coverageEnd,
                 };
 
                 return encodeSignaturePayload(payload);
@@ -1578,6 +1582,8 @@ export default function initAutosave() {
                 const dueIso = toIsoDateString(rawArgs.dueDate);
                 normalized.emissionDate = emissionIso;
                 normalized.dueDate = dueIso;
+                normalized.coverageStart = toIsoDateString(rawArgs.coverageStart);
+                normalized.coverageEnd = toIsoDateString(rawArgs.coverageEnd);
 
                 return normalized;
         }
@@ -1621,6 +1627,8 @@ export default function initAutosave() {
                 modelo,
                 emissionDate,
                 dueDate,
+                coverageStart,
+                coverageEnd,
                 vendorInfo,
                 paymentMethod,
                 transferIban,
@@ -1852,6 +1860,8 @@ export default function initAutosave() {
                         formatShortEsDate(emissionDate) || formatShortEsDate(new Date());
                 const resolvedDueLabel =
                         formatShortEsDate(dueDate) || formatShortEsDate(addDays(new Date(), 2));
+                const coverageStartLabel = formatShortEsDate(coverageStart);
+                const coverageEndLabel = formatShortEsDate(coverageEnd);
 
                 const refEmisionRect = resolveRect("ref_emision");
                 if (refEmisionRect) {
@@ -1936,11 +1946,11 @@ export default function initAutosave() {
                                 .filter(Boolean)
                                 .join(" ");
                         const segments = [
-                                { text: "Vehículo objeto de la cobertura: ", font: baseFont },
+                                { text: "Vehículo objeto de la cobertura: ", font: boldFont },
                         ];
 
                         if (matriculaLabel) {
-                                segments.push({ text: matriculaLabel, font: boldFont });
+                                segments.push({ text: matriculaLabel, font: baseFont });
                         }
 
                         if (matriculaLabel && marcaModeloLabel) {
@@ -1948,11 +1958,49 @@ export default function initAutosave() {
                         }
 
                         if (marcaModeloLabel) {
-                                segments.push({ text: marcaModeloLabel, font: boldFont });
+                                segments.push({ text: marcaModeloLabel, font: baseFont });
                         }
 
                         let cursorX = objetoCoberturaRect.x;
                         const cursorY = objetoCoberturaRect.y;
+                        segments.forEach(({ text, font }) => {
+                                if (!text) return;
+                                const width = font.widthOfTextAtSize(text, textSize);
+                                page.drawText(text, {
+                                        x: cursorX,
+                                        y: cursorY,
+                                        size: textSize,
+                                        font,
+                                        color: PDFLib.rgb(0, 0, 0),
+                                });
+                                cursorX += width;
+                        });
+                }
+
+                const periodoCoberturaRect = resolveRect("periodo_cobertura");
+                if (periodoCoberturaRect && (coverageStartLabel || coverageEndLabel)) {
+                        const baseFont = interRegular || robotoMono;
+                        const boldFont = interBold || interRegular || robotoMonoBold || robotoMono;
+                        const textSize = 10;
+                        const segments = [
+                                { text: "Periodo de servicio: ", font: boldFont },
+                        ];
+
+                        if (coverageStartLabel) {
+                                segments.push({ text: coverageStartLabel, font: baseFont });
+                        }
+
+                        if (coverageStartLabel && coverageEndLabel) {
+                                segments.push({ text: " - ", font: baseFont });
+                        }
+
+                        if (coverageEndLabel) {
+                                segments.push({ text: coverageEndLabel, font: baseFont });
+                        }
+
+                        let cursorX = periodoCoberturaRect.x;
+                        const cursorY = periodoCoberturaRect.y;
+
                         segments.forEach(({ text, font }) => {
                                 if (!text) return;
                                 const width = font.widthOfTextAtSize(text, textSize);
@@ -2413,6 +2461,11 @@ export default function initAutosave() {
                 } catch (err) {
                         // ignore
                 }
+                try {
+                        form.removeField("periodo_cobertura");
+                } catch (err) {
+                        // ignore
+                }
                 form.flatten();
 
                 const filled = await pdfDoc.save();
@@ -2515,6 +2568,16 @@ export default function initAutosave() {
                                                           : typeof responseJson.transfer_iban === "string"
                                                           ? responseJson.transfer_iban
                                                           : "",
+                                          coverageStart:
+                                                  proformaArgs.coverageStart ||
+                                                  estadoGarantia?.inicio ||
+                                                  garantia?.fecha_inicio ||
+                                                  "",
+                                          coverageEnd:
+                                                  proformaArgs.coverageEnd ||
+                                                  estadoGarantia?.finalizacion ||
+                                                  garantia?.fecha_finalizacion ||
+                                                  "",
                                   }
                                 : {
                                           draftId,
@@ -2535,6 +2598,14 @@ export default function initAutosave() {
                                                   typeof responseJson.transfer_iban === "string"
                                                           ? responseJson.transfer_iban
                                                           : "",
+                                          coverageStart:
+                                                  estadoGarantia?.inicio ||
+                                                  garantia?.fecha_inicio ||
+                                                  "",
+                                          coverageEnd:
+                                                  estadoGarantia?.finalizacion ||
+                                                  garantia?.fecha_finalizacion ||
+                                                  "",
                                   };
 
                 if (
@@ -3946,6 +4017,14 @@ export default function initAutosave() {
                                                   modelo: datosVehiculo?.modelo || "",
                                                   emissionDate: emissionIso,
                                                   dueDate: dueIso,
+                                                  coverageStart:
+                                                          payload?.estado_garantia?.inicio ||
+                                                          garantia?.fecha_inicio ||
+                                                          "",
+                                                  coverageEnd:
+                                                          payload?.estado_garantia?.finalizacion ||
+                                                          garantia?.fecha_finalizacion ||
+                                                          "",
                                                   vendorInfo,
                                                   paymentMethod: garantia?.metodo_pago || "",
                                                   transferIban:
