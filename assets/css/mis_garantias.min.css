@@ -6929,6 +6929,11 @@ top: calc(var(--alturaHeader) + var(--spacing-3));
   }
 
 
+@media (min-width: 1920px) {
+.top-bar, .container.guarantees-page {
+    max-width: 1800px;
+}
 
+}
 
   
