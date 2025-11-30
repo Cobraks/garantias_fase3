@@ -3400,6 +3400,7 @@
 .confirm-modal__btn.is-loading {
     position: relative;
     color: rgba(255, 255, 255, 0.92);
+    padding-left: 1.9rem;
 }
 
 .confirm-modal__btn.is-loading::before {
@@ -3410,6 +3411,10 @@
     border: 2px solid rgba(255, 255, 255, 0.6);
     border-top-color: #fff;
     animation: confirmModalSpin 1s linear infinite;
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    margin-top: -0.5rem;
 }
 
 @keyframes confirmModalSpin {

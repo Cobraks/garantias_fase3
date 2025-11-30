@@ -3982,6 +3982,12 @@ const ADD_DOC_KEY = "add-document";
                         const invoiceSendEmailInput = modal.querySelector(
                                 "[data-confirm-invoice-send-email]"
                         );
+                        const invoiceAckWrapper = modal.querySelector(
+                                "[data-confirm-invoice-ack-wrapper]"
+                        );
+                        const invoiceAckInput = modal.querySelector(
+                                "[data-confirm-invoice-ack]"
+                        );
                         const invoiceShowDocsInput = modal.querySelector(
                                 "[data-confirm-invoice-show-documentation]"
                         );
@@ -4092,6 +4098,12 @@ const ADD_DOC_KEY = "add-document";
                                 if (invoiceSendEmailInput) {
                                         invoiceSendEmailInput.checked = false;
                                 }
+                                if (invoiceAckWrapper) {
+                                        invoiceAckWrapper.hidden = true;
+                                }
+                                if (invoiceAckInput) {
+                                        invoiceAckInput.checked = false;
+                                }
                                 if (invoiceShowDocsInput) {
                                         invoiceShowDocsInput.checked = false;
                                 }
@@ -4175,7 +4187,12 @@ const ADD_DOC_KEY = "add-document";
                                                 ? invoiceReferenceInput.value.trim() !== ""
                                                 : true);
                                 confirmBtn.disabled = !(
-                                        fileOk && ackOk && reasonOk && otherOk && invoiceReferenceOk
+                                        fileOk &&
+                                        ackOk &&
+                                        reasonOk &&
+                                        otherOk &&
+                                        invoiceReferenceOk &&
+                                        (!isInvoiceMode || (invoiceAckInput ? invoiceAckInput.checked : false))
                                 );
                         }
 
@@ -4310,6 +4327,9 @@ const ADD_DOC_KEY = "add-document";
                                 if (invoiceSendEmailWrapper) {
                                         invoiceSendEmailWrapper.hidden = !isInvoiceMode;
                                 }
+                                if (invoiceAckWrapper) {
+                                        invoiceAckWrapper.hidden = !isInvoiceMode;
+                                }
                                 requiresInvoiceReference = isInvoiceMode && Boolean(cfg.requireInvoiceReference);
                                 if (invoiceReferenceInput) {
                                         invoiceReferenceInput.value = cfg.invoiceReference || "";
@@ -4320,6 +4340,9 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 if (invoiceSendEmailInput) {
                                         invoiceSendEmailInput.checked = Boolean(cfg.invoiceSendEmailChecked);
+                                }
+                                if (invoiceAckInput) {
+                                        invoiceAckInput.checked = false;
                                 }
                                 if (invoiceShowDocsInput) {
                                         invoiceShowDocsInput.checked = Boolean(
@@ -4342,7 +4365,7 @@ const ADD_DOC_KEY = "add-document";
                                 }
                                 requiresFile = Boolean(cfg.requireFile);
                                 requiresAcknowledgement = Boolean(
-                                        cfg.requireAcknowledgement
+                                        !isInvoiceMode && cfg.requireAcknowledgement
                                 );
                                 if (uploadBlock) {
                                         uploadBlock.hidden = !requiresFile;
@@ -4470,6 +4493,12 @@ const ADD_DOC_KEY = "add-document";
 
                         if (invoiceReferenceInput) {
                                 invoiceReferenceInput.addEventListener("input", () => {
+                                        updateConfirmState();
+                                });
+                        }
+
+                        if (invoiceAckInput) {
+                                invoiceAckInput.addEventListener("change", () => {
                                         updateConfirmState();
                                 });
                         }

@@ -1373,21 +1373,37 @@ if (($is_admin_user || $is_director || $is_professional)
                         <label class="confirm-modal__field-label" for="confirm-modal-invoice-reference">
                             <?php esc_html_e('Referencia de la factura', 'garantias-online-360vo'); ?>
                         </label>
-                    <input
-                        id="confirm-modal-invoice-reference"
-                        type="text"
-                        class="confirm-modal__input"
-                        data-confirm-invoice-reference
-                        placeholder="<?php esc_attr_e('Referencia de la factura', 'garantias-online-360vo'); ?>"
-                    />
+                        <input
+                            id="confirm-modal-invoice-reference"
+                            type="text"
+                            class="confirm-modal__input"
+                            data-confirm-invoice-reference
+                            placeholder="<?php esc_attr_e('Referencia de la factura', 'garantias-online-360vo'); ?>"
+                        />
+                    </div>
+                    <div class="confirm-modal__options" role="group" aria-label="<?php esc_attr_e('Preferencias de facturación', 'garantias-online-360vo'); ?>">
+                        <label class="confirm-modal__checkbox">
+                            <input type="checkbox" class="confirm-modal__checkbox-input" data-confirm-invoice-show-documentation />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Mostrar en documentación', 'garantias-online-360vo'); ?></span>
+                        </label>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper hidden>
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-send-email
+                            />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Enviar al cliente por correo', 'garantias-online-360vo'); ?></span>
+                        </label>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-ack-wrapper hidden>
+                            <input
+                                type="checkbox"
+                                class="confirm-modal__checkbox-input"
+                                data-confirm-invoice-ack
+                            />
+                            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Confirmo que quiero generar la factura.', 'garantias-online-360vo'); ?></span>
+                        </label>
+                    </div>
                 </div>
-                <div class="confirm-modal__options" role="group" aria-label="<?php esc_attr_e('Preferencias de facturación', 'garantias-online-360vo'); ?>">
-                    <label class="confirm-modal__checkbox">
-                        <input type="checkbox" class="confirm-modal__checkbox-input" data-confirm-invoice-show-documentation />
-                        <span class="confirm-modal__checkbox-label"><?php esc_html_e('Mostrar en documentación', 'garantias-online-360vo'); ?></span>
-                    </label>
-                </div>
-            </div>
             <div class="confirm-modal__cancel-fields" hidden>
                 <label class="confirm-modal__field-label" for="confirm-modal-cancel-reason">
                     <?php esc_html_e('Motivo de la cancelación', 'garantias-online-360vo'); ?>
@@ -1427,14 +1443,6 @@ if (($is_admin_user || $is_director || $is_professional)
         $confirm_checkbox_id   = uniqid('confirm-modal-checkbox-');
         $confirm_checkbox_name = $confirm_checkbox_id . '-field';
         ?>
-        <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper hidden>
-            <input
-                type="checkbox"
-                class="confirm-modal__checkbox-input"
-                data-confirm-invoice-send-email
-            />
-            <span class="confirm-modal__checkbox-label"><?php esc_html_e('Enviar al cliente por correo', 'garantias-online-360vo'); ?></span>
-        </label>
         <label class="confirm-modal__checkbox" hidden>
             <input
                 type="checkbox"
