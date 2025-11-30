@@ -1,4 +1,5 @@
 import { AVAILABLE_DOCS } from "./modules/docs-config.js";
+import { buildProformaPdf, loadPdfAsset } from "./modules/proforma-pdf.js";
 
 const ADD_DOC_KEY = "add-document";
 
@@ -3346,14 +3347,208 @@ const ADD_DOC_KEY = "add-document";
                                 statusEl.textContent = "Generando factura...";
                                 statusEl.hidden = false;
                         }
-                        window.setTimeout(() => {
+
+                        const setIdleState = (labelText = resetLabel) => {
                                 confirmBtn.classList.remove("is-loading");
-                                confirmBtn.textContent = resetLabel;
+                                confirmBtn.textContent = labelText;
+                                confirmBtn.disabled = false;
                                 if (cancelBtn) {
                                         cancelBtn.disabled = false;
                                 }
-                                closeModal();
-                        }, 1800);
+                        };
+
+                        const goInvoice = (goConfig && goConfig.invoice) || {};
+                        const templateUrl =
+                                typeof goInvoice.templateUrl === "string" ? goInvoice.templateUrl : "";
+
+                        fetchDetail(context.id)
+                                .then((detail) => {
+                                        if (!templateUrl) {
+                                                throw new Error("No se ha definido la plantilla de factura.");
+                                        }
+                                        if (!detail) {
+                                                throw new Error("No se pudieron cargar los datos de la garantía.");
+                                        }
+
+                                        const reference = (context.invoiceReference || "").trim();
+                                        const breakdownSource = [
+                                                detail.descuentos_y_recargos,
+                                                detail.garantia_contratada?.descuentos_y_recargos,
+                                                detail.detail?.descuentos_y_recargos,
+                                        ].find((candidate) => candidate && typeof candidate === "object") || {};
+
+                                        const parseAmount = (value) => {
+                                                if (value === undefined || value === null || value === "") return null;
+                                                const numeric = Number(value);
+                                                return Number.isFinite(numeric) ? numeric : null;
+                                        };
+
+                                        const items = Array.isArray(breakdownSource.listado_descuentos_recargos)
+                                                ? breakdownSource.listado_descuentos_recargos
+                                                          .map((row, idx) => ({
+                                                                  concepto:
+                                                                          typeof row.concepto === "string" && row.concepto.trim() !== ""
+                                                                                  ? row.concepto.trim()
+                                                                                  : `Línea ${idx + 1}`,
+                                                                  valor: parseAmount(row.valor ?? row.importe ?? null) ?? 0,
+                                                                  destacado:
+                                                                          row.destacado === true ||
+                                                                          row.destacado === 1 ||
+                                                                          row.destacado === "1",
+                                                          }))
+                                                          .filter((row) => row.concepto || row.valor !== null)
+                                                : [];
+
+                                        if (items.length === 0) {
+                                                throw new Error("No hay líneas de facturación para generar la factura.");
+                                        }
+
+                                        const rawEmission =
+                                                detail.estado_garantia?.fecha_contratacion || detail.post_date || new Date();
+                                        const emissionDate = new Date(rawEmission);
+                                        const dueDate = new Date(emissionDate.getTime());
+                                        if (!Number.isNaN(dueDate.getTime())) {
+                                                dueDate.setDate(dueDate.getDate() + 2);
+                                        }
+
+                                        const coverageStart =
+                                                detail.estado_garantia?.inicio ||
+                                                detail.desde ||
+                                                detail.desde_raw ||
+                                                detail.detail?.desde ||
+                                                emissionDate;
+                                        const coverageEnd =
+                                                detail.estado_garantia?.finalizacion ||
+                                                detail.hasta ||
+                                                detail.hasta_raw ||
+                                                detail.detail?.hasta;
+
+                                        const vendorCompany = detail.vendor_company || {};
+                                        const vendorAddress = vendorCompany.address || {};
+                                        const vendorRoleSource =
+                                                detail.canal_venta_value ||
+                                                detail.canal_venta ||
+                                                vendorCompany.type?.value ||
+                                                vendorCompany.type?.label ||
+                                                "";
+
+                                        const vendorInfo = {
+                                                role: typeof vendorRoleSource === "string" ? vendorRoleSource.toLowerCase() : "",
+                                                companyName:
+                                                        vendorCompany.trade_name ||
+                                                        vendorCompany.name ||
+                                                        detail.concesionario ||
+                                                        "",
+                                                personalName: detail.concesionario_personal || "",
+                                                cif: vendorCompany.tax_id || '',
+                                                email:
+                                                        detail.email_vendedor ||
+                                                        detail.email_vendedor_registro ||
+                                                        vendorCompany.email ||
+                                                        "",
+                                                phone: detail.telefono_vendedor || vendorCompany.phone || "",
+                                                address: {
+                                                        street: vendorAddress.street || "",
+                                                        zip: vendorAddress.zip || "",
+                                                        city: vendorAddress.city || "",
+                                                        province: vendorAddress.state || vendorAddress.province || "",
+                                                },
+                                        };
+
+                                        const paymentMethod =
+                                                detail.metodo_pago ||
+                                                detail.estado_garantia?.metodo_pago ||
+                                                detail.garantia_contratada?.metodo_pago ||
+                                                "";
+                                        const transferIban = detail.transfer_iban || detail.iban_vendedor || "";
+
+                                        return buildProformaPdf({
+                                                templateUrl,
+                                                items,
+                                                coverageLabel: detail.plan || detail.detail?.plan || "",
+                                                reference: reference || detail.matricula || "",
+                                                matricula: detail.matricula || "",
+                                                marca: detail.marca || detail.detail?.marca || "",
+                                                modelo: detail.modelo || detail.detail?.modelo || "",
+                                                emissionDate,
+                                                dueDate,
+                                                coverageStart,
+                                                coverageEnd,
+                                                vendorInfo,
+                                                paymentMethod,
+                                                transferIban,
+                                                proformaSettings: goConfig.proforma || {},
+                                                loadAsset: loadPdfAsset,
+                                        }).then((pdfBytes) => ({ pdfBytes, detail, reference }));
+                                })
+                                .then(async ({ pdfBytes, detail, reference }) => {
+                                        if (!pdfBytes) {
+                                                throw new Error("No se pudo generar la factura.");
+                                        }
+
+                                        const uploadRes = await fetch(
+                                                `${restRoot}go/v1/guarantees/${context.id}/invoice`,
+                                                {
+                                                        method: "POST",
+                                                        headers: {
+                                                                "X-WP-Nonce": restNonce,
+                                                                "Content-Type": "application/pdf",
+                                                                "X-GO360-INVOICE-REFERENCE": reference || "",
+                                                        },
+                                                        body: pdfBytes,
+                                                }
+                                        );
+                                        const uploadJson = await uploadRes.json();
+                                        if (!uploadRes.ok) {
+                                                throw new Error(uploadJson?.message || "No se pudo guardar la factura.");
+                                        }
+                                        const invoiceUrl = uploadJson.invoice_url || "";
+                                        const invoiceReference = uploadJson.invoice_reference || reference || "";
+
+                                        if (context.id) {
+                                                const cached = detailCache.get(context.id) || detail || {};
+                                                cached.invoice_url = invoiceUrl;
+                                                cached.invoice_reference = invoiceReference;
+                                                detailCache.set(context.id, cached);
+                                        }
+
+                                        const viewLabel = invoiceReference
+                                                ? `Ver factura ${invoiceReference}`
+                                                : "Ver factura";
+
+                                        if (statusEl) {
+                                                statusEl.textContent = "Factura generada";
+                                                statusEl.hidden = false;
+                                        }
+                                        setIdleState(viewLabel);
+                                        pendingConfirmContext = {
+                                                ...context,
+                                                intent: "view-invoice",
+                                                invoiceUrl,
+                                                invoiceReference,
+                                        };
+                                        if (confirmModalController) {
+                                                confirmModalController.open({
+                                                        title: "Ver factura",
+                                                        subtitle: context.subtitle || "",
+                                                        message: "",
+                                                        confirmLabel: viewLabel,
+                                                        invoiceMode: false,
+                                                        requireAcknowledgement: false,
+                                                });
+                                        }
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido generar la factura.";
+                                        if (statusEl) {
+                                                statusEl.textContent = message;
+                                                statusEl.hidden = false;
+                                        }
+                                        setIdleState(resetLabel);
+                                });
                 }
 
                 function runConfirmRequest(context) {
@@ -4536,6 +4731,13 @@ const ADD_DOC_KEY = "add-document";
                                                 runCancelRequest(context, { confirmBtn, closeModal });
                                                 return;
                                         }
+                                        if (context && context.intent === "view-invoice") {
+                                                if (context.invoiceUrl) {
+                                                        window.open(context.invoiceUrl, "_blank");
+                                                }
+                                                closeModal();
+                                                return;
+                                        }
                                         if (context && context.intent === "generate-invoice") {
                                                 runGenerateInvoice(context, {
                                                         confirmBtn,
@@ -5588,12 +5790,44 @@ const ADD_DOC_KEY = "add-document";
                                         const subtitle = safePlate
                                                 ? `Garantía <strong>${safePlate}</strong>`
                                                 : "";
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const existingInvoiceUrl = cachedDetail?.invoice_url || "";
+                                        const existingInvoiceReference = cachedDetail?.invoice_reference || "";
+                                        const viewLabel = existingInvoiceReference
+                                                ? `Ver factura ${existingInvoiceReference}`
+                                                : "Ver factura";
+
+                                        if (existingInvoiceUrl) {
+                                                pendingConfirmContext = {
+                                                        intent: "view-invoice",
+                                                        btn: actionButton,
+                                                        panel: context.panel,
+                                                        id: context.id,
+                                                        row: context.row,
+                                                        invoiceUrl: existingInvoiceUrl,
+                                                        invoiceReference: existingInvoiceReference,
+                                                        resetLabel: viewLabel,
+                                                        subtitle,
+                                                };
+                                                if (confirmModalController) {
+                                                        confirmModalController.open({
+                                                                title: "Ver factura",
+                                                                subtitle,
+                                                                message: "",
+                                                                confirmLabel: viewLabel,
+                                                                invoiceMode: false,
+                                                                requireAcknowledgement: false,
+                                                        });
+                                                }
+                                                return;
+                                        }
                                         pendingConfirmContext = {
                                                 intent: "generate-invoice",
                                                 btn: actionButton,
                                                 panel: context.panel,
                                                 id: context.id,
                                                 row: context.row,
+                                                subtitle,
                                         };
                                         if (confirmModalController) {
                                                 confirmModalController.open({
