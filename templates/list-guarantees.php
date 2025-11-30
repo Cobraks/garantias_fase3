@@ -1386,7 +1386,7 @@ if (($is_admin_user || $is_director || $is_professional)
                             <input type="checkbox" class="confirm-modal__checkbox-input" data-confirm-invoice-show-documentation />
                             <span class="confirm-modal__checkbox-label"><?php esc_html_e('Mostrar en documentación', 'garantias-online-360vo'); ?></span>
                         </label>
-                        <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper hidden>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-send-email-wrapper>
                             <input
                                 type="checkbox"
                                 class="confirm-modal__checkbox-input"
@@ -1394,7 +1394,7 @@ if (($is_admin_user || $is_director || $is_professional)
                             />
                             <span class="confirm-modal__checkbox-label"><?php esc_html_e('Enviar al cliente por correo', 'garantias-online-360vo'); ?></span>
                         </label>
-                        <label class="confirm-modal__checkbox" data-confirm-invoice-ack-wrapper hidden>
+                        <label class="confirm-modal__checkbox" data-confirm-invoice-ack-wrapper>
                             <input
                                 type="checkbox"
                                 class="confirm-modal__checkbox-input"
