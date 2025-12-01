@@ -1702,26 +1702,62 @@
                     const candidateMeta = offer && typeof offer.meta === 'object'
                         ? offer.meta
                         : (offer && typeof offer.meta_data === 'object' ? offer.meta_data : null);
-                    const fallbacks = (!candidateMeta || typeof candidateMeta !== 'object') && offer && typeof offer === 'object'
+
+                    const fallbacks = offer && typeof offer === 'object'
                         ? {
-                            activadas_mes: offer.activadas_mes,
+                            activadas_mes: offer.activadas_mes ?? offer.garantias_activadas_mes,
                             restantes_hasta_descuento: offer.restantes_hasta_descuento,
-                            umbral: offer.umbral,
+                            umbral: offer.umbral ?? offer.cantidad_garantias_mes,
+                            ventana_descuento: offer.numero_garantias_con_descuento,
                         }
                         : null;
-                    const meta = candidateMeta || (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : null);
+
+                    const meta = candidateMeta && typeof candidateMeta === 'object'
+                        ? candidateMeta
+                        : (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : null);
+
+                    const typeKey = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    const isThreshold = typeKey === 'descuento_cada' || typeValue === 'descuento_cada';
+
+                    if (!meta || typeof meta !== 'object' || !isThreshold) {
+                        return null;
+                    }
+
+                    const threshold = Number(meta.umbral ?? meta.cantidad_garantias_mes ?? offer?.umbral ?? offer?.cantidad_garantias_mes);
+                    const windowSize = Number(meta.ventana_descuento ?? offer?.numero_garantias_con_descuento);
+                    const activatedRaw = meta.activadas_mes ?? meta.garantias_activadas_mes ?? offer?.activadas_mes ?? offer?.garantias_activadas_mes;
+                    const remainingRaw = meta.restantes_hasta_descuento;
+
+                    const activated = Number.isFinite(Number(activatedRaw)) ? Number(activatedRaw) : null;
+                    const windowLength = Number.isFinite(windowSize) && windowSize > 0 ? windowSize : null;
+                    const safeThreshold = Number.isFinite(threshold) && threshold > 0 ? threshold : null;
+                    const cycleLength = safeThreshold !== null && windowLength !== null ? safeThreshold + windowLength : (safeThreshold || null);
+                    const position = activated !== null && cycleLength ? (activated % cycleLength) : null;
+                    const inWindow = safeThreshold !== null && position !== null
+                        ? (position >= safeThreshold && (windowLength === null || position < safeThreshold + windowLength))
+                        : false;
+
+                    let remaining = Number.isFinite(Number(remainingRaw)) ? Number(remainingRaw) : null;
+                    if (remaining === null && safeThreshold !== null) {
+                        const beforeThreshold = position === null ? 0 : Math.max(0, safeThreshold - position);
+                        if (!inWindow && position !== null && windowLength !== null && position >= safeThreshold) {
+                            remaining = Math.max(1, (safeThreshold + windowLength) - position);
+                        } else {
+                            remaining = beforeThreshold;
+                        }
+                    }
 
                     return {
                         offer,
-                        meta,
+                        meta: {
+                            activadas_mes: activated,
+                            restantes_hasta_descuento: remaining,
+                            umbral: safeThreshold,
+                        },
                     };
                 })
-                .filter(({ offer, meta }) => {
-                    if (!meta || typeof meta !== 'object') return false;
-                    const typeKey = typeof offer.type === 'string' ? offer.type.toLowerCase() : '';
-                    const typeValue = typeof offer.type_value === 'string' ? offer.type_value.toLowerCase() : '';
-                    return typeKey === 'descuento_cada' || typeValue === 'descuento_cada' || typeof meta.umbral !== 'undefined';
-                });
+                .filter(Boolean);
 
             const items = offers.map((offer) => {
                 if (isSpecialFixedOffer(offer)) {
