@@ -80,6 +80,10 @@
 
         let filtersSticky = filters ? filters.classList.contains('sticky-active') : false;
 
+        const safeStartsWith = (value, prefix) => typeof value === 'string'
+            && typeof value.startsWith === 'function'
+            && value.startsWith(prefix);
+
         if (filters && header) {
             const observer = new IntersectionObserver(([entry]) => {
                 const isSticky = !entry.isIntersecting;
@@ -572,7 +576,7 @@
             }
 
             const path = window.location.pathname;
-            if (!path.startsWith(normalizedBasePath)) {
+            if (!safeStartsWith(path, normalizedBasePath)) {
                 return '';
             }
 
@@ -1716,11 +1720,11 @@
                 const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
                 const isEach = typeKey === 'descuento_cada'
                     || typeValue === 'descuento_cada'
-                    || labelKey.startsWith('por cada ');
+                    || safeStartsWith(labelKey, 'por cada ');
                 const isFrom = typeKey === 'descuento_a_partir'
                     || typeValue === 'descuento_a_partir'
-                    || labelKey.startsWith('a partir de ')
-                    || labelKey.startsWith('descuento a partir de ');
+                    || safeStartsWith(labelKey, 'a partir de ')
+                    || safeStartsWith(labelKey, 'descuento a partir de ');
 
                 if (mode === 'cada' && !isEach) return null;
                 if (mode === 'apartir' && !isFrom) return null;
@@ -6518,11 +6522,11 @@
                     const label = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
                     const matchesCada = type === 'descuento_cada'
                         || typeValue === 'descuento_cada'
-                        || label.startsWith('por cada ');
+                        || safeStartsWith(label, 'por cada ');
                     const matchesDesde = type === 'descuento_a_partir'
                         || typeValue === 'descuento_a_partir'
-                        || label.startsWith('a partir de ')
-                        || label.startsWith('descuento a partir de ');
+                        || safeStartsWith(label, 'a partir de ')
+                        || safeStartsWith(label, 'descuento a partir de ');
                     return matchesCada || matchesDesde;
                 })
                 : false;
