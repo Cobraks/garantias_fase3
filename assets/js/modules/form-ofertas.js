@@ -247,14 +247,6 @@ function toLowerSlug(value) {
         return typeof value === "string" ? value.toLowerCase() : "";
 }
 
-function toPositiveInt(value) {
-        if (value === null || typeof value === "undefined" || value === "") return null;
-        const num = Number(value);
-        if (!Number.isFinite(num)) return null;
-        const intVal = Math.trunc(num);
-        return intVal > 0 ? intVal : null;
-}
-
 function getSlugSet(field) {
         const set = new Set();
         normalizeToArray(field)
