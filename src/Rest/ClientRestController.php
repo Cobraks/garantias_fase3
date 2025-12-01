@@ -2798,12 +2798,15 @@ class ClientRestController
                 }
             }
 
-            $type_raw = $offer['tipo_oferta'] ?? '';
+            $type_raw  = $offer['tipo_oferta'] ?? '';
             $type_label = '';
+            $type_value = '';
             if (is_array($type_raw)) {
                 $type_label = self::clean_text($type_raw['label'] ?? $type_raw['value'] ?? '');
+                $type_value = (string) ($type_raw['value'] ?? '');
             } else {
                 $type_label = self::clean_text((string) $type_raw);
+                $type_value = (string) $type_raw;
             }
 
             $custom_name = isset($offer['nombre_oferta']) ? self::clean_text($offer['nombre_oferta']) : '';
@@ -2826,12 +2829,45 @@ class ClientRestController
 
             $discount = isset($offer['porcentaje_descuento']) ? (float) $offer['porcentaje_descuento'] : 0.0;
 
+            $meta = null;
+            $threshold = isset($offer['cantidad_garantias_mes']) ? (int) $offer['cantidad_garantias_mes'] : 0;
+            $window    = isset($offer['numero_garantias_con_descuento']) ? (int) $offer['numero_garantias_con_descuento'] : 0;
+
+            if ($type_value === 'descuento_cada' && $threshold > 0) {
+                $label = sprintf('Por cada %d garantías', $threshold);
+                if ($window > 0) {
+                    $activated    = self::count_active_guarantees_current_month($user_id);
+                    $cycle_length = max(1, $threshold + $window);
+                    $position     = $cycle_length > 0 ? ($activated % $cycle_length) : 0;
+                    $in_window    = $position >= $threshold && $position < ($threshold + $window);
+                    $remaining    = $in_window ? 0 : max(0, $threshold - $position);
+                    if (!$in_window && $position >= $threshold) {
+                        $remaining = max(1, $cycle_length - $position);
+                    }
+
+                    $meta = [
+                        'activadas_mes'              => $activated,
+                        'restantes_hasta_descuento'   => $remaining,
+                        'umbral'                      => $threshold,
+                        'ventana_descuento'           => $window,
+                        'en_ventana'                  => $in_window,
+                        'ciclo_total'                 => $cycle_length,
+                        'posicion_ciclo'              => $position,
+                    ];
+                }
+            }
+
             $offers[] = [
                 'label'    => $label,
                 'discount' => $discount,
                 'expires'  => $expiry_raw !== '' ? $expiry_raw : '',
                 'type'     => $type_label,
+                'type_value' => $type_value,
                 'name'     => $custom_name,
+                'meta'     => $meta,
+                'activadas_mes' => $meta['activadas_mes'] ?? null,
+                'restantes_hasta_descuento' => $meta['restantes_hasta_descuento'] ?? null,
+                'umbral'   => $meta['umbral'] ?? null,
             ];
         }
 
@@ -2848,6 +2884,48 @@ class ClientRestController
         self::$active_offers_cache[$user_id] = $offers;
 
         return $offers;
+    }
+
+    private static function count_active_guarantees_current_month(int $user_id): int
+    {
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now      = new \DateTimeImmutable('now', $timezone);
+
+        $start = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $end   = $now->setTime(23, 59, 59);
+
+        $query = new \WP_Query([
+            'post_type'      => GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['publish', 'pending', 'future', 'draft'],
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                    'type'    => 'NUMERIC',
+                ],
+                [
+                    'key'     => 'estado_garantia_estado_contratacion',
+                    'value'   => 'activada',
+                    'compare' => '=',
+                ],
+            ],
+            'date_query'     => [
+                [
+                    'after'     => $start->format('Y-m-d H:i:s'),
+                    'before'    => $end->format('Y-m-d H:i:s'),
+                    'inclusive' => true,
+                ],
+            ],
+        ]);
+
+        $count = isset($query->found_posts) ? (int) $query->found_posts : 0;
+        wp_reset_postdata();
+
+        return $count;
     }
 
     private static function format_special_offer_summary(array $offer): ?array
@@ -3087,6 +3165,10 @@ class ClientRestController
             [
                 'value' => 'personalizar',
                 'label' => __('Personalizar', 'garantias-online-360vo'),
+            ],
+            [
+                'value' => 'descuento_cada',
+                'label' => __('Descuento cada X garantías', 'garantias-online-360vo'),
             ],
         ];
     }

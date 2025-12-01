@@ -357,6 +357,7 @@
         };
 
         const cache = new Map();
+        const offersSummaryCache = new Map();
         const slugIndex = new Map();
         const presenceState = {
             registry: new Map(),
@@ -1696,6 +1697,75 @@
                 return '';
             }
 
+            const discountEachMeta = offers
+                .map((offer) => {
+                    const candidateMeta = offer && typeof offer.meta === 'object'
+                        ? offer.meta
+                        : (offer && typeof offer.meta_data === 'object' ? offer.meta_data : null);
+
+                    const fallbacks = offer && typeof offer === 'object'
+                        ? {
+                            activadas_mes: offer.activadas_mes ?? offer.garantias_activadas_mes,
+                            restantes_hasta_descuento: offer.restantes_hasta_descuento,
+                            umbral: offer.umbral ?? offer.cantidad_garantias_mes,
+                            ventana_descuento: offer.numero_garantias_con_descuento,
+                        }
+                        : null;
+
+                    const labelKey = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
+                    const typeKey = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    const isThreshold = typeKey === 'descuento_cada'
+                        || typeValue === 'descuento_cada'
+                        || labelKey.startsWith('por cada ');
+
+                    if (!isThreshold) {
+                        return null;
+                    }
+
+                    const mergedMeta = candidateMeta && typeof candidateMeta === 'object' && Object.keys(candidateMeta).length
+                        ? candidateMeta
+                        : (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : {});
+
+                    if (Object.keys(mergedMeta).length === 0) {
+                        return null;
+                    }
+
+                    const threshold = Number(mergedMeta.umbral ?? mergedMeta.cantidad_garantias_mes ?? offer?.umbral ?? offer?.cantidad_garantias_mes);
+                    const windowSize = Number(mergedMeta.ventana_descuento ?? offer?.numero_garantias_con_descuento);
+                    const activatedRaw = mergedMeta.activadas_mes ?? mergedMeta.garantias_activadas_mes ?? offer?.activadas_mes ?? offer?.garantias_activadas_mes;
+                    const remainingRaw = mergedMeta.restantes_hasta_descuento;
+
+                    const activated = Number.isFinite(Number(activatedRaw)) ? Number(activatedRaw) : null;
+                    const windowLength = Number.isFinite(windowSize) && windowSize > 0 ? windowSize : null;
+                    const safeThreshold = Number.isFinite(threshold) && threshold > 0 ? threshold : null;
+                    const cycleLength = safeThreshold !== null && windowLength !== null ? safeThreshold + windowLength : (safeThreshold || null);
+                    const position = activated !== null && cycleLength ? (activated % cycleLength) : null;
+                    const inWindow = safeThreshold !== null && position !== null
+                        ? (position >= safeThreshold && (windowLength === null || position < safeThreshold + windowLength))
+                        : false;
+
+                    let remaining = Number.isFinite(Number(remainingRaw)) ? Number(remainingRaw) : null;
+                    if (remaining === null && safeThreshold !== null) {
+                        const beforeThreshold = position === null ? 0 : Math.max(0, safeThreshold - position);
+                        if (!inWindow && position !== null && windowLength !== null && position >= safeThreshold) {
+                            remaining = Math.max(1, (safeThreshold + windowLength) - position);
+                        } else {
+                            remaining = beforeThreshold;
+                        }
+                    }
+
+                    return {
+                        offer,
+                        meta: {
+                            activadas_mes: activated,
+                            restantes_hasta_descuento: remaining,
+                            umbral: safeThreshold,
+                        },
+                    };
+                })
+                .filter(Boolean);
+
             const items = offers.map((offer) => {
                 if (isSpecialFixedOffer(offer)) {
                     const fixedText = formatSpecialFixedOffer(offer);
@@ -1721,11 +1791,40 @@
                 return `<li class="client-detail__chip">${title}${discount}</li>`;
             }).filter((item) => item !== '');
 
-            if (!items.length) {
+            const chipsHtml = items.length ? `<ul class="client-detail__chips">${items.join('')}</ul>` : '';
+
+            const discountEachHtml = discountEachMeta.length
+                ? (() => {
+                        const { meta } = discountEachMeta[0];
+                        const activated = Number(meta.activadas_mes);
+                        const remaining = Number(meta.restantes_hasta_descuento);
+                        const threshold = Number(meta.umbral);
+                        const progressMax = Number.isFinite(threshold) && threshold > 0 ? threshold : 1;
+                        const progressValue = Number.isFinite(remaining)
+                                ? Math.max(0, Math.min(progressMax, progressMax - remaining))
+                                : 0;
+
+                        const safeActivated = Number.isFinite(activated) && activated >= 0 ? activated : 0;
+                        const safeRemaining = Number.isFinite(remaining) && remaining >= 0 ? remaining : 0;
+
+                        return `
+                            <div class="client-detail__offers-progress">
+                                <p>Nº de garantías activas este mes: <strong>${safeActivated}</strong></p>
+                                <p>Nº de garantías restantes hasta próxima oferta: <strong>${safeRemaining}</strong></p>
+                                <div class="client-detail__progress">
+                                    <progress max="${progressMax}" value="${progressValue}"></progress>
+                                </div>
+                                <p class="client-detail__offers-note">Se reinicia cada primero de mes.</p>
+                            </div>
+                        `;
+                })()
+                : '';
+
+            if (!chipsHtml && !discountEachHtml) {
                 return '';
             }
 
-            return `<ul class="client-detail__chips">${items.join('')}</ul>`;
+            return `${chipsHtml}${discountEachHtml}`;
         }
 
         function renderCommercialsList(commercials) {
@@ -6223,6 +6322,50 @@
             initDetailInteractions(activePanel, item);
         }
 
+        async function hydrateOffersSummary(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                return;
+            }
+
+            const cacheKey = String(userId);
+            if (offersSummaryCache.has(cacheKey)) {
+                const summary = offersSummaryCache.get(cacheKey);
+                if (Array.isArray(summary) && summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`${restBase}go/v1/clientes/${userId}/offers`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const jsonText = await response.text();
+                const data = JSON.parse(jsonText);
+                const summary = Array.isArray(data?.summary) ? data.summary : [];
+
+                offersSummaryCache.set(cacheKey, summary);
+
+                if (summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+            } catch (error) {
+                console.error('Error hydrating offers summary', error);
+            }
+        }
+
         function updateRowCommercialSummary(item) {
             if (!item || typeof item.id === 'undefined') {
                 return;
@@ -6313,8 +6456,33 @@
                 return;
             }
 
+            const hasDescuentoCadaOffer = Array.isArray(item.offers)
+                ? item.offers.some((offer) => {
+                    const type = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    const label = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
+                    return type === 'descuento_cada'
+                        || typeValue === 'descuento_cada'
+                        || label.startsWith('por cada ');
+                })
+                : false;
+
+            const displayName = getDisplayName(item.name || {})
+                || item.name?.company
+                || item.name?.full
+                || item.slug
+                || '';
+            // eslint-disable-next-line no-console
+            console.log(`[Cliente Seleccionado]: ${displayName || 'Sin nombre'}`);
+            // eslint-disable-next-line no-console
+            console.log(`[OFERTA POR VOLUMEN DE GARANTÍAS]: ${hasDescuentoCadaOffer ? 'SÍ' : 'NO'}`);
+
             const content = renderDetail(item);
             swapPanels(content, direction, item);
+
+            if (item && Number.isFinite(Number(item.id))) {
+                hydrateOffersSummary(item);
+            }
         }
 
         function getEmptyPanelContent() {
