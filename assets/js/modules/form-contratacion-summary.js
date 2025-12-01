@@ -379,7 +379,9 @@ async function buildSummaryHTML() {
                                                 ? Math.round(precioAntesDescuento * desc.porcentaje * 100) / 100
                                                 : null;
                                 const nombre = desc.nombre || "";
-                                const label = `Descuento${nombre ? " " + nombre : ""}`;
+                                const label = nombre.toLowerCase().startsWith("descuento")
+                                        ? nombre
+                                        : `Descuento${nombre ? " " + nombre : ""}`;
                                 html += `<li class="item"><span class="concepto">${label}</span><span class="valor">-${
                                         descuentoEuros !== null ? eurosString(descuentoEuros) + "€" : "--"
                                 }</span></li>`;
