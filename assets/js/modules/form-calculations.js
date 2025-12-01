@@ -14,6 +14,7 @@ import {
         refreshOfertasDisplay,
         showOfertasLoading,
         shouldSkipLoaderForSelf,
+        shouldApplyDescuentoCada,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -25,6 +26,7 @@ import { getRestRoot, getRestNonce, getIcon } from "./config.js";
 import {
         getCurrentOfertas,
         setCurrentOfertas,
+        getCurrentOfertasMeta,
         getVisibleModalidades,
         setVisibleModalidades,
         getLimitesDinamicos,
@@ -110,14 +112,16 @@ function getIdSet(field) {
         return set;
 }
 
-function getSpecialFixedConfig(modalidad) {
+function getMatchingSpecialFixedOffers(modalidad) {
         const specials = getSpecialFixedOffers();
-        if (!Array.isArray(specials) || specials.length === 0) return null;
+        if (!Array.isArray(specials) || specials.length === 0) return [];
 
         const tipoSlugs = getSlugSet(modalidad?.tipo_garantia);
         const tipoIds = getIdSet(modalidad?.tipo_garantia_ids);
         const nivelSlugs = getSlugSet(modalidad?.nivel_garantia);
         const nivelIds = getIdSet(modalidad?.nivel_garantia_ids);
+
+        const matches = [];
 
         for (const special of specials) {
                 if (!special || typeof special !== "object") continue;
@@ -144,7 +148,7 @@ function getSpecialFixedConfig(modalidad) {
                                 ? special.duracion_label
                                 : "";
 
-                return {
+                matches.push({
                         ...special,
                         tipo_garantia_slug: tipoSlug,
                         tipo_garantia_id: tipoId,
@@ -153,10 +157,31 @@ function getSpecialFixedConfig(modalidad) {
                         precio,
                         duracion,
                         duracion_label: duracionLabel,
-                };
+                });
         }
 
-        return null;
+        return matches;
+}
+
+function getSpecialFixedConfig(modalidad, { duration = null } = {}) {
+        const matches = getMatchingSpecialFixedOffers(modalidad);
+        if (!matches.length) return null;
+
+        const targetDuration = duration !== null ? Number(duration) : null;
+        let selected = null;
+
+        if (targetDuration !== null && !Number.isNaN(targetDuration)) {
+                selected = matches.find((m) => m.duracion === targetDuration) || null;
+        }
+
+        if (!selected) {
+                selected = matches[0];
+        }
+
+        return {
+                ...selected,
+                matches,
+        };
 }
 
 function buildSpecialRestrictionMap() {
@@ -251,7 +276,7 @@ function renderRecargosEspecial({ precioBase, precioIVA, duracionLabel }) {
         html += `<p class="form__plan-recargos-precios"><b>Precio base:</b> ${eurosString(
                 precioBase
         )}€ | <b>Precio final + IVA:</b> ${eurosString(precioIVA)}€</p>`;
-        html += `<p class="form__plan-recargos-note">Tarifa especial con precio fijo. No se aplican suplementos ni descuentos.</p>`;
+        html += `<p class="form__plan-recargos-note">Tarifa especial con precio fijo. No se aplican suplementos; solo se aplican descuentos de tipo "descuento cada" cuando corresponda.</p>`;
         if (duracionLabel) {
                 html += `<p class="form__plan-recargos-note">Duración disponible: ${escapeHtml(
                         duracionLabel
@@ -1350,7 +1375,9 @@ function applyDesgloseVisibility() {
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
-        const specialConfig = getSpecialFixedConfig(modalidad);
+        const specialConfig = getSpecialFixedConfig(modalidad, {
+                duration: Number(valoresForm?.duracion),
+        });
         if (specialConfig && specialConfig.precio !== null) {
                 return createEmptyBreakdown();
         }
@@ -1559,22 +1586,20 @@ async function ensureOfertasLoaded() {
 }
 
 async function getDescuentosAplicables(
-	modalidad,
-	{ incluirCaducadas = false } = {}
+        modalidad,
+        { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return [];
         const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.precio !== null) {
-                return [];
-        }
+        const specialPriceActive = specialConfig && specialConfig.precio !== null;
         await ensureOfertasLoaded();
         if (!Array.isArray(getCurrentOfertas())) return [];
 
-	const now = Date.now() / 1000;
-	const modalidadID = modalidad.ID;
-	const nivelGarantia = Array.isArray(modalidad.nivel_garantia)
-		? modalidad.nivel_garantia[0]
-		: modalidad.nivel_garantia;
+        const now = Date.now() / 1000;
+        const modalidadID = modalidad.ID;
+        const nivelGarantia = Array.isArray(modalidad.nivel_garantia)
+                ? modalidad.nivel_garantia[0]
+                : modalidad.nivel_garantia;
 
         const descuentos = [];
 
@@ -1584,32 +1609,40 @@ async function getDescuentosAplicables(
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
-		const caducada =
-			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
-		if (!incluirCaducadas && caducada) return;
+                const caducada =
+                        oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
+                if (!incluirCaducadas && caducada) return;
 
-		if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+                if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
 
-		descuentos.push({
-			porcentaje: oferta.porcentaje_descuento / 100,
-			nombre: oferta.nombre,
-			caducada,
-		});
-	});
+                if (specialPriceActive && oferta.tipo_oferta !== "descuento_cada") {
+                        return;
+                }
 
-	if (ENABLE_LOGS) {
-		log(
-			"[Descuentos] Modalidad:",
-			modalidad?.title,
-			"ID:",
-			modalidadID,
-			"nivel:",
-			nivelGarantia,
-			"→ Aplicados:",
-			descuentos
-		);
-	}
-	return descuentos;
+                if (oferta.tipo_oferta === "descuento_cada" && !shouldApplyDescuentoCada(oferta)) {
+                        return;
+                }
+
+                descuentos.push({
+                        porcentaje: oferta.porcentaje_descuento / 100,
+                        nombre: oferta.nombre,
+                        caducada,
+                });
+        });
+
+        if (ENABLE_LOGS) {
+                log(
+                        "[Descuentos] Modalidad:",
+                        modalidad?.title,
+                        "ID:",
+                        modalidadID,
+                        "nivel:",
+                        nivelGarantia,
+                        "→ Aplicados:",
+                        descuentos
+                );
+        }
+        return descuentos;
 }
 
 async function getDescuentoTotal(modalidad) {
@@ -1624,13 +1657,11 @@ async function getDescuentoTotal(modalidad) {
 // Versión síncrona que reutiliza las ofertas ya cargadas para evitar esperas
 function getDescuentosAplicablesSync(
         modalidad,
-        { incluirCaducadas = false } = {}
+        { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return [];
         const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.precio !== null) {
-                return [];
-        }
+        const specialPriceActive = specialConfig && specialConfig.precio !== null;
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return [];
 
@@ -1646,6 +1677,14 @@ function getDescuentosAplicablesSync(
                         oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
                 if (!incluirCaducadas && caducada) return;
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (specialPriceActive && oferta.tipo_oferta !== "descuento_cada") {
+                        return;
+                }
+
+                if (oferta.tipo_oferta === "descuento_cada" && !shouldApplyDescuentoCada(oferta)) {
+                        return;
+                }
                 descuentos.push({
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
@@ -2004,9 +2043,14 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
-        const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.duracion) {
-                return [specialConfig.duracion];
+        const specialMatches = getMatchingSpecialFixedOffers(modalidad);
+        if (specialMatches.length) {
+                const durations = specialMatches
+                        .map((match) => match.duracion)
+                        .filter((val) => Number.isFinite(val) && val > 0);
+                if (durations.length) {
+                        return [...new Set(durations)].sort((a, b) => a - b);
+                }
         }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
@@ -2036,7 +2080,11 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
 
 function calcularPrecioBase(modalidad, valoresForm, options = {}) {
         const { ignoreSpecialPrice = false } = options || {};
-        const specialConfig = ignoreSpecialPrice ? null : getSpecialFixedConfig(modalidad);
+        const specialConfig = ignoreSpecialPrice
+                ? null
+                : getSpecialFixedConfig(modalidad, {
+                        duration: Number(valoresForm?.duracion),
+                });
         if (specialConfig && specialConfig.precio !== null) {
                 return redondearEuros(specialConfig.precio);
         }
@@ -2272,7 +2320,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                 planClasses.push("form__plan--no-selected");
                         }
 
-                        const specialConfig = getSpecialFixedConfig(m);
+                        const specialConfig = getSpecialFixedConfig(m, {
+                                duration: Number(valoresForm?.duracion),
+                        });
                         const isSpecial = !!(specialConfig && specialConfig.precio !== null);
 
                         const precioBase = calcularPrecioBase(m, valoresForm);

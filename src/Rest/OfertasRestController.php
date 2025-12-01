@@ -2,6 +2,11 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use GarantiasOnline360VO\GuaranteeCPT;
+use WP_Query;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -131,24 +136,85 @@ class OfertasRestController
                 }
             }
 
+            $cantidad_garantias_mes = isset($oferta['cantidad_garantias_mes'])
+                ? intval($oferta['cantidad_garantias_mes'])
+                : null;
+            $numero_garantias_con_descuento = isset($oferta['numero_garantias_con_descuento'])
+                ? intval($oferta['numero_garantias_con_descuento'])
+                : null;
+
+            if ($tipo_value === 'descuento_cada' && $cantidad_garantias_mes) {
+                $nombre_final = sprintf('Por cada %d garantías', (int) $cantidad_garantias_mes);
+            }
+
             $ofertas_clean[] = [
-                'tipo_oferta'          => $tipo_value,
-                'nombre'               => $nombre_final,
-                'etiqueta'             => $etiqueta,
-                'porcentaje_descuento' => $porcentaje_descuento,
-                'aplicacion'           => $oferta['aplicacion'] ?? [],
-                'seleccion_modalidad'  => $seleccion_modalidad_ids,
-                'estado'               => isset($oferta['estado']) ? (bool)$oferta['estado'] : true,
-                'caducidad_oferta'     => $fecha_cad,
-                'timestamp_caducidad'  => $timestamp_cad,
+                'tipo_oferta'                   => $tipo_value,
+                'nombre'                        => $nombre_final,
+                'etiqueta'                      => $etiqueta,
+                'porcentaje_descuento'          => $porcentaje_descuento,
+                'aplicacion'                    => $oferta['aplicacion'] ?? [],
+                'seleccion_modalidad'           => $seleccion_modalidad_ids,
+                'estado'                        => isset($oferta['estado']) ? (bool)$oferta['estado'] : true,
+                'caducidad_oferta'              => $fecha_cad,
+                'timestamp_caducidad'           => $timestamp_cad,
+                'cantidad_garantias_mes'        => $cantidad_garantias_mes,
+                'numero_garantias_con_descuento' => $numero_garantias_con_descuento,
             ];
         }
 
+        $meta = [
+            'garantias_activadas_mes'           => self::count_active_guarantees_current_month($user_id),
+            'tiene_oferta_especial_precio_fijo' => $especiales['enabled'],
+        ];
+
         return new \WP_REST_Response([
-            'ofertas'                          => $ofertas_clean,
+            'ofertas'                           => $ofertas_clean,
             'tiene_oferta_especial_precio_fijo' => $especiales['enabled'],
             'ofertas_precio_fijo'               => $especiales['offers'],
+            'meta'                              => $meta,
         ], 200);
+    }
+
+    private static function count_active_guarantees_current_month(int $user_id): int
+    {
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+        $now      = new DateTimeImmutable('now', $timezone);
+
+        $start = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $end   = $now->setTime(23, 59, 59);
+
+        $query = new WP_Query([
+            'post_type'      => GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['publish', 'pending', 'future', 'draft'],
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                    'type'    => 'NUMERIC',
+                ],
+                [
+                    'key'     => 'estado_garantia_estado_contratacion',
+                    'value'   => 'activada',
+                    'compare' => '=',
+                ],
+            ],
+            'date_query'     => [
+                [
+                    'after'     => $start->format('Y-m-d H:i:s'),
+                    'before'    => $end->format('Y-m-d H:i:s'),
+                    'inclusive' => true,
+                ],
+            ],
+        ]);
+
+        $count = isset($query->found_posts) ? (int) $query->found_posts : 0;
+        wp_reset_postdata();
+
+        return $count;
     }
 
     public static function extract_special_price_offers(array $group): array

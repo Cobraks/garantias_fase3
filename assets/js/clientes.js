@@ -1696,6 +1696,17 @@
                 return '';
             }
 
+            const discountEachMeta = offers
+                .map((offer) => ({
+                    offer,
+                    meta: offer && typeof offer.meta === 'object' ? offer.meta : null,
+                }))
+                .filter(({ offer, meta }) => {
+                    if (!meta || typeof meta !== 'object') return false;
+                    const type = typeof offer.type === 'string' ? offer.type.toLowerCase() : '';
+                    return type === 'descuento_cada';
+                });
+
             const items = offers.map((offer) => {
                 if (isSpecialFixedOffer(offer)) {
                     const fixedText = formatSpecialFixedOffer(offer);
@@ -1721,11 +1732,40 @@
                 return `<li class="client-detail__chip">${title}${discount}</li>`;
             }).filter((item) => item !== '');
 
-            if (!items.length) {
+            const chipsHtml = items.length ? `<ul class="client-detail__chips">${items.join('')}</ul>` : '';
+
+            const discountEachHtml = discountEachMeta.length
+                ? (() => {
+                        const { meta } = discountEachMeta[0];
+                        const activated = Number(meta.activadas_mes);
+                        const remaining = Number(meta.restantes_hasta_descuento);
+                        const threshold = Number(meta.umbral);
+                        const progressMax = Number.isFinite(threshold) && threshold > 0 ? threshold : 1;
+                        const progressValue = Number.isFinite(remaining)
+                                ? Math.max(0, Math.min(progressMax, progressMax - remaining))
+                                : 0;
+
+                        const safeActivated = Number.isFinite(activated) && activated >= 0 ? activated : 0;
+                        const safeRemaining = Number.isFinite(remaining) && remaining >= 0 ? remaining : 0;
+
+                        return `
+                            <div class="client-detail__offers-progress">
+                                <p>Nº de garantías activas este mes: <strong>${safeActivated}</strong></p>
+                                <p>Nº de garantías restantes hasta próxima oferta: <strong>${safeRemaining}</strong></p>
+                                <div class="client-detail__progress">
+                                    <progress max="${progressMax}" value="${progressValue}"></progress>
+                                </div>
+                                <p class="client-detail__offers-note">Se reinicia cada primero de mes.</p>
+                            </div>
+                        `;
+                })()
+                : '';
+
+            if (!chipsHtml && !discountEachHtml) {
                 return '';
             }
 
-            return `<ul class="client-detail__chips">${items.join('')}</ul>`;
+            return `${chipsHtml}${discountEachHtml}`;
         }
 
         function renderCommercialsList(commercials) {
