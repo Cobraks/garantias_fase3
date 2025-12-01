@@ -1712,22 +1712,29 @@
                         }
                         : null;
 
-                    const meta = candidateMeta && typeof candidateMeta === 'object'
-                        ? candidateMeta
-                        : (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : null);
-
+                    const labelKey = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
                     const typeKey = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
                     const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
-                    const isThreshold = typeKey === 'descuento_cada' || typeValue === 'descuento_cada';
+                    const isThreshold = typeKey === 'descuento_cada'
+                        || typeValue === 'descuento_cada'
+                        || labelKey.startsWith('por cada ');
 
-                    if (!meta || typeof meta !== 'object' || !isThreshold) {
+                    if (!isThreshold) {
                         return null;
                     }
 
-                    const threshold = Number(meta.umbral ?? meta.cantidad_garantias_mes ?? offer?.umbral ?? offer?.cantidad_garantias_mes);
-                    const windowSize = Number(meta.ventana_descuento ?? offer?.numero_garantias_con_descuento);
-                    const activatedRaw = meta.activadas_mes ?? meta.garantias_activadas_mes ?? offer?.activadas_mes ?? offer?.garantias_activadas_mes;
-                    const remainingRaw = meta.restantes_hasta_descuento;
+                    const mergedMeta = candidateMeta && typeof candidateMeta === 'object' && Object.keys(candidateMeta).length
+                        ? candidateMeta
+                        : (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : {});
+
+                    if (Object.keys(mergedMeta).length === 0) {
+                        return null;
+                    }
+
+                    const threshold = Number(mergedMeta.umbral ?? mergedMeta.cantidad_garantias_mes ?? offer?.umbral ?? offer?.cantidad_garantias_mes);
+                    const windowSize = Number(mergedMeta.ventana_descuento ?? offer?.numero_garantias_con_descuento);
+                    const activatedRaw = mergedMeta.activadas_mes ?? mergedMeta.garantias_activadas_mes ?? offer?.activadas_mes ?? offer?.garantias_activadas_mes;
+                    const remainingRaw = mergedMeta.restantes_hasta_descuento;
 
                     const activated = Number.isFinite(Number(activatedRaw)) ? Number(activatedRaw) : null;
                     const windowLength = Number.isFinite(windowSize) && windowSize > 0 ? windowSize : null;
