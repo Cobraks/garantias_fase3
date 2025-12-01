@@ -14,6 +14,7 @@ import {
         refreshOfertasDisplay,
         showOfertasLoading,
         shouldSkipLoaderForSelf,
+        shouldApplyDescuentoCada,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -109,30 +110,6 @@ function getIdSet(field) {
                 .filter((id) => id !== null)
                 .forEach((id) => set.add(id));
         return set;
-}
-
-function getMonthlyActivatedGuarantees() {
-        const meta = getCurrentOfertasMeta();
-        const raw = meta ? meta.garantias_activadas_mes : null;
-        const num = Number(raw);
-        return Number.isFinite(num) && num >= 0 ? num : 0;
-}
-
-function shouldApplyDescuentoCada(oferta) {
-        const threshold = toPositiveInt(oferta?.cantidad_garantias_mes);
-        const usosMaximos = toPositiveInt(oferta?.numero_garantias_con_descuento);
-
-        if (threshold === null || usosMaximos === null || usosMaximos <= 0) {
-                return false;
-        }
-
-        const activadasMes = getMonthlyActivatedGuarantees();
-        if (activadasMes < threshold) {
-                return false;
-        }
-
-        const usadas = Math.max(0, activadasMes - threshold);
-        return usadas < usosMaximos;
 }
 
 function getMatchingSpecialFixedOffers(modalidad) {
@@ -299,7 +276,7 @@ function renderRecargosEspecial({ precioBase, precioIVA, duracionLabel }) {
         html += `<p class="form__plan-recargos-precios"><b>Precio base:</b> ${eurosString(
                 precioBase
         )}€ | <b>Precio final + IVA:</b> ${eurosString(precioIVA)}€</p>`;
-        html += `<p class="form__plan-recargos-note">Tarifa especial con precio fijo. No se aplican suplementos ni descuentos.</p>`;
+        html += `<p class="form__plan-recargos-note">Tarifa especial con precio fijo. No se aplican suplementos; solo se aplican descuentos de tipo "descuento cada" cuando corresponda.</p>`;
         if (duracionLabel) {
                 html += `<p class="form__plan-recargos-note">Duración disponible: ${escapeHtml(
                         duracionLabel
@@ -1609,22 +1586,20 @@ async function ensureOfertasLoaded() {
 }
 
 async function getDescuentosAplicables(
-	modalidad,
-	{ incluirCaducadas = false } = {}
+        modalidad,
+        { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return [];
         const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.precio !== null) {
-                return [];
-        }
+        const specialPriceActive = specialConfig && specialConfig.precio !== null;
         await ensureOfertasLoaded();
         if (!Array.isArray(getCurrentOfertas())) return [];
 
-	const now = Date.now() / 1000;
-	const modalidadID = modalidad.ID;
-	const nivelGarantia = Array.isArray(modalidad.nivel_garantia)
-		? modalidad.nivel_garantia[0]
-		: modalidad.nivel_garantia;
+        const now = Date.now() / 1000;
+        const modalidadID = modalidad.ID;
+        const nivelGarantia = Array.isArray(modalidad.nivel_garantia)
+                ? modalidad.nivel_garantia[0]
+                : modalidad.nivel_garantia;
 
         const descuentos = [];
 
@@ -1640,6 +1615,10 @@ async function getDescuentosAplicables(
 
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
 
+                if (specialPriceActive && oferta.tipo_oferta !== "descuento_cada") {
+                        return;
+                }
+
                 if (oferta.tipo_oferta === "descuento_cada" && !shouldApplyDescuentoCada(oferta)) {
                         return;
                 }
@@ -1648,22 +1627,22 @@ async function getDescuentosAplicables(
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
                         caducada,
-		});
-	});
+                });
+        });
 
-	if (ENABLE_LOGS) {
-		log(
-			"[Descuentos] Modalidad:",
-			modalidad?.title,
-			"ID:",
-			modalidadID,
-			"nivel:",
-			nivelGarantia,
-			"→ Aplicados:",
-			descuentos
-		);
-	}
-	return descuentos;
+        if (ENABLE_LOGS) {
+                log(
+                        "[Descuentos] Modalidad:",
+                        modalidad?.title,
+                        "ID:",
+                        modalidadID,
+                        "nivel:",
+                        nivelGarantia,
+                        "→ Aplicados:",
+                        descuentos
+                );
+        }
+        return descuentos;
 }
 
 async function getDescuentoTotal(modalidad) {
@@ -1678,13 +1657,11 @@ async function getDescuentoTotal(modalidad) {
 // Versión síncrona que reutiliza las ofertas ya cargadas para evitar esperas
 function getDescuentosAplicablesSync(
         modalidad,
-        { incluirCaducadas = false } = {}
+        { incluirCaducadas = false } = {},
 ) {
         if (!modalidad) return [];
         const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.precio !== null) {
-                return [];
-        }
+        const specialPriceActive = specialConfig && specialConfig.precio !== null;
         const ofertas = getCurrentOfertas();
         if (!Array.isArray(ofertas)) return [];
 
@@ -1700,6 +1677,10 @@ function getDescuentosAplicablesSync(
                         oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
                 if (!incluirCaducadas && caducada) return;
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (specialPriceActive && oferta.tipo_oferta !== "descuento_cada") {
+                        return;
+                }
 
                 if (oferta.tipo_oferta === "descuento_cada" && !shouldApplyDescuentoCada(oferta)) {
                         return;
