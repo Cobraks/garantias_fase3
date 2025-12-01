@@ -1697,10 +1697,24 @@
             }
 
             const discountEachMeta = offers
-                .map((offer) => ({
-                    offer,
-                    meta: offer && typeof offer.meta === 'object' ? offer.meta : null,
-                }))
+                .map((offer) => {
+                    const candidateMeta = offer && typeof offer.meta === 'object'
+                        ? offer.meta
+                        : (offer && typeof offer.meta_data === 'object' ? offer.meta_data : null);
+                    const fallbacks = (!candidateMeta || typeof candidateMeta !== 'object') && offer && typeof offer === 'object'
+                        ? {
+                            activadas_mes: offer.activadas_mes,
+                            restantes_hasta_descuento: offer.restantes_hasta_descuento,
+                            umbral: offer.umbral,
+                        }
+                        : null;
+                    const meta = candidateMeta || (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : null);
+
+                    return {
+                        offer,
+                        meta,
+                    };
+                })
                 .filter(({ offer, meta }) => {
                     if (!meta || typeof meta !== 'object') return false;
                     const typeKey = typeof offer.type === 'string' ? offer.type.toLowerCase() : '';

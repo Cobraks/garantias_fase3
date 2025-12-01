@@ -2865,6 +2865,9 @@ class ClientRestController
                 'type_value' => $type_value,
                 'name'     => $custom_name,
                 'meta'     => $meta,
+                'activadas_mes' => $meta['activadas_mes'] ?? null,
+                'restantes_hasta_descuento' => $meta['restantes_hasta_descuento'] ?? null,
+                'umbral'   => $meta['umbral'] ?? null,
             ];
         }
 
