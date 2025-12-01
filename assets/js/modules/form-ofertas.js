@@ -12,7 +12,9 @@ import {
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
         setCurrentOfertas,
+        setCurrentOfertasMeta,
         getCurrentOfertas,
+        getCurrentOfertasMeta,
         getVisibleModalidades,
         setSpecialFixedOffers,
         getSpecialFixedOffers,
@@ -53,7 +55,64 @@ function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 7;
+let lastThresholdCountsRefresh = 0;
+
+function toPositiveInt(value) {
+        if (value === null || typeof value === "undefined" || value === "") return null;
+        const num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        const intVal = Math.trunc(num);
+        return intVal > 0 ? intVal : null;
+}
+
+function getMonthlyActivatedGuarantees(meta = null) {
+        const rawMeta = meta || getCurrentOfertasMeta();
+        const raw = rawMeta ? rawMeta.garantias_activadas_mes : null;
+        const num = Number(raw);
+        return Number.isFinite(num) && num >= 0 ? num : 0;
+}
+
+function getMonthlyNonActiveGuarantees(meta = null) {
+        const rawMeta = meta || getCurrentOfertasMeta();
+        const raw = rawMeta ? rawMeta.garantias_no_activadas_mes : null;
+        const num = Number(raw);
+        return Number.isFinite(num) && num > 0 ? num : 0;
+}
+
+export function shouldApplyDescuentoCada(oferta, meta = null) {
+        if (!oferta || oferta.tipo_oferta !== "descuento_cada") return false;
+
+        const threshold = toPositiveInt(oferta?.cantidad_garantias_mes);
+        const usosMaximos = toPositiveInt(oferta?.numero_garantias_con_descuento);
+
+        if (threshold === null || usosMaximos === null || usosMaximos <= 0) {
+                return false;
+        }
+
+        const activadasMes = getMonthlyActivatedGuarantees(meta);
+        const pendientes = getMonthlyNonActiveGuarantees(meta);
+        // Si hay garantías sin activar, bloqueamos la ventana de descuento hasta que
+        // pasen a activadas para evitar reservar varias veces el mismo hueco.
+        if (pendientes > 0) {
+                return false;
+        }
+        const cycleLength = threshold + usosMaximos;
+        if (cycleLength <= 0) return false;
+
+        const position = activadasMes % cycleLength;
+        return position >= threshold && position < threshold + usosMaximos;
+}
+
+export function shouldApplyDescuentoAPartir(oferta, meta = null) {
+        if (!oferta || oferta.tipo_oferta !== "descuento_a_partir") return false;
+
+        const threshold = toPositiveInt(oferta?.cantidad_garantias_mes);
+        if (threshold === null) return false;
+
+        const activadasMes = getMonthlyActivatedGuarantees(meta);
+        return activadasMes >= threshold;
+}
 
 function isValidCacheEntry(entry) {
         if (!entry || typeof entry !== "object") return false;
@@ -115,6 +174,7 @@ function normalizeOfertasResponse(payload) {
 function applyOfertasState(entry) {
         if (!entry || typeof entry !== "object") {
                 setCurrentOfertas([]);
+                setCurrentOfertasMeta({});
                 setSpecialFixedOffers([], { enabled: false });
                 return;
         }
@@ -122,6 +182,9 @@ function applyOfertasState(entry) {
         const ofertas = Array.isArray(entry.ofertas) ? entry.ofertas : [];
         const especiales = Array.isArray(entry.especiales) ? entry.especiales : [];
         const meta = entry.meta && typeof entry.meta === "object" ? entry.meta : {};
+        if (entry.fetchedAt) {
+                meta._fetchedAt = entry.fetchedAt;
+        }
         const enabledFlag = Boolean(
                 meta.enabled ??
                         meta.tieneOfertaEspecial ??
@@ -131,6 +194,7 @@ function applyOfertasState(entry) {
         );
 
         setCurrentOfertas(ofertas);
+        setCurrentOfertasMeta(meta);
         setSpecialFixedOffers(especiales, {
                 ...meta,
                 enabled: enabledFlag,
@@ -207,14 +271,6 @@ function normalizeToArray(value) {
 
 function toLowerSlug(value) {
         return typeof value === "string" ? value.toLowerCase() : "";
-}
-
-function toPositiveInt(value) {
-        if (value === null || typeof value === "undefined" || value === "") return null;
-        const num = Number(value);
-        if (!Number.isFinite(num)) return null;
-        const intVal = Math.trunc(num);
-        return intVal > 0 ? intVal : null;
 }
 
 function getSlugSet(field) {
@@ -406,14 +462,33 @@ export function ofertaAplicaAmodalidad(oferta, modalidad) {
 export function filterOfertasPorModalidades(
 	ofertas = [],
 	modalidades = [],
-	{ incluirCaducadas = false } = {}
+	{ incluirCaducadas = false } = {},
 ) {
 	const now = Date.now() / 1000;
 	return (ofertas || []).filter((oferta) => {
-        if (oferta.estado === false) return false;
-        const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
-        if (!esSinSuplementos && !oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
-                return false;
+		if (oferta.estado === false) return false;
+		const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+		if (
+			!esSinSuplementos &&
+			!oferta.porcentaje_descuento &&
+			oferta.porcentaje_descuento !== 0
+		) {
+			return false;
+		}
+
+                if (
+                        oferta.tipo_oferta === "descuento_cada" &&
+                        !shouldApplyDescuentoCada(oferta)
+                ) {
+                        return false;
+                }
+
+                if (
+                        oferta.tipo_oferta === "descuento_a_partir" &&
+                        !shouldApplyDescuentoAPartir(oferta)
+                ) {
+                        return false;
+                }
 
 		const caducada =
 			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
@@ -497,6 +572,32 @@ export async function fetchOfertas(userId, { force = false } = {}) {
                 applyOfertasState(null);
                 return [];
         }
+}
+
+async function ensureFreshThresholdCounts() {
+        const ofertas = getCurrentOfertas();
+        const hasThresholdOffers = Array.isArray(ofertas)
+                ? ofertas.some(
+                        (o) =>
+                                o?.tipo_oferta === "descuento_cada" ||
+                                o?.tipo_oferta === "descuento_a_partir"
+                )
+                : false;
+        if (!hasThresholdOffers) return;
+
+        const meta = getCurrentOfertasMeta();
+        const fetchedAt = meta && meta._fetchedAt ? Number(meta._fetchedAt) : 0;
+        const needsRefresh = !fetchedAt || Date.now() - fetchedAt > 15 * 1000;
+        if (!needsRefresh) return;
+
+        const effectiveUserId = resolveUserId();
+        if (!effectiveUserId) return;
+
+        if (Date.now() - lastThresholdCountsRefresh < 3000) {
+                return;
+        }
+        lastThresholdCountsRefresh = Date.now();
+        await fetchOfertas(effectiveUserId, { force: true });
 }
 
 function showOfertasLoading(ul = null) {
