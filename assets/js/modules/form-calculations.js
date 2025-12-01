@@ -110,14 +110,16 @@ function getIdSet(field) {
         return set;
 }
 
-function getSpecialFixedConfig(modalidad) {
+function getMatchingSpecialFixedOffers(modalidad) {
         const specials = getSpecialFixedOffers();
-        if (!Array.isArray(specials) || specials.length === 0) return null;
+        if (!Array.isArray(specials) || specials.length === 0) return [];
 
         const tipoSlugs = getSlugSet(modalidad?.tipo_garantia);
         const tipoIds = getIdSet(modalidad?.tipo_garantia_ids);
         const nivelSlugs = getSlugSet(modalidad?.nivel_garantia);
         const nivelIds = getIdSet(modalidad?.nivel_garantia_ids);
+
+        const matches = [];
 
         for (const special of specials) {
                 if (!special || typeof special !== "object") continue;
@@ -144,7 +146,7 @@ function getSpecialFixedConfig(modalidad) {
                                 ? special.duracion_label
                                 : "";
 
-                return {
+                matches.push({
                         ...special,
                         tipo_garantia_slug: tipoSlug,
                         tipo_garantia_id: tipoId,
@@ -153,10 +155,31 @@ function getSpecialFixedConfig(modalidad) {
                         precio,
                         duracion,
                         duracion_label: duracionLabel,
-                };
+                });
         }
 
-        return null;
+        return matches;
+}
+
+function getSpecialFixedConfig(modalidad, { duration = null } = {}) {
+        const matches = getMatchingSpecialFixedOffers(modalidad);
+        if (!matches.length) return null;
+
+        const targetDuration = duration !== null ? Number(duration) : null;
+        let selected = null;
+
+        if (targetDuration !== null && !Number.isNaN(targetDuration)) {
+                selected = matches.find((m) => m.duracion === targetDuration) || null;
+        }
+
+        if (!selected) {
+                selected = matches[0];
+        }
+
+        return {
+                ...selected,
+                matches,
+        };
 }
 
 function buildSpecialRestrictionMap() {
@@ -1350,7 +1373,9 @@ function applyDesgloseVisibility() {
 
 // --------- Cálculo de recargos (suplementos) ---------
 function calcularRecargos(modalidad, valoresForm) {
-        const specialConfig = getSpecialFixedConfig(modalidad);
+        const specialConfig = getSpecialFixedConfig(modalidad, {
+                duration: Number(valoresForm?.duracion),
+        });
         if (specialConfig && specialConfig.precio !== null) {
                 return createEmptyBreakdown();
         }
@@ -2004,9 +2029,14 @@ function modalidadAdmiteValor(modalidad, valoresForm) {
 }
 
 function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
-        const specialConfig = getSpecialFixedConfig(modalidad);
-        if (specialConfig && specialConfig.duracion) {
-                return [specialConfig.duracion];
+        const specialMatches = getMatchingSpecialFixedOffers(modalidad);
+        if (specialMatches.length) {
+                const durations = specialMatches
+                        .map((match) => match.duracion)
+                        .filter((val) => Number.isFinite(val) && val > 0);
+                if (durations.length) {
+                        return [...new Set(durations)].sort((a, b) => a - b);
+                }
         }
         const cg = modalidad.acf?.condiciones_generales_y_tarifas || {};
         const tarifas = cg?.tarifas || [];
@@ -2036,7 +2066,11 @@ function getMesesDisponiblesPorModalidad(modalidad, valoresForm) {
 
 function calcularPrecioBase(modalidad, valoresForm, options = {}) {
         const { ignoreSpecialPrice = false } = options || {};
-        const specialConfig = ignoreSpecialPrice ? null : getSpecialFixedConfig(modalidad);
+        const specialConfig = ignoreSpecialPrice
+                ? null
+                : getSpecialFixedConfig(modalidad, {
+                        duration: Number(valoresForm?.duracion),
+                });
         if (specialConfig && specialConfig.precio !== null) {
                 return redondearEuros(specialConfig.precio);
         }
@@ -2272,7 +2306,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                 planClasses.push("form__plan--no-selected");
                         }
 
-                        const specialConfig = getSpecialFixedConfig(m);
+                        const specialConfig = getSpecialFixedConfig(m, {
+                                duration: Number(valoresForm?.duracion),
+                        });
                         const isSpecial = !!(specialConfig && specialConfig.precio !== null);
 
                         const precioBase = calcularPrecioBase(m, valoresForm);
