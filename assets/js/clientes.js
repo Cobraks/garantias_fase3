@@ -6467,9 +6467,15 @@
                 })
                 : false;
 
-            const displayName = getDisplayName(item.name || {}) || item.name?.company || '';
+            const displayName = getDisplayName(item.name || {})
+                || item.name?.company
+                || item.name?.full
+                || item.slug
+                || '';
             // eslint-disable-next-line no-console
-            console.log(`[OFERTA Nº GARANTÍAS] ${hasDescuentoCadaOffer ? 'Sí' : 'No'}${displayName ? ` - ${displayName}` : ''}`);
+            console.log(`[Cliente Seleccionado]: ${displayName || 'Sin nombre'}`);
+            // eslint-disable-next-line no-console
+            console.log(`[OFERTA POR VOLUMEN DE GARANTÍAS]: ${hasDescuentoCadaOffer ? 'SÍ' : 'NO'}`);
 
             const content = renderDetail(item);
             swapPanels(content, direction, item);
