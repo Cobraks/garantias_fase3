@@ -30,6 +30,8 @@ class GuaranteeRestController
     const TRANSFER_RECEIPT_HASH_META = '_go360_transfer_receipt_hash';
     const CANCELLED_CERTIFICATE_HASH_META = 'documentacion_certificado_cancelado_hash';
     const PROFORMA_HASH_META = 'documentacion_proforma_hash';
+    const INVOICE_HASH_META = 'documentacion_factura_hash';
+    const INVOICE_REFERENCE_META = '_go360_invoice_reference';
     const TRANSFER_RECEIPT_EXTENSION_META = '_go360_transfer_receipt_extension';
     const TRANSFER_RECEIPT_ROW_META = '_go360_transfer_receipt_row';
     const SUMMARY_TRANSIENT = 'go_gsummary_admin';
@@ -45,6 +47,7 @@ class GuaranteeRestController
 
     private const OPTION_GROUP_DOCUMENTATION = 'documentacion';
     private const OPTION_FIELD_PROFORMA_TEMPLATE = 'base_proforma';
+    private const OPTION_FIELD_INVOICE_TEMPLATE = 'base_factura';
     private const OPTION_GROUP_FACTURACION = 'facturacion';
     private const OPTION_SUBGROUP_PROFORMA = 'factura_proforma';
     private const OPTION_FIELD_PROFORMA_ENABLED = 'activar_proforma_general';
@@ -306,6 +309,20 @@ class GuaranteeRestController
                 [
                     'methods'             => WP_REST_Server::CREATABLE,
                     'callback'            => [__CLASS__, 'upload_proforma'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/invoice',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'upload_invoice'],
                     'permission_callback' => [__CLASS__, 'can_edit'],
                     'args'                => [
                         'id' => ['validate_callback' => 'absint'],
@@ -810,6 +827,29 @@ class GuaranteeRestController
                     $info['matricula']
                 ));
 
+                $mime = 'application/pdf';
+                break;
+            case 'invoice':
+                $invoice_hash = get_post_meta($id, self::INVOICE_HASH_META, true);
+                if (!$invoice_hash) {
+                    error_log('[download_document] no invoice hash for ' . $id);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+
+                $binary = PrivateDocsManager::retrieve($invoice_hash, 'pdf');
+                if (!$binary) {
+                    error_log('[download_document] retrieval failed ' . $invoice_hash);
+                    return new WP_Error('not_found', __('Documento no disponible', 'garantias-online-360vo'), ['status' => 404]);
+                }
+
+                $info = self::get_plan_info($id);
+                $reference = get_post_meta($id, self::INVOICE_REFERENCE_META, true);
+                $label = $reference !== '' ? $reference : $info['matricula'];
+                $filename = self::normalize_document_filename(sprintf(
+                    'Factura %s %s.pdf',
+                    $label,
+                    $info['plan']
+                ));
                 $mime = 'application/pdf';
                 break;
             case 'condicionado':
@@ -1444,6 +1484,8 @@ class GuaranteeRestController
         $detail['cobertura_url'] = '';
         $detail['condicionado_url'] = '';
         $detail['proforma_url'] = '';
+        $detail['invoice_url'] = '';
+        $detail['invoice_reference'] = (string) get_post_meta($post_id, self::INVOICE_REFERENCE_META, true);
 
         foreach ($documents as $doc) {
             if (!isset($doc['key'])) {
@@ -1462,6 +1504,13 @@ class GuaranteeRestController
                 case 'condicionado':
                     $detail['condicionado_url'] = $doc['url'] ?? '';
                     break;
+            }
+        }
+
+        if ($include_urls) {
+            $invoice_hash = get_post_meta($post_id, self::INVOICE_HASH_META, true);
+            if ($invoice_hash) {
+                $detail['invoice_url'] = self::build_document_download_url($post_id, 'invoice');
             }
         }
 
@@ -1817,6 +1866,12 @@ class GuaranteeRestController
                     return '';
                 }
                 break;
+            case 'invoice':
+                $hash = get_post_meta($id, self::INVOICE_HASH_META, true);
+                if (!$hash) {
+                    return '';
+                }
+                break;
             case 'condicionado':
             case 'cobertura':
                 $source = self::get_public_document_source($id, $type);
@@ -1864,6 +1919,67 @@ class GuaranteeRestController
             $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, 'option');
             if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE])) {
                 $file = $documentation[self::OPTION_FIELD_PROFORMA_TEMPLATE];
+            }
+        }
+
+        if (is_array($file)) {
+            if (! empty($file['url'])) {
+                $result['url'] = esc_url_raw((string) $file['url']);
+            }
+            if (! empty($file['ID'])) {
+                $result['id'] = (int) $file['ID'];
+                if ($result['url'] === '') {
+                    $url = wp_get_attachment_url($result['id']);
+                    if ($url) {
+                        $result['url'] = esc_url_raw($url);
+                    }
+                }
+            }
+            if (! empty($file['filename'])) {
+                $result['filename'] = sanitize_file_name((string) $file['filename']);
+            } elseif (! empty($file['title'])) {
+                $result['filename'] = sanitize_file_name((string) $file['title']);
+            } elseif ($result['id']) {
+                $path = get_attached_file($result['id']);
+                if ($path) {
+                    $result['filename'] = sanitize_file_name(basename($path));
+                }
+            }
+        } elseif (is_string($file) && $file !== '') {
+            $result['url'] = esc_url_raw($file);
+        }
+
+        return $result;
+    }
+
+    public static function get_invoice_template_source(): array
+    {
+        $result = [
+            'url'      => '',
+            'id'       => 0,
+            'filename' => '',
+        ];
+
+        if (! function_exists('get_field')) {
+            return $result;
+        }
+
+        $file = get_field(self::OPTION_FIELD_INVOICE_TEMPLATE, SettingsPage::SUBMENU_SLUG);
+        if (! $file) {
+            $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, SettingsPage::SUBMENU_SLUG);
+            if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_INVOICE_TEMPLATE])) {
+                $file = $documentation[self::OPTION_FIELD_INVOICE_TEMPLATE];
+            }
+        }
+
+        if (! $file) {
+            $file = get_field(self::OPTION_FIELD_INVOICE_TEMPLATE, 'option');
+        }
+
+        if (! $file) {
+            $documentation = get_field(self::OPTION_GROUP_DOCUMENTATION, 'option');
+            if (is_array($documentation) && isset($documentation[self::OPTION_FIELD_INVOICE_TEMPLATE])) {
+                $file = $documentation[self::OPTION_FIELD_INVOICE_TEMPLATE];
             }
         }
 
@@ -2226,6 +2342,54 @@ class GuaranteeRestController
         return new WP_REST_Response(['proforma_url' => $url], 201);
     }
 
+    public static function upload_invoice($request)
+    {
+        $id = (int) $request['id'];
+        if (!$id || get_post_type($id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('invalid_id', __('ID de garantía no válido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $binary = $request->get_body();
+        if ($binary === '') {
+            $binary = file_get_contents('php://input');
+        }
+        if ($binary === '' || $binary === false) {
+            return new WP_Error('empty_pdf', __('PDF no recibido', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $reference = '';
+        if (isset($_SERVER['HTTP_X_GO360_INVOICE_REFERENCE'])) {
+            $reference = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_GO360_INVOICE_REFERENCE']));
+        }
+
+        $signature = '';
+        if (isset($_SERVER['HTTP_X_GO360_INVOICE_SIGNATURE'])) {
+            $signature = sanitize_text_field(wp_unslash($_SERVER['HTTP_X_GO360_INVOICE_SIGNATURE']));
+        }
+
+        $hash = PrivateDocsManager::store($binary, 'pdf');
+        if (!$hash) {
+            return new WP_Error('store_error', __('No se pudo guardar la factura', 'garantias-online-360vo'), ['status' => 500]);
+        }
+
+        update_post_meta($id, self::INVOICE_HASH_META, $hash);
+        if ($reference !== '') {
+            update_post_meta($id, self::INVOICE_REFERENCE_META, $reference);
+        }
+        if ($signature !== '') {
+            update_post_meta($id, '_go360_invoice_signature', $signature);
+            error_log('[INVOICE] Stored signature for ID ' . $id . ' hash ' . $hash);
+        }
+
+        $url = self::build_document_download_url($id, 'invoice');
+        GuaranteeLogger::log(get_current_user_id(), $id, 'document_uploaded', 'invoice');
+
+        return new WP_REST_Response([
+            'invoice_url'       => $url,
+            'invoice_reference' => $reference,
+        ], 201);
+    }
+
     public static function confirm_transfer($request)
     {
         if (! is_user_logged_in()) {
@@ -2268,8 +2432,15 @@ class GuaranteeRestController
             );
         }
 
-        $vendor_id = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
-        if ($vendor_id > 0 && $user_id !== $vendor_id && ! $is_admin) {
+        $vendor_id          = isset($detail['vendor_id']) ? (int) $detail['vendor_id'] : 0;
+        $accessible_vendors = self::get_accessible_professional_vendor_ids($user_id);
+
+        if (
+            $vendor_id > 0
+            && $user_id !== $vendor_id
+            && ! $is_admin
+            && (! is_array($accessible_vendors) || ! in_array($vendor_id, $accessible_vendors, true))
+        ) {
             return new WP_Error(
                 'rest_forbidden_owner',
                 __('No puedes modificar esta garantía.', 'garantias-online-360vo'),
@@ -3939,6 +4110,9 @@ class GuaranteeRestController
             ? (isset($proforma_template['url']) ? (string) $proforma_template['url'] : '')
             : '';
         $proforma_url = self::build_document_download_url($post_id, 'proforma');
+        $invoice_template = self::get_invoice_template_source();
+        $invoice_template_url = isset($invoice_template['url']) ? (string) $invoice_template['url'] : '';
+        $invoice_url = self::build_document_download_url($post_id, 'invoice');
         $transfer_iban = self::get_transfer_iban();
 
         $notify_url = rest_url(self::NAMESPACE . '/' . self::BASE . '/' . $post_id . '/notify');
@@ -3954,6 +4128,8 @@ class GuaranteeRestController
             'proforma_template_url' => $proforma_template_url,
             'proforma_url'     => $proforma_url,
             'proforma_settings' => $proforma_settings,
+            'invoice_template_url' => $invoice_template_url,
+            'invoice_url'     => $invoice_url,
             'transfer_iban'    => $transfer_iban['formatted'],
             'firma_sello'      => $firma_sello,
             'notify_url'       => set_url_scheme($notify_url, $scheme),

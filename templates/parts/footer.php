@@ -103,6 +103,9 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $proforma_settings = class_exists(GuaranteeRestController::class)
         ? GuaranteeRestController::get_proforma_feature_settings()
         : [];
+    $invoice_template = class_exists(GuaranteeRestController::class)
+        ? GuaranteeRestController::get_invoice_template_source()
+        : ['url' => '', 'filename' => ''];
     $icon_pdf_html = Svg::icon('pdf');
     $icon_download_html = Svg::icon('download');
     $icon_plus_html = Svg::icon('plus');
@@ -136,6 +139,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                 reclamacion: "<?php echo esc_url($reclamation_url); ?>"
             },
             proforma: <?php echo wp_json_encode($proforma_settings); ?>,
+            invoice: {
+                templateUrl: "<?php echo esc_url($invoice_template['url'] ?? ''); ?>",
+                filename: "<?php echo esc_js($invoice_template['filename'] ?? ''); ?>",
+            },
             features: {
                 exampleData: <?php echo $example_data_enabled ? 'true' : 'false'; ?>
             },
@@ -144,6 +151,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             }
         };
     </script>
+    <script src="<?php echo esc_url(plugins_url('assets/js/pdf-lib.min.js', GARANTIAS360VO__FILE__)); ?>"></script>
     <script src="<?php echo esc_url(plugins_url('assets/js/mis_garantias.js', GARANTIAS360VO__FILE__)); ?>" type="module" defer></script>
 <?php endif; ?>
 
@@ -482,6 +490,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $icon_save_html = Svg::icon('save');
     $reclamation_url = ReclamationDocument::get_url();
     $proforma_settings = GuaranteeRestController::get_proforma_feature_settings();
+    $invoice_template = GuaranteeRestController::get_invoice_template_source();
 
     $current_user_labels = UserProfileResolver::get_vendor_labels((int) $current_user->ID);
     $current_user_company_name = (string) ($current_user_labels['company_name'] ?? '');
@@ -564,6 +573,10 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
                 professionalPaymentModes: <?php echo wp_json_encode($proforma_settings['professional_payment_modes'] ?? []); ?>,
                 highlightTotal: <?php echo ! empty($proforma_settings['highlight_total']) ? 'true' : 'false'; ?>,
                 options: <?php echo wp_json_encode($proforma_settings['options'] ?? []); ?>
+            },
+            invoice: {
+                templateUrl: "<?php echo esc_url($invoice_template['url'] ?? ''); ?>",
+                filename: "<?php echo esc_js($invoice_template['filename'] ?? ''); ?>",
             }
         };
     </script>
