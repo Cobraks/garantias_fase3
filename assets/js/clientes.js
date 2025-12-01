@@ -357,6 +357,7 @@
         };
 
         const cache = new Map();
+        const offersSummaryCache = new Map();
         const slugIndex = new Map();
         const presenceState = {
             registry: new Map(),
@@ -6278,6 +6279,50 @@
             initDetailInteractions(activePanel, item);
         }
 
+        async function hydrateOffersSummary(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                return;
+            }
+
+            const cacheKey = String(userId);
+            if (offersSummaryCache.has(cacheKey)) {
+                const summary = offersSummaryCache.get(cacheKey);
+                if (Array.isArray(summary) && summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`${restBase}go/v1/clientes/${userId}/offers`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const jsonText = await response.text();
+                const data = JSON.parse(jsonText);
+                const summary = Array.isArray(data?.summary) ? data.summary : [];
+
+                offersSummaryCache.set(cacheKey, summary);
+
+                if (summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+            } catch (error) {
+                console.error('Error hydrating offers summary', error);
+            }
+        }
+
         function updateRowCommercialSummary(item) {
             if (!item || typeof item.id === 'undefined') {
                 return;
@@ -6370,6 +6415,10 @@
 
             const content = renderDetail(item);
             swapPanels(content, direction, item);
+
+            if (item && Number.isFinite(Number(item.id))) {
+                hydrateOffersSummary(item);
+            }
         }
 
         function getEmptyPanelContent() {
