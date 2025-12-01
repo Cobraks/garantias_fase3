@@ -6456,6 +6456,21 @@
                 return;
             }
 
+            const hasDescuentoCadaOffer = Array.isArray(item.offers)
+                ? item.offers.some((offer) => {
+                    const type = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    const label = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
+                    return type === 'descuento_cada'
+                        || typeValue === 'descuento_cada'
+                        || label.startsWith('por cada ');
+                })
+                : false;
+
+            const displayName = getDisplayName(item.name || {}) || item.name?.company || '';
+            // eslint-disable-next-line no-console
+            console.log(`[OFERTA Nº GARANTÍAS] ${hasDescuentoCadaOffer ? 'Sí' : 'No'}${displayName ? ` - ${displayName}` : ''}`);
+
             const content = renderDetail(item);
             swapPanels(content, direction, item);
 
