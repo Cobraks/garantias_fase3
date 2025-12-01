@@ -1703,8 +1703,9 @@
                 }))
                 .filter(({ offer, meta }) => {
                     if (!meta || typeof meta !== 'object') return false;
-                    const type = typeof offer.type === 'string' ? offer.type.toLowerCase() : '';
-                    return type === 'descuento_cada';
+                    const typeKey = typeof offer.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    return typeKey === 'descuento_cada' || typeValue === 'descuento_cada' || typeof meta.umbral !== 'undefined';
                 });
 
             const items = offers.map((offer) => {

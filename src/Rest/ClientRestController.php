@@ -2862,6 +2862,7 @@ class ClientRestController
                 'discount' => $discount,
                 'expires'  => $expiry_raw !== '' ? $expiry_raw : '',
                 'type'     => $type_label,
+                'type_value' => $type_value,
                 'name'     => $custom_name,
                 'meta'     => $meta,
             ];
@@ -3161,6 +3162,10 @@ class ClientRestController
             [
                 'value' => 'personalizar',
                 'label' => __('Personalizar', 'garantias-online-360vo'),
+            ],
+            [
+                'value' => 'descuento_cada',
+                'label' => __('Descuento cada X garantías', 'garantias-online-360vo'),
             ],
         ];
     }
