@@ -7,6 +7,8 @@
         const config = window.__GO_CLIENTES__ || {};
         const restRoot = (config.rest && config.rest.root) || '/wp-json/';
         const restNonce = (config.rest && config.rest.nonce) || '';
+        const restBase = restRoot.endsWith('/') ? restRoot : `${restRoot}/`;
+        const restNonceValue = restNonce;
         const perPage = (config.pagination && config.pagination.perPage) || 20;
         const strings = config.strings || {};
         const quickFilterCountSingular = typeof strings.quickFilterCountSingular === 'string'
@@ -79,6 +81,10 @@
         }
 
         let filtersSticky = filters ? filters.classList.contains('sticky-active') : false;
+
+        const safeStartsWith = (value, prefix) => typeof value === 'string'
+            && typeof value.startsWith === 'function'
+            && value.startsWith(prefix);
 
         if (filters && header) {
             const observer = new IntersectionObserver(([entry]) => {
@@ -357,6 +363,7 @@
         };
 
         const cache = new Map();
+        const offersSummaryCache = new Map();
         const slugIndex = new Map();
         const presenceState = {
             registry: new Map(),
@@ -571,7 +578,7 @@
             }
 
             const path = window.location.pathname;
-            if (!path.startsWith(normalizedBasePath)) {
+            if (!safeStartsWith(path, normalizedBasePath)) {
                 return '';
             }
 
@@ -1696,6 +1703,99 @@
                 return '';
             }
 
+            const extractThresholdMeta = (offer, mode = 'cada') => {
+                const candidateMeta = offer && typeof offer.meta === 'object'
+                    ? offer.meta
+                    : (offer && typeof offer.meta_data === 'object' ? offer.meta_data : null);
+
+                const fallbacks = offer && typeof offer === 'object'
+                    ? {
+                        activadas_mes: offer.activadas_mes ?? offer.garantias_activadas_mes,
+                        restantes_hasta_descuento: offer.restantes_hasta_descuento,
+                        umbral: offer.umbral ?? offer.cantidad_garantias_mes,
+                        ventana_descuento: offer.numero_garantias_con_descuento,
+                    }
+                    : null;
+
+                const labelKey = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
+                const typeKey = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                const isEach = typeKey === 'descuento_cada'
+                    || typeValue === 'descuento_cada'
+                    || safeStartsWith(labelKey, 'por cada ');
+                const isFrom = typeKey === 'descuento_a_partir'
+                    || typeValue === 'descuento_a_partir'
+                    || safeStartsWith(labelKey, 'a partir de ')
+                    || safeStartsWith(labelKey, 'descuento a partir de ');
+
+                if (mode === 'cada' && !isEach) return null;
+                if (mode === 'apartir' && !isFrom) return null;
+
+                const mergedMeta = candidateMeta && typeof candidateMeta === 'object' && Object.keys(candidateMeta).length
+                    ? candidateMeta
+                    : (fallbacks && Object.values(fallbacks).some((v) => typeof v !== 'undefined') ? fallbacks : {});
+
+                if (Object.keys(mergedMeta).length === 0) {
+                    return null;
+                }
+
+                const threshold = Number(mergedMeta.umbral ?? mergedMeta.cantidad_garantias_mes ?? offer?.umbral ?? offer?.cantidad_garantias_mes);
+                const windowSize = Number(mergedMeta.ventana_descuento ?? offer?.numero_garantias_con_descuento);
+                const activatedRaw = mergedMeta.activadas_mes ?? mergedMeta.garantias_activadas_mes ?? offer?.activadas_mes ?? offer?.garantias_activadas_mes;
+                const remainingRaw = mergedMeta.restantes_hasta_descuento;
+
+                const activated = Number.isFinite(Number(activatedRaw)) ? Number(activatedRaw) : null;
+                const windowLength = Number.isFinite(windowSize) && windowSize > 0 ? windowSize : null;
+                const safeThreshold = Number.isFinite(threshold) && threshold > 0 ? threshold : null;
+                const cycleLength = safeThreshold !== null && windowLength !== null ? safeThreshold + windowLength : (safeThreshold || null);
+                const position = activated !== null && cycleLength ? (activated % cycleLength) : null;
+                const inWindow = safeThreshold !== null && position !== null
+                    ? (position >= safeThreshold && (windowLength === null || position < safeThreshold + windowLength))
+                    : false;
+
+                let remaining = Number.isFinite(Number(remainingRaw)) ? Number(remainingRaw) : null;
+                if (mode === 'cada' && remaining === null && safeThreshold !== null) {
+                    const beforeThreshold = position === null ? 0 : Math.max(0, safeThreshold - position);
+                    if (!inWindow && position !== null && windowLength !== null && position >= safeThreshold) {
+                        remaining = Math.max(1, (safeThreshold + windowLength) - position);
+                    } else {
+                        remaining = beforeThreshold;
+                    }
+                }
+
+                if (mode === 'apartir' && remaining === null && safeThreshold !== null) {
+                    const safeActivated = Number.isFinite(activated) && activated >= 0 ? activated : 0;
+                    remaining = Math.max(0, safeThreshold - safeActivated);
+                }
+
+                const safeActivated = Number.isFinite(activated) && activated >= 0 ? activated : 0;
+                const safeRemaining = Number.isFinite(remaining) && remaining >= 0 ? remaining : 0;
+                const safeThresholdValue = Number.isFinite(safeThreshold) && safeThreshold > 0 ? safeThreshold : null;
+                const discountValue = Number.isFinite(Number(offer?.discount))
+                    ? Number(offer.discount)
+                    : (Number.isFinite(Number(offer?.porcentaje_descuento)) ? Number(offer.porcentaje_descuento) : null);
+
+                return {
+                    offer,
+                    meta: {
+                        activadas_mes: safeActivated,
+                        restantes_hasta_descuento: safeRemaining,
+                        umbral: safeThresholdValue,
+                        ventana_descuento: windowLength,
+                        tipo: mode,
+                        descuento: discountValue,
+                    },
+                };
+            };
+
+            const discountEachMeta = offers
+                .map((offer) => extractThresholdMeta(offer, 'cada'))
+                .filter(Boolean);
+
+            const discountFromMeta = offers
+                .map((offer) => extractThresholdMeta(offer, 'apartir'))
+                .filter(Boolean);
+
             const items = offers.map((offer) => {
                 if (isSpecialFixedOffer(offer)) {
                     const fixedText = formatSpecialFixedOffer(offer);
@@ -1721,11 +1821,85 @@
                 return `<li class="client-detail__chip">${title}${discount}</li>`;
             }).filter((item) => item !== '');
 
-            if (!items.length) {
+            const chipsHtml = items.length ? `<ul class="client-detail__chips">${items.join('')}</ul>` : '';
+
+            const buildProgress = (value, max) => {
+                const safeMax = Number.isFinite(max) && max > 0 ? max : 1;
+                const safeValue = Number.isFinite(value) && value >= 0 ? Math.min(value, safeMax) : 0;
+                return `
+                    <div class="client-detail__progress client-detail__progress--labeled">
+                        <span class="client-detail__progress-label">0</span>
+                        <progress max="${safeMax}" value="${safeValue}" style="width:100%"></progress>
+                        <span class="client-detail__progress-label">${safeValue}</span>
+                        <span class="client-detail__progress-label">${safeMax}</span>
+                    </div>
+                `;
+            };
+
+            const hasAnyProgress = discountEachMeta.length || discountFromMeta.length;
+            const activatedSourceMeta = discountEachMeta[0]?.meta || discountFromMeta[0]?.meta || {};
+            const activated = Number.isFinite(Number(activatedSourceMeta.activadas_mes))
+                    ? Number(activatedSourceMeta.activadas_mes)
+                    : 0;
+            const progressBlocks = [];
+
+            if (hasAnyProgress) {
+                progressBlocks.push(
+                    `<p>Nº de garantías activas este mes: <strong>${activated}</strong></p>`
+                );
+            }
+
+            if (discountEachMeta.length) {
+                const { meta } = discountEachMeta[0];
+                const remaining = Number(meta.restantes_hasta_descuento);
+                const threshold = Number(meta.umbral);
+                const progressMax = Number.isFinite(threshold) && threshold > 0 ? threshold : 1;
+                const progressValue = Number.isFinite(remaining)
+                        ? Math.max(0, Math.min(progressMax, progressMax - remaining))
+                        : 0;
+                const safeRemaining = Number.isFinite(remaining) && remaining >= 0 ? remaining : 0;
+
+                progressBlocks.push(
+                    `<p>Nº de garantías restantes hasta oferta cíclica: <strong>${safeRemaining}</strong></p>` +
+                        buildProgress(progressValue, progressMax)
+                );
+            }
+
+            if (discountFromMeta.length) {
+                const { meta } = discountFromMeta[0];
+                const remaining = Number(meta.restantes_hasta_descuento);
+                const threshold = Number(meta.umbral);
+                const discountValue = Number.isFinite(Number(meta.descuento))
+                        ? Math.round(Number(meta.descuento))
+                        : null;
+                const progressMax = Number.isFinite(threshold) && threshold > 0 ? threshold : 1;
+                const progressValue = Number.isFinite(remaining)
+                        ? Math.max(0, Math.min(progressMax, progressMax - remaining))
+                        : 0;
+                const safeRemaining = Number.isFinite(remaining) && remaining >= 0 ? remaining : 0;
+                const discountLabel = discountValue !== null ? `${discountValue}%` : '';
+
+                progressBlocks.push(
+                    `<p>Nº garantías restantes para oferta del ${escapeHtml(discountLabel)} en todas las garantías: <strong>${safeRemaining}</strong></p>` +
+                        buildProgress(progressValue, progressMax)
+                );
+            }
+
+            if (hasAnyProgress) {
+                progressBlocks.push(
+                    '<p class="client-detail__offers-note">Se reinicia cada primero de mes.</p>'
+                );
+            }
+
+            const progressHtml = progressBlocks.length
+                ? `<div class="client-detail__offers-progress">${progressBlocks.join('')}</div>`
+                : '';
+
+            if (!chipsHtml && !progressHtml) {
                 return '';
             }
 
-            return `<ul class="client-detail__chips">${items.join('')}</ul>`;
+            return `${chipsHtml}${progressHtml}`;
         }
 
         function renderCommercialsList(commercials) {
@@ -6223,6 +6397,50 @@
             initDetailInteractions(activePanel, item);
         }
 
+        async function hydrateOffersSummary(item) {
+            const userId = Number(item && item.id);
+            if (!Number.isFinite(userId) || userId <= 0) {
+                return;
+            }
+
+            const cacheKey = String(userId);
+            if (offersSummaryCache.has(cacheKey)) {
+                const summary = offersSummaryCache.get(cacheKey);
+                if (Array.isArray(summary) && summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch(`${restBase}go/v1/clientes/${userId}/offers`, {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const jsonText = await response.text();
+                const data = JSON.parse(jsonText);
+                const summary = Array.isArray(data?.summary) ? data.summary : [];
+
+                offersSummaryCache.set(cacheKey, summary);
+
+                if (summary.length > 0) {
+                    item.offers = summary;
+                    cache.set(cacheKey, item);
+                    refreshActiveDetail(item);
+                }
+            } catch (error) {
+                console.error('Error hydrating offers summary', error);
+            }
+        }
+
         function updateRowCommercialSummary(item) {
             if (!item || typeof item.id === 'undefined') {
                 return;
@@ -6313,8 +6531,38 @@
                 return;
             }
 
+            const hasVolumeOffer = Array.isArray(item.offers)
+                ? item.offers.some((offer) => {
+                    const type = typeof offer?.type === 'string' ? offer.type.toLowerCase() : '';
+                    const typeValue = typeof offer?.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    const label = typeof offer?.label === 'string' ? offer.label.toLowerCase() : '';
+                    const matchesCada = type === 'descuento_cada'
+                        || typeValue === 'descuento_cada'
+                        || safeStartsWith(label, 'por cada ');
+                    const matchesDesde = type === 'descuento_a_partir'
+                        || typeValue === 'descuento_a_partir'
+                        || safeStartsWith(label, 'a partir de ')
+                        || safeStartsWith(label, 'descuento a partir de ');
+                    return matchesCada || matchesDesde;
+                })
+                : false;
+
+            const displayName = getDisplayName(item.name || {})
+                || item.name?.company
+                || item.name?.full
+                || item.slug
+                || '';
+            // eslint-disable-next-line no-console
+            console.log(`[Cliente Seleccionado]: ${displayName || 'Sin nombre'}`);
+            // eslint-disable-next-line no-console
+            console.log(`[OFERTA POR VOLUMEN DE GARANTÍAS]: ${hasVolumeOffer ? 'SÍ' : 'NO'}`);
+
             const content = renderDetail(item);
             swapPanels(content, direction, item);
+
+            if (item && Number.isFinite(Number(item.id))) {
+                hydrateOffersSummary(item);
+            }
         }
 
         function getEmptyPanelContent() {

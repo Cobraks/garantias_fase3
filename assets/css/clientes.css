@@ -3220,7 +3220,7 @@
     padding: 1.5rem;
     background: rgba(var(--go-color-0f172a-rgb), 0.55);
     backdrop-filter: blur(4px);
-    z-index: 16000;
+    z-index: 120000;
 }
 
 .confirm-modal.is-open {
