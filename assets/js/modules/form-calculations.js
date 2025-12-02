@@ -16,6 +16,7 @@ import {
         shouldSkipLoaderForSelf,
         shouldApplyDescuentoCada,
         shouldApplyDescuentoAPartir,
+        ofertaCompatibleConDuracion,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -1633,6 +1634,7 @@ async function getDescuentosAplicables(
         const nivelGarantia = Array.isArray(modalidad.nivel_garantia)
                 ? modalidad.nivel_garantia[0]
                 : modalidad.nivel_garantia;
+        const selectedDuration = toPositiveInt(getValorInput("duracion"));
 
         const descuentos = [];
 
@@ -1664,6 +1666,10 @@ async function getDescuentosAplicables(
                         oferta.tipo_oferta === "descuento_a_partir" &&
                         !shouldApplyDescuentoAPartir(oferta)
                 ) {
+                        return;
+                }
+
+                if (!ofertaCompatibleConDuracion(oferta, modalidad, selectedDuration)) {
                         return;
                 }
 
@@ -1711,6 +1717,7 @@ function getDescuentosAplicablesSync(
         if (!Array.isArray(ofertas)) return [];
 
         const now = Date.now() / 1000;
+        const selectedDuration = toPositiveInt(getValorInput("duracion"));
         const descuentos = [];
         ofertas.forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
@@ -1739,6 +1746,9 @@ function getDescuentosAplicablesSync(
                         oferta.tipo_oferta === "descuento_a_partir" &&
                         !shouldApplyDescuentoAPartir(oferta)
                 ) {
+                        return;
+                }
+                if (!ofertaCompatibleConDuracion(oferta, modalidad, selectedDuration)) {
                         return;
                 }
                 descuentos.push({

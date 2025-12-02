@@ -515,6 +515,22 @@ class ClientRestController
 
             $estado = isset($offer['estado']) ? (bool) $offer['estado'] : true;
 
+            $meses = [];
+            if ($tipo === 'por_duracion') {
+                $meses = self::normalize_offer_months($offer['meses'] ?? []);
+                if (empty($meses)) {
+                    return new WP_Error(
+                        'go_offers_missing_duration_months',
+                        sprintf(
+                            /* translators: %d: offer index */
+                            __('Selecciona al menos una duración en la fila %d.', 'garantias-online-360vo'),
+                            $index + 1
+                        ),
+                        ['status' => 400]
+                    );
+                }
+            }
+
             $normalized[] = [
                 'tipo_oferta'          => [
                     'value' => $tipo,
@@ -529,6 +545,7 @@ class ClientRestController
                 'caducidad_oferta'     => $caducidad,
                 'seleccion_modalidad'  => $seleccion,
                 'estado'               => $estado,
+                'meses'                => $meses,
             ];
         }
 
@@ -1586,6 +1603,7 @@ class ClientRestController
                 'discount'  => $discount,
                 'expires'   => $expires,
                 'selection' => $selection,
+                'meses'     => self::normalize_offer_months($offer['meses'] ?? []),
                 'active'    => isset($offer['estado']) ? (bool) $offer['estado'] : true,
             ];
         }
@@ -2809,6 +2827,11 @@ class ClientRestController
                 $type_value = (string) $type_raw;
             }
 
+            $months = self::normalize_offer_months($offer['meses'] ?? []);
+            if ($type_value === 'por_duracion' && empty($months)) {
+                continue;
+            }
+
             $custom_name = isset($offer['nombre_oferta']) ? self::clean_text($offer['nombre_oferta']) : '';
             $label = $type_label;
 
@@ -2825,6 +2848,14 @@ class ClientRestController
 
             if ($label === '') {
                 $label = __('Oferta personalizada', 'garantias-online-360vo');
+            }
+
+            if ($type_value === 'por_duracion' && ! empty($months)) {
+                $label = sprintf(
+                    /* translators: %s: list of months */
+                    __('Por duración (%s meses)', 'garantias-online-360vo'),
+                    implode(', ', $months)
+                );
             }
 
             $discount = isset($offer['porcentaje_descuento']) ? (float) $offer['porcentaje_descuento'] : 0.0;
@@ -2877,6 +2908,7 @@ class ClientRestController
                 'type_value' => $type_value,
                 'name'     => $custom_name,
                 'meta'     => $meta,
+                'meses'    => $months,
                 'activadas_mes' => $meta['activadas_mes'] ?? null,
                 'restantes_hasta_descuento' => $meta['restantes_hasta_descuento'] ?? null,
                 'umbral'   => $meta['umbral'] ?? null,
@@ -3050,6 +3082,8 @@ class ClientRestController
                 }
             }
 
+            $meses = self::normalize_offer_months($offer['meses'] ?? []);
+
             $offers[] = [
                 'index'               => $index,
                 'tipo_oferta'         => [
@@ -3066,6 +3100,7 @@ class ClientRestController
                 'caducidad_iso'       => $expiry_iso,
                 'seleccion_modalidad' => $selection,
                 'estado'              => isset($offer['estado']) ? (bool) $offer['estado'] : true,
+                'meses'               => $meses,
             ];
         }
 
@@ -3186,6 +3221,10 @@ class ClientRestController
                 'value' => 'descuento_a_partir',
                 'label' => __('Descuento a partir de X garantías', 'garantias-online-360vo'),
             ],
+            [
+                'value' => 'por_duracion',
+                'label' => __('Por duración', 'garantias-online-360vo'),
+            ],
         ];
     }
 
@@ -3233,6 +3272,26 @@ class ClientRestController
         }
 
         return $map;
+    }
+
+    private static function normalize_offer_months($raw_months): array
+    {
+        $allowed = [6, 12, 24, 36];
+        $months  = [];
+
+        if (is_array($raw_months)) {
+            foreach ($raw_months as $month) {
+                $month = (int) $month;
+                if (in_array($month, $allowed, true) && $month > 0) {
+                    $months[] = $month;
+                }
+            }
+        }
+
+        $months = array_values(array_unique($months));
+        sort($months, SORT_NUMERIC);
+
+        return $months;
     }
 
     private static function get_special_offer_choices(): array

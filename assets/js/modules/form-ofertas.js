@@ -31,6 +31,7 @@ const EURO_FORMATTER = new Intl.NumberFormat("es-ES", {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2,
 });
+const VALID_DURATION_MONTHS = new Set([6, 12, 24, 36]);
 
 const selfOffersPrefetchState = {
         done: false,
@@ -55,7 +56,7 @@ function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-const CACHE_VERSION = 7;
+const CACHE_VERSION = 8;
 let lastThresholdCountsRefresh = 0;
 
 function toPositiveInt(value) {
@@ -64,6 +65,14 @@ function toPositiveInt(value) {
         if (!Number.isFinite(num)) return null;
         const intVal = Math.trunc(num);
         return intVal > 0 ? intVal : null;
+}
+
+function normalizeMonthsField(value) {
+        if (!Array.isArray(value)) return [];
+        const months = value
+                .map((m) => toPositiveInt(m))
+                .filter((m) => m !== null && VALID_DURATION_MONTHS.has(m));
+        return [...new Set(months)].sort((a, b) => a - b);
 }
 
 function getMonthlyActivatedGuarantees(meta = null) {
@@ -330,6 +339,26 @@ function matchesSpecialFixedOffer(modalidad, special) {
         return matchesNivel;
 }
 
+function collectDurationsFromModalidad(modalidad) {
+        const durations = new Set();
+        if (!modalidad) return durations;
+        const tarifas =
+                modalidad?.acf?.condiciones_generales_y_tarifas?.tarifas || [];
+        tarifas.forEach((tarifa) => {
+                const months = toPositiveInt(tarifa?.duracion_meses);
+                if (months !== null) durations.add(months);
+        });
+
+        const specials = getSpecialFixedOffers();
+        specials.forEach((special) => {
+                if (!matchesSpecialFixedOffer(modalidad, special)) return;
+                const months = toPositiveInt(special?.duracion_meses);
+                if (months !== null) durations.add(months);
+        });
+
+        return durations;
+}
+
 function formatSlugLabel(slug) {
         if (typeof slug !== "string" || slug.trim() === "") return "";
         const normalized = slug.replace(/[-_]+/g, " ");
@@ -382,6 +411,22 @@ function getSelectedDurationMonths() {
         const value = Number(select.value);
         if (Number.isFinite(value) && value > 0) return value;
         return null;
+}
+
+export function ofertaCompatibleConDuracion(oferta, modalidad, selectedDuration = null) {
+        if (!oferta || oferta.tipo_oferta !== "por_duracion") return true;
+        if (!modalidad) return false;
+        const mesesOferta = normalizeMonthsField(oferta.meses);
+        if (mesesOferta.length === 0) return false;
+        const target = toPositiveInt(selectedDuration ?? getSelectedDurationMonths());
+        if (target === null || !mesesOferta.includes(target)) return false;
+
+        const duracionesModalidad = collectDurationsFromModalidad(modalidad);
+        if (duracionesModalidad.size > 0 && !duracionesModalidad.has(target)) {
+                return false;
+        }
+
+        return true;
 }
 
 function collectSpecialFixedMatches(modalidades, { duration = null } = {}) {
@@ -474,15 +519,16 @@ export function ofertaAplicaAmodalidad(oferta, modalidad) {
  * Filtrado de ofertas por modalidades visibles y estado.
  */
 export function filterOfertasPorModalidades(
-	ofertas = [],
-	modalidades = [],
-	{ incluirCaducadas = false } = {},
+        ofertas = [],
+        modalidades = [],
+        { incluirCaducadas = false, duration = null } = {},
 ) {
-	const now = Date.now() / 1000;
-	return (ofertas || []).filter((oferta) => {
-		if (oferta.estado === false) return false;
-		const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
-		if (
+        const targetDuration = toPositiveInt(duration ?? getSelectedDurationMonths());
+        const now = Date.now() / 1000;
+        return (ofertas || []).filter((oferta) => {
+                if (oferta.estado === false) return false;
+                const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                if (
 			!esSinSuplementos &&
 			!oferta.porcentaje_descuento &&
 			oferta.porcentaje_descuento !== 0
@@ -504,14 +550,18 @@ export function filterOfertasPorModalidades(
                         return false;
                 }
 
-		const caducada =
-			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
-		if (!incluirCaducadas && caducada) return false;
+                const caducada =
+                        oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
+                if (!incluirCaducadas && caducada) return false;
 
-		if (!modalidades || !modalidades.length) return true;
+                if (!modalidades || !modalidades.length) return true;
 
-		return modalidades.some((m) => ofertaAplicaAmodalidad(oferta, m));
-	});
+                return modalidades.some(
+                        (m) =>
+                                ofertaAplicaAmodalidad(oferta, m) &&
+                                ofertaCompatibleConDuracion(oferta, m, targetDuration),
+                );
+        });
 }
 
 /**
@@ -680,12 +730,15 @@ export async function updateOfertasList(
         const ofertasData =
                 ofertas || (await fetchOfertas(effectiveUserId, { force }));
         const now = Date.now() / 1000;
+        const selectedDuration = getSelectedDurationMonths();
 
         const visibles = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
                 incluirCaducadas: false,
+                duration: selectedDuration,
         });
         const caducadas = filterOfertasPorModalidades(ofertasData, modalidadesVisibles, {
                 incluirCaducadas: true,
+                duration: selectedDuration,
         }).filter((o) => {
                 if (!o.timestamp_caducidad || o.estado === false) return false;
                 const caducada = now > o.timestamp_caducidad;
@@ -694,7 +747,6 @@ export async function updateOfertasList(
                 return o.porcentaje_descuento > 0;
         });
 
-        const selectedDuration = getSelectedDurationMonths();
         const specialFixed = collectSpecialFixedMatches(modalidadesVisibles, {
                 duration: selectedDuration,
         });
