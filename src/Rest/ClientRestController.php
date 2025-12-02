@@ -449,8 +449,9 @@ class ClientRestController
                 );
             }
 
-            $discount = null;
-            if ($tipo !== 'sin_suplementos') {
+            $discount        = null;
+            $is_tax_included = ($tipo === 'iva_incluido');
+            if ($tipo !== 'sin_suplementos' && ! $is_tax_included) {
                 $raw_discount = isset($offer['porcentaje_descuento']) ? $offer['porcentaje_descuento'] : '';
                 if ($raw_discount === '' || $raw_discount === null) {
                     return new WP_Error(
@@ -474,6 +475,8 @@ class ClientRestController
                         ['status' => 400]
                     );
                 }
+            } elseif ($is_tax_included) {
+                $discount = 0.0;
             }
 
             $caducidad_iso = isset($offer['caducidad_iso']) ? sanitize_text_field($offer['caducidad_iso']) : '';
@@ -2795,6 +2798,14 @@ class ClientRestController
 
         $now = current_time('timestamp');
 
+        $modalidad_options = self::get_modalidad_options();
+        $modalidad_map     = [];
+        foreach ($modalidad_options as $option) {
+            if (isset($option['id']) && isset($option['title'])) {
+                $modalidad_map[(int) $option['id']] = (string) $option['title'];
+            }
+        }
+
         foreach ($rows as $offer) {
             if (! is_array($offer)) {
                 continue;
@@ -2832,6 +2843,45 @@ class ClientRestController
                 continue;
             }
 
+            $scope_raw    = $offer['aplicacion'] ?? [];
+            $scope_values = [];
+            if (is_array($scope_raw)) {
+                foreach ($scope_raw as $scope_entry) {
+                    if (is_array($scope_entry)) {
+                        $value = $scope_entry['value'] ?? $scope_entry['label'] ?? '';
+                        if ($value !== '') {
+                            $scope_values[] = sanitize_key((string) $value);
+                        }
+                    } else {
+                        $value = (string) $scope_entry;
+                        if ($value !== '') {
+                            $scope_values[] = sanitize_key($value);
+                        }
+                    }
+                }
+            } elseif ($scope_raw !== '') {
+                $scope_values[] = sanitize_key((string) $scope_raw);
+            }
+
+            $selection_ids = [];
+            if (! empty($offer['seleccion_modalidad']) && is_array($offer['seleccion_modalidad'])) {
+                foreach ($offer['seleccion_modalidad'] as $modalidad_id) {
+                    $modalidad_id = (int) $modalidad_id;
+                    if ($modalidad_id > 0) {
+                        $selection_ids[] = $modalidad_id;
+                    }
+                }
+            }
+
+            $selection_titles = [];
+            if (! empty($selection_ids) && ! empty($modalidad_map)) {
+                foreach ($selection_ids as $id) {
+                    if (isset($modalidad_map[$id])) {
+                        $selection_titles[] = $modalidad_map[$id];
+                    }
+                }
+            }
+
             $custom_name = isset($offer['nombre_oferta']) ? self::clean_text($offer['nombre_oferta']) : '';
             $label = $type_label;
 
@@ -2850,6 +2900,10 @@ class ClientRestController
                 $label = __('Oferta personalizada', 'garantias-online-360vo');
             }
 
+            if ($type_value === 'iva_incluido') {
+                $label = __('IVA incluido', 'garantias-online-360vo');
+            }
+
             if ($type_value === 'por_duracion' && ! empty($months)) {
                 $label = sprintf(
                     /* translators: %s: list of months */
@@ -2859,6 +2913,9 @@ class ClientRestController
             }
 
             $discount = isset($offer['porcentaje_descuento']) ? (float) $offer['porcentaje_descuento'] : 0.0;
+            if ($type_value === 'iva_incluido') {
+                $discount = 0.0;
+            }
 
             $meta = null;
             $threshold = isset($offer['cantidad_garantias_mes']) ? (int) $offer['cantidad_garantias_mes'] : 0;
@@ -2912,6 +2969,8 @@ class ClientRestController
                 'activadas_mes' => $meta['activadas_mes'] ?? null,
                 'restantes_hasta_descuento' => $meta['restantes_hasta_descuento'] ?? null,
                 'umbral'   => $meta['umbral'] ?? null,
+                'scope'    => $scope_values,
+                'selection_titles' => $selection_titles,
             ];
         }
 
@@ -3075,7 +3134,9 @@ class ClientRestController
             }
 
             $discount = null;
-            if ($type_value !== 'sin_suplementos') {
+            if ($type_value === 'iva_incluido') {
+                $discount = 0.0;
+            } elseif ($type_value !== 'sin_suplementos') {
                 $raw_discount = $offer['porcentaje_descuento'] ?? null;
                 if ($raw_discount !== null && $raw_discount !== '') {
                     $discount = (float) $raw_discount;
@@ -3084,13 +3145,18 @@ class ClientRestController
 
             $meses = self::normalize_offer_months($offer['meses'] ?? []);
 
+            $custom_name = self::clean_text($offer['nombre_oferta'] ?? '');
+            if ($type_value === 'iva_incluido' && $custom_name === '') {
+                $custom_name = __('IVA incluido', 'garantias-online-360vo');
+            }
+
             $offers[] = [
                 'index'               => $index,
                 'tipo_oferta'         => [
                     'value' => $type_value,
                     'label' => (string) $type_label,
                 ],
-                'nombre_oferta'       => self::clean_text($offer['nombre_oferta'] ?? ''),
+                'nombre_oferta'       => $custom_name,
                 'porcentaje_descuento'=> $discount,
                 'aplicacion'          => [
                     'value' => $scope_value,
@@ -3224,6 +3290,10 @@ class ClientRestController
             [
                 'value' => 'por_duracion',
                 'label' => __('Por duración', 'garantias-online-360vo'),
+            ],
+            [
+                'value' => 'iva_incluido',
+                'label' => __('IVA incluido', 'garantias-online-360vo'),
             ],
         ];
     }
