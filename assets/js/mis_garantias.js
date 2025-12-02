@@ -7227,8 +7227,9 @@ const ADD_DOC_KEY = "add-document";
                                 normalizeChannelLabel(canalVentaSummaryRaw) || canalVenta;
                         const vendedorTypeRaw = canalVentaSummary;
                         const vendedorTypeClean = extractVendorType(vendedorTypeRaw);
-                        const vendedorType =
+                        const vendedorTypeBase =
                                 normalizeChannelLabel(vendedorTypeClean || vendedorTypeRaw || "-") || "-";
+                        const vendedorType = isVendorParticular ? "Particular" : vendedorTypeBase;
                         const clienteNombre =
                                 cleanDisplayValue(item.detail?.nombre_comprador) ||
                                 cleanDisplayValue(item.detail?.datos_cliente_nombre_y_apellidos) ||
@@ -10111,8 +10112,9 @@ const ADD_DOC_KEY = "add-document";
     }
     const vendorCompanyName = vendorDisplayName;
     const vendorContactLabel = escapeHtml(vendorContactName);
-    const vendorChannelLabel = vendorChannelSummary
-        ? `<span class="vendor-card__channel">(${escapeHtml(vendorChannelSummary)})</span>`
+    const vendorChannelDisplay = vendorIsParticular ? "Particular" : vendorChannelSummary;
+    const vendorChannelLabel = vendorChannelDisplay
+        ? `<span class="vendor-card__channel">(${escapeHtml(vendorChannelDisplay)})</span>`
         : "";
     const vendorContactDisplay = vendorContactLabel
         ? `${vendorContactLabel}${vendorChannelLabel ? ` ${vendorChannelLabel}` : ""}`
