@@ -95,6 +95,18 @@ class RegistrationService
 
             $user_result  = $this->notify_user($user_id, $sanitized, $verification['code'], $verification['expires']);
             if (! $user_result) {
+                ActivityLogger::log('user.register_email_failed', [
+                    'actor_id' => $user_id,
+                    'event_category' => 'system',
+                    'context' => [
+                        'user_email'      => $sanitized['email'],
+                        'channel'         => $sanitized['channel'],
+                        'enable_sepa'     => $sanitized['enable_sepa'],
+                        'sepa_reference'  => $sanitized['sepa_reference'] ?? '',
+                        'sepa_generated'  => $sanitized['sepa_generated_at'] ?? '',
+                        'has_sepa_payload'=> ! empty($sanitized['sepa_pending_document']),
+                    ],
+                ]);
                 $this->cleanup_uploads($uploaded);
                 wp_delete_user($user_id);
                 return new WP_Error(
