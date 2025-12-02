@@ -449,8 +449,9 @@ class ClientRestController
                 );
             }
 
-            $discount = null;
-            if ($tipo !== 'sin_suplementos') {
+            $discount        = null;
+            $is_tax_included = ($tipo === 'iva_incluido');
+            if ($tipo !== 'sin_suplementos' && ! $is_tax_included) {
                 $raw_discount = isset($offer['porcentaje_descuento']) ? $offer['porcentaje_descuento'] : '';
                 if ($raw_discount === '' || $raw_discount === null) {
                     return new WP_Error(
@@ -474,6 +475,8 @@ class ClientRestController
                         ['status' => 400]
                     );
                 }
+            } elseif ($is_tax_included) {
+                $discount = 0.0;
             }
 
             $caducidad_iso = isset($offer['caducidad_iso']) ? sanitize_text_field($offer['caducidad_iso']) : '';
@@ -2850,6 +2853,10 @@ class ClientRestController
                 $label = __('Oferta personalizada', 'garantias-online-360vo');
             }
 
+            if ($type_value === 'iva_incluido') {
+                $label = __('IVA incluido', 'garantias-online-360vo');
+            }
+
             if ($type_value === 'por_duracion' && ! empty($months)) {
                 $label = sprintf(
                     /* translators: %s: list of months */
@@ -2859,6 +2866,9 @@ class ClientRestController
             }
 
             $discount = isset($offer['porcentaje_descuento']) ? (float) $offer['porcentaje_descuento'] : 0.0;
+            if ($type_value === 'iva_incluido') {
+                $discount = 0.0;
+            }
 
             $meta = null;
             $threshold = isset($offer['cantidad_garantias_mes']) ? (int) $offer['cantidad_garantias_mes'] : 0;
@@ -3075,7 +3085,9 @@ class ClientRestController
             }
 
             $discount = null;
-            if ($type_value !== 'sin_suplementos') {
+            if ($type_value === 'iva_incluido') {
+                $discount = 0.0;
+            } elseif ($type_value !== 'sin_suplementos') {
                 $raw_discount = $offer['porcentaje_descuento'] ?? null;
                 if ($raw_discount !== null && $raw_discount !== '') {
                     $discount = (float) $raw_discount;
@@ -3084,13 +3096,18 @@ class ClientRestController
 
             $meses = self::normalize_offer_months($offer['meses'] ?? []);
 
+            $custom_name = self::clean_text($offer['nombre_oferta'] ?? '');
+            if ($type_value === 'iva_incluido' && $custom_name === '') {
+                $custom_name = __('IVA incluido', 'garantias-online-360vo');
+            }
+
             $offers[] = [
                 'index'               => $index,
                 'tipo_oferta'         => [
                     'value' => $type_value,
                     'label' => (string) $type_label,
                 ],
-                'nombre_oferta'       => self::clean_text($offer['nombre_oferta'] ?? ''),
+                'nombre_oferta'       => $custom_name,
                 'porcentaje_descuento'=> $discount,
                 'aplicacion'          => [
                     'value' => $scope_value,
@@ -3224,6 +3241,10 @@ class ClientRestController
             [
                 'value' => 'por_duracion',
                 'label' => __('Por duración', 'garantias-online-360vo'),
+            ],
+            [
+                'value' => 'iva_incluido',
+                'label' => __('IVA incluido', 'garantias-online-360vo'),
             ],
         ];
     }

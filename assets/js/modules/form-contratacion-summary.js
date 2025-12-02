@@ -20,8 +20,9 @@ import {
         parseNumericFormValue,
         filtrarModalidades,
         getOfertaSinSuplementosAplicable,
+        getIvaPercentageForModalidad,
 } from "./form-calculations.js";
-import { eurosString, IVA_PORCENTAJE } from "./form-utils.js";
+import { eurosString } from "./form-utils.js";
 
 let lastSummaryBreakdown = [];
 
@@ -235,6 +236,8 @@ async function buildSummaryHTML() {
                         return;
                 }
 
+                const ivaAplicado = getIvaPercentageForModalidad(modalidad);
+
                 let precioBase = calcularPrecioBase(modalidad, valoresFormBase);
                 if (precioBase === null) {
                         if (typeof planPriceSinIva === "number" && !Number.isNaN(planPriceSinIva)) {
@@ -243,7 +246,7 @@ async function buildSummaryHTML() {
                                 typeof planPriceWithIva === "number" &&
                                 !Number.isNaN(planPriceWithIva)
                         ) {
-                                const divisor = 1 + IVA_PORCENTAJE / 100;
+                                const divisor = 1 + ivaAplicado / 100;
                                 precioBase =
                                         divisor > 0
                                                 ? Math.round((planPriceWithIva / divisor) * 100) / 100
@@ -283,7 +286,7 @@ async function buildSummaryHTML() {
 
                 const iva =
                         precioFinal !== null
-                                ? Math.round(precioFinal * (IVA_PORCENTAJE / 100) * 100) / 100
+                                ? Math.round(precioFinal * (ivaAplicado / 100) * 100) / 100
                                 : null;
 
                 const totalConIva =
@@ -403,15 +406,15 @@ async function buildSummaryHTML() {
                 }
 
                 if (iva !== null) {
-                        html += `<li class="item"><span class="concepto">IVA (${IVA_PORCENTAJE}%)</span><span class="valor">${eurosString(
+                        html += `<li class="item"><span class="concepto">IVA (${ivaAplicado}%)</span><span class="valor">${eurosString(
                                 iva
                         )}€</span></li>`;
 
                         summaryItems.push({
-                                concepto: `IVA (${IVA_PORCENTAJE}%)`,
+                                concepto: `IVA (${ivaAplicado}%)`,
                                 tipo: "iva",
                                 importe: iva,
-                                porcentaje: IVA_PORCENTAJE,
+                                porcentaje: ivaAplicado,
                                 razon: "IVA",
                                 orden: orden++,
                                 destacado: false,

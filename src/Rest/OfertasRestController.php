@@ -102,11 +102,16 @@ class OfertasRestController
             }
 
             $es_sin_suplementos = ($tipo_value === 'sin_suplementos');
+            $es_iva_incluido   = ($tipo_value === 'iva_incluido');
             $porcentaje_raw = $oferta['porcentaje_descuento'] ?? 0;
             $porcentaje_descuento = $porcentaje_raw === '' ? 0 : floatval($porcentaje_raw);
 
-            if (!$es_sin_suplementos && $porcentaje_descuento === 0.0) {
+            if (! $es_sin_suplementos && ! $es_iva_incluido && $porcentaje_descuento === 0.0) {
                 continue;
+            }
+
+            if ($es_iva_incluido) {
+                $porcentaje_descuento = 0.0;
             }
 
             $meses = self::sanitize_offer_months($oferta['meses'] ?? []);
@@ -148,12 +153,18 @@ class OfertasRestController
                 ? intval($oferta['numero_garantias_con_descuento'])
                 : null;
 
-            if ($tipo_value === 'descuento_cada' && $cantidad_garantias_mes) {
+            if ($es_iva_incluido) {
+                $nombre_final = __('IVA incluido', 'garantias-online-360vo');
+            } elseif ($tipo_value === 'descuento_cada' && $cantidad_garantias_mes) {
                 $nombre_final = sprintf('Por cada %d garantías', (int) $cantidad_garantias_mes);
             } elseif ($tipo_value === 'descuento_a_partir' && $cantidad_garantias_mes) {
                 $nombre_final = sprintf('Descuento a partir de %d garantías', (int) $cantidad_garantias_mes);
             } elseif ($tipo_value === 'por_duracion' && !empty($meses)) {
                 $nombre_final = sprintf('Por duración (%s meses)', implode(', ', $meses));
+            }
+
+            if ($es_iva_incluido && $etiqueta === '') {
+                $etiqueta = __('IVA incluido', 'garantias-online-360vo');
             }
 
             $ofertas_clean[] = [
