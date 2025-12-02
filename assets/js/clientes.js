@@ -386,6 +386,9 @@
             go_individual: 'Particular',
         };
 
+        const PROFESSIONAL_ROLES = ['go_profesional', 'profesional'];
+        const PARTICULAR_ROLES = ['go_particular', 'particular', 'go_individual', 'individual'];
+
         if (detail) {
             detail.addEventListener('click', (event) => {
                 const item = getActionItemFromTarget(event.target);
@@ -459,6 +462,40 @@
             }
 
             return '';
+        }
+
+        function normalizeRoleList(rawRoles) {
+            if (!Array.isArray(rawRoles)) {
+                return [];
+            }
+
+            return rawRoles
+                .map((role) => (typeof role === 'string' ? role.trim() : String(role)))
+                .map((role) => role.toLowerCase())
+                .filter((role) => role !== '');
+        }
+
+        function isParticularRole(rawRoles) {
+            const normalizedRoles = normalizeRoleList(rawRoles);
+            return normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
+        }
+
+        function isProfessionalRole(rawRoles) {
+            const normalizedRoles = normalizeRoleList(rawRoles);
+            return normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
+        }
+
+        function resolveClientSalesChannelLabel(client) {
+            const roles = client && Array.isArray(client.roles) ? client.roles : [];
+            if (isParticularRole(roles)) {
+                return SALES_CHANNEL_LABEL_MAP.go_particular || 'Particular';
+            }
+
+            if (isProfessionalRole(roles)) {
+                return normalizeSalesChannelLabel(client && client.sales_channel ? client.sales_channel : {});
+            }
+
+            return normalizeSalesChannelLabel(client && client.sales_channel ? client.sales_channel : {});
         }
 
         function uniqueId(prefix) {
@@ -1442,7 +1479,7 @@
             const featuredLabel = isFeatured
                 ? `<span class="clients-table__tag clients-table__tag--featured">${escapeHtml(strings.spotlight || 'Destacado')}</span>`
                 : '';
-            const channelLabel = normalizeSalesChannelLabel(salesChannel);
+            const channelLabel = resolveClientSalesChannelLabel(item);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
                 : '';
@@ -1546,7 +1583,7 @@
             const featuredLabel = isFeatured
                 ? `<span class="clients-table__tag clients-table__tag--featured">${escapeHtml(strings.spotlight || 'Destacado')}</span>`
                 : '';
-            const channelLabel = normalizeSalesChannelLabel(salesChannel);
+            const channelLabel = resolveClientSalesChannelLabel(item);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
                 : '';
@@ -3129,10 +3166,8 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = Array.isArray(item.roles)
-                ? item.roles.map((role) => String(role))
-                : [];
-            const isParticular = roles.includes('go_particular') || roles.includes('particular');
+            const roles = normalizeRoleList(item.roles);
+            const isParticular = isParticularRole(roles);
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
@@ -3168,7 +3203,7 @@
 
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const companyLegalName = typeof company.legal_name === 'string' ? company.legal_name.trim() : '';
-            const salesChannelLabel = normalizeSalesChannelLabel(salesChannel);
+            const salesChannelLabel = resolveClientSalesChannelLabel(item);
             const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
             const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
             const loginEmailLine = loginEmail !== ''
