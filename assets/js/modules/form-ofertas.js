@@ -32,6 +32,7 @@ const EURO_FORMATTER = new Intl.NumberFormat("es-ES", {
         maximumFractionDigits: 2,
 });
 const VALID_DURATION_MONTHS = new Set([6, 12, 24, 36]);
+const IVA_INCLUIDO_SLUG = "iva_incluido";
 
 const selfOffersPrefetchState = {
         done: false,
@@ -56,7 +57,7 @@ function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-const CACHE_VERSION = 8;
+const CACHE_VERSION = 9;
 let lastThresholdCountsRefresh = 0;
 
 function toPositiveInt(value) {
@@ -276,6 +277,20 @@ function normalizeToArray(value) {
         if (Array.isArray(value)) return value;
         if (value === null || typeof value === "undefined") return [];
         return [value];
+}
+
+function getNivelLabel(nivel) {
+        const key = String(nivel || "").toLowerCase();
+        if (key === "essential") return "Essential";
+        if (key === "confort") return "Confort";
+        if (key === "exclusive") return "Exclusive";
+        return "";
+}
+
+function getModalidadNombre(m) {
+        const detalles = m?.acf?.detalles_modalidad || {};
+        const title = detalles.nombre_mostrar || m?.title || "";
+        return typeof title === "string" ? title.trim() : "";
 }
 
 function toLowerSlug(value) {
@@ -528,13 +543,15 @@ export function filterOfertasPorModalidades(
         return (ofertas || []).filter((oferta) => {
                 if (oferta.estado === false) return false;
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                const esIvaIncluido = oferta?.tipo_oferta === IVA_INCLUIDO_SLUG;
                 if (
-			!esSinSuplementos &&
-			!oferta.porcentaje_descuento &&
-			oferta.porcentaje_descuento !== 0
-		) {
-			return false;
-		}
+                        !esSinSuplementos &&
+                        !esIvaIncluido &&
+                        !oferta.porcentaje_descuento &&
+                        oferta.porcentaje_descuento !== 0
+                ) {
+                        return false;
+                }
 
                 if (
                         oferta.tipo_oferta === "descuento_cada" &&
@@ -562,6 +579,38 @@ export function filterOfertasPorModalidades(
                                 ofertaCompatibleConDuracion(oferta, m, targetDuration),
                 );
         });
+}
+
+function isOfertaIvaIncluido(oferta) {
+        return oferta?.tipo_oferta === IVA_INCLUIDO_SLUG;
+}
+
+export function getOfertaIvaIncluidoAplicableSync(
+        modalidad,
+        { incluirCaducadas = false, duration = null } = {},
+) {
+        if (!modalidad) return null;
+        const ofertas = getCurrentOfertas();
+        if (!Array.isArray(ofertas)) return null;
+
+        const now = Date.now() / 1000;
+        const targetDuration = toPositiveInt(duration ?? getSelectedDurationMonths());
+
+        for (const oferta of ofertas) {
+                if (!isOfertaIvaIncluido(oferta)) continue;
+                if (oferta.estado === false) continue;
+                const caducada = oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
+                if (!incluirCaducadas && caducada) continue;
+                if (!ofertaAplicaAmodalidad(oferta, modalidad)) continue;
+                if (!ofertaCompatibleConDuracion(oferta, modalidad, targetDuration)) continue;
+                return oferta;
+        }
+
+        return null;
+}
+
+export function hasOfertaIvaIncluido(modalidad, options = {}) {
+        return !!getOfertaIvaIncluidoAplicableSync(modalidad, options);
 }
 
 /**
@@ -744,6 +793,7 @@ export async function updateOfertasList(
                 const caducada = now > o.timestamp_caducidad;
                 if (!caducada) return false;
                 if (o?.tipo_oferta === "sin_suplementos") return true;
+                if (o?.tipo_oferta === IVA_INCLUIDO_SLUG) return true;
                 return o.porcentaje_descuento > 0;
         });
 
@@ -765,8 +815,57 @@ export async function updateOfertasList(
 
         visibles.forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                const esIvaIncluido = oferta?.tipo_oferta === IVA_INCLUIDO_SLUG;
+                const liClass = "ofertas__item" + (esSinSuplementos ? " ofertas__item--sin-suplementos" : "");
+
+                if (esIvaIncluido) {
+                        const aplicacion = normalizeAplicacion(oferta).map((a) => a.toLowerCase());
+                        const scopeLabels = [];
+
+                        if (!aplicacion.length || aplicacion.includes("todas")) {
+                                scopeLabels.push(oferta.nombre || oferta.etiqueta || "IVA incluido");
+                        } else {
+                                ["essential", "confort", "exclusive"].forEach((nivel) => {
+                                        if (aplicacion.includes(nivel)) {
+                                                const nivelLabel = getNivelLabel(nivel);
+                                                scopeLabels.push(
+                                                        nivelLabel
+                                                                ? `Todas las ${nivelLabel} IVA incluido`
+                                                                : oferta.nombre || oferta.etiqueta || "IVA incluido",
+                                                );
+                                        }
+                                });
+
+                                if (aplicacion.includes("seleccion")) {
+                                        const seleccionIds = normalizeToArray(oferta.seleccion_modalidad).map((id) =>
+                                                Number(id),
+                                        );
+                                        modalidadesVisibles
+                                                .filter((m) => seleccionIds.includes(Number(m?.ID)))
+                                                .forEach((m) => {
+                                                        const nombre = getModalidadNombre(m);
+                                                        if (nombre) {
+                                                                scopeLabels.push(`${nombre} IVA incluido`);
+                                                        }
+                                                });
+                                }
+                        }
+
+                        if (!scopeLabels.length) {
+                                scopeLabels.push(oferta.nombre || oferta.etiqueta || "IVA incluido");
+                        }
+
+                        scopeLabels.forEach((texto) => {
+                                const li = document.createElement("li");
+                                li.className = liClass;
+                                li.textContent = texto;
+                                ul.appendChild(li);
+                        });
+                        return;
+                }
+
                 const li = document.createElement("li");
-                li.className = "ofertas__item" + (esSinSuplementos ? " ofertas__item--sin-suplementos" : "");
+                li.className = liClass;
                 if (esSinSuplementos) {
                         li.textContent = oferta.nombre || "Sin suplementos";
                 } else {
@@ -788,6 +887,7 @@ export async function updateOfertasList(
         caducadas.forEach((oferta) => {
                 const li = document.createElement("li");
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+                const esIvaIncluido = oferta?.tipo_oferta === IVA_INCLUIDO_SLUG;
                 li.className =
                         "ofertas__item ofertas__item--caducada" +
                         (esSinSuplementos ? " ofertas__item--sin-suplementos" : "");
@@ -795,7 +895,9 @@ export async function updateOfertasList(
                 span.className = "tachada";
                 span.textContent = esSinSuplementos
                         ? oferta.nombre || "Sin suplementos"
-                        : `${oferta.nombre}: -${oferta.porcentaje_descuento}%`;
+                        : esIvaIncluido
+                                ? oferta.nombre || oferta.etiqueta || "IVA incluido"
+                                : `${oferta.nombre}: -${oferta.porcentaje_descuento}%`;
                 const vencida = document.createElement("span");
                 vencida.className = "vencida";
                 vencida.textContent = "VENCIDA";
