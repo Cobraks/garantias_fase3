@@ -2298,6 +2298,11 @@
         const payload = await response.json().catch(() => ({}));
 
         if (!response.ok || !payload || payload.status !== 'pending_verification') {
+          console.error('[register] submission failed', {
+            status: response.status,
+            payload,
+            sepaEnabled: shouldGenerateSepa(),
+          });
           const error = payload && payload.message ? payload.message : 'No se ha podido completar el registro. Inténtalo de nuevo.';
           const fallbackEmail = payload && payload.email
             ? payload.email

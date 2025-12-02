@@ -109,6 +109,11 @@ class OfertasRestController
                 continue;
             }
 
+            $meses = self::sanitize_offer_months($oferta['meses'] ?? []);
+            if ($tipo_value === 'por_duracion' && empty($meses)) {
+                continue;
+            }
+
             $caducidad_ok = true;
             $fecha_cad = $oferta['caducidad_oferta'] ?? '';
             $timestamp_cad = null;
@@ -147,6 +152,8 @@ class OfertasRestController
                 $nombre_final = sprintf('Por cada %d garantías', (int) $cantidad_garantias_mes);
             } elseif ($tipo_value === 'descuento_a_partir' && $cantidad_garantias_mes) {
                 $nombre_final = sprintf('Descuento a partir de %d garantías', (int) $cantidad_garantias_mes);
+            } elseif ($tipo_value === 'por_duracion' && !empty($meses)) {
+                $nombre_final = sprintf('Por duración (%s meses)', implode(', ', $meses));
             }
 
             $ofertas_clean[] = [
@@ -161,6 +168,7 @@ class OfertasRestController
                 'timestamp_caducidad'           => $timestamp_cad,
                 'cantidad_garantias_mes'        => $cantidad_garantias_mes,
                 'numero_garantias_con_descuento' => $numero_garantias_con_descuento,
+                'meses'                         => $meses,
             ];
         }
 
@@ -176,6 +184,26 @@ class OfertasRestController
             'ofertas_precio_fijo'               => $especiales['offers'],
             'meta'                              => $meta,
         ], 200);
+    }
+
+    private static function sanitize_offer_months($raw_months): array
+    {
+        $allowed = [6, 12, 24, 36];
+        $months  = [];
+
+        if (is_array($raw_months)) {
+            foreach ($raw_months as $month) {
+                $month = (int) $month;
+                if (in_array($month, $allowed, true) && $month > 0) {
+                    $months[] = $month;
+                }
+            }
+        }
+
+        $months = array_values(array_unique($months));
+        sort($months, SORT_NUMERIC);
+
+        return $months;
     }
 
     private static function count_active_guarantees_current_month(int $user_id): int
