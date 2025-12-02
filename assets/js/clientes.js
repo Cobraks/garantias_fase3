@@ -386,6 +386,27 @@
             go_individual: 'Particular',
         };
 
+        const PROFESSIONAL_ROLES = ['go_profesional', 'profesional'];
+        const PARTICULAR_ROLES = ['go_particular', 'particular', 'go_individual', 'individual'];
+
+        const normalizeRole = (value) => (typeof value === 'string'
+            ? value.trim().toLowerCase()
+            : String(value || '').toLowerCase());
+
+        const normalizeRoleList = (list) => {
+            if (!Array.isArray(list)) {
+                return [];
+            }
+            return list.map(normalizeRole).filter(Boolean);
+        };
+
+        const isParticularRole = (roles) => {
+            const normalizedRoles = normalizeRoleList(roles);
+            const isProfessional = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
+            const isParticular = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
+            return isParticular || !isProfessional;
+        };
+
         if (detail) {
             detail.addEventListener('click', (event) => {
                 const item = getActionItemFromTarget(event.target);
@@ -459,6 +480,19 @@
             }
 
             return '';
+        }
+
+        function resolveClientSalesChannelLabel(client) {
+            const roles = (client && Array.isArray(client.roles) ? client.roles : [])
+                .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : String(role).toLowerCase()))
+                .filter(Boolean);
+            const isProfessional = roles.some((role) => PROFESSIONAL_ROLES.includes(role));
+
+            if (!isProfessional || roles.some((role) => PARTICULAR_ROLES.includes(role))) {
+                return SALES_CHANNEL_LABEL_MAP.go_particular || 'Particular';
+            }
+
+            return normalizeSalesChannelLabel(client && client.sales_channel ? client.sales_channel : {});
         }
 
         function uniqueId(prefix) {
@@ -1357,6 +1391,67 @@
             return parts.join(' ').trim();
         }
 
+        function normalizeOfferScope(scope) {
+            if (Array.isArray(scope)) {
+                return scope
+                    .map((entry) => {
+                        if (entry && typeof entry === 'object') {
+                            return String(entry.value || entry.label || '').toLowerCase();
+                        }
+                        return String(entry || '').toLowerCase();
+                    })
+                    .filter(Boolean);
+            }
+            if (scope && typeof scope === 'object') {
+                const value = scope.value || scope.label || '';
+                return value ? [String(value).toLowerCase()] : [];
+            }
+            if (typeof scope === 'string') {
+                const trimmed = scope.trim();
+                return trimmed !== '' ? [trimmed.toLowerCase()] : [];
+            }
+            return [];
+        }
+
+        function getLevelLabel(level) {
+            const key = typeof level === 'string' ? level.toLowerCase() : '';
+            if (key === 'essential') return 'Essential';
+            if (key === 'confort') return 'Confort';
+            if (key === 'exclusive') return 'Exclusive';
+            return '';
+        }
+
+        function formatIvaIncluidoOffer(offer) {
+            const scopeValues = normalizeOfferScope(offer.scope || offer.aplicacion || offer.application);
+            const selectionNames = Array.isArray(offer.selection_titles)
+                ? offer.selection_titles.filter((title) => typeof title === 'string' && title.trim() !== '')
+                : [];
+
+            if (!scopeValues.length || scopeValues.includes('todas')) {
+                return ['IVA incluido'];
+            }
+
+            const labels = [];
+            ['essential', 'confort', 'exclusive'].forEach((nivel) => {
+                if (scopeValues.includes(nivel)) {
+                    const nivelLabel = getLevelLabel(nivel);
+                    labels.push(nivelLabel !== '' ? `Todas las ${nivelLabel} IVA incluido` : 'IVA incluido');
+                }
+            });
+
+            if (scopeValues.includes('seleccion') && selectionNames.length > 0) {
+                selectionNames.forEach((name) => {
+                    labels.push(`${name.trim()} IVA incluido`);
+                });
+            }
+
+            if (!labels.length) {
+                labels.push('IVA incluido');
+            }
+
+            return labels;
+        }
+
         function formatOffers(offers) {
             if (!Array.isArray(offers) || offers.length === 0) {
                 return `<span class="clients-table__empty">${escapeHtml(strings.offersEmpty || 'Sin ofertas activas')}</span>`;
@@ -1374,6 +1469,24 @@
                                 <span class="clients-table__offer-title">${escapeHtml(fixedText)}</span>
                             </span>
                         `;
+                    }
+                    const typeValue = typeof offer.type_value === 'string' ? offer.type_value.toLowerCase() : '';
+                    if (typeValue === 'iva_incluido') {
+                        const ivaLabels = formatIvaIncluidoOffer(offer);
+                        return ivaLabels
+                            .map((text) => {
+                                const safeText = typeof text === 'string' ? text.trim() : '';
+                                if (safeText === '') {
+                                    return '';
+                                }
+                                return `
+                                    <span class="guarantees-list__badge clients-table__offer-badge">
+                                        <span class="clients-table__offer-title">${escapeHtml(safeText)}</span>
+                                    </span>
+                                `;
+                            })
+                            .filter((snippet) => snippet !== '')
+                            .join('');
                     }
                     const label = typeof offer.label === 'string' ? offer.label.trim() : '';
                     const type = typeof offer.type === 'string' ? offer.type.trim() : '';
@@ -1442,7 +1555,7 @@
             const featuredLabel = isFeatured
                 ? `<span class="clients-table__tag clients-table__tag--featured">${escapeHtml(strings.spotlight || 'Destacado')}</span>`
                 : '';
-            const channelLabel = normalizeSalesChannelLabel(salesChannel);
+            const channelLabel = resolveClientSalesChannelLabel(item);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
                 : '';
@@ -1546,7 +1659,7 @@
             const featuredLabel = isFeatured
                 ? `<span class="clients-table__tag clients-table__tag--featured">${escapeHtml(strings.spotlight || 'Destacado')}</span>`
                 : '';
-            const channelLabel = normalizeSalesChannelLabel(salesChannel);
+            const channelLabel = resolveClientSalesChannelLabel(item);
             const channelHtml = channelLabel !== ''
                 ? `<span class="clients-table__channel${companyName === '' ? ' clients-table__channel--solo' : ''}">${escapeHtml(channelLabel)}</span>`
                 : '';
@@ -3129,10 +3242,8 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = Array.isArray(item.roles)
-                ? item.roles.map((role) => String(role))
-                : [];
-            const isParticular = roles.includes('go_particular') || roles.includes('particular');
+            const roles = normalizeRoleList(item.roles);
+            const isParticular = isParticularRole(roles);
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
@@ -3168,7 +3279,7 @@
 
             const companyName = typeof name.company === 'string' ? name.company.trim() : '';
             const companyLegalName = typeof company.legal_name === 'string' ? company.legal_name.trim() : '';
-            const salesChannelLabel = normalizeSalesChannelLabel(salesChannel);
+            const salesChannelLabel = resolveClientSalesChannelLabel(item);
             const companyLine = companyName !== '' ? `<p class="client-detail__company">${escapeHtml(companyName)}</p>` : '';
             const loginEmail = typeof contact.login_email === 'string' && contact.login_email ? contact.login_email.trim() : '';
             const loginEmailLine = loginEmail !== ''
@@ -5188,12 +5299,18 @@
                     if (offer.tipo_oferta === 'sin_suplementos') {
                         offer.porcentaje_descuento = '';
                         discountInput.value = '';
+                    } else if (offer.tipo_oferta === 'iva_incluido') {
+                        offer.porcentaje_descuento = '0';
+                        discountInput.value = '0';
+                        if (!offer.nombre_oferta || offer.nombre_oferta.trim() === '') {
+                            offer.nombre_oferta = 'IVA incluido';
+                        }
                     }
                     clearFieldError(offer, 'tipo_oferta');
                     if (offer.tipo_oferta !== 'personalizar') {
                         clearFieldError(offer, 'nombre_oferta');
                     }
-                    if (offer.tipo_oferta === 'sin_suplementos') {
+                    if (offer.tipo_oferta === 'sin_suplementos' || offer.tipo_oferta === 'iva_incluido') {
                         clearFieldError(offer, 'porcentaje_descuento');
                     }
                     syncOfferVisibility(offer);
@@ -5305,12 +5422,16 @@
                 }
                 const isPersonalizada = offer.tipo_oferta === 'personalizar';
                 const isSinSuplementos = offer.tipo_oferta === 'sin_suplementos';
+                const isIvaIncluido = offer.tipo_oferta === 'iva_incluido';
                 const isSeleccion = offer.aplicacion === 'seleccion';
                 if (offer.dom.fieldWrappers?.nombre_oferta) {
                     offer.dom.fieldWrappers.nombre_oferta.classList.toggle('is-hidden', !isPersonalizada);
                 }
                 if (offer.dom.fieldWrappers?.porcentaje_descuento) {
-                    offer.dom.fieldWrappers.porcentaje_descuento.classList.toggle('is-hidden', isSinSuplementos);
+                    offer.dom.fieldWrappers.porcentaje_descuento.classList.toggle(
+                        'is-hidden',
+                        isSinSuplementos || isIvaIncluido,
+                    );
                 }
                 if (offer.dom.modalitiesField) {
                     offer.dom.modalitiesField.classList.toggle('is-hidden', !isSeleccion);
@@ -5459,7 +5580,9 @@
                         seleccion_modalidad: scope === 'seleccion' ? selected : [],
                         estado: Boolean(offer.estado),
                     };
-                    if (offer.tipo_oferta !== 'sin_suplementos') {
+                    if (offer.tipo_oferta === 'iva_incluido') {
+                        payload.porcentaje_descuento = 0;
+                    } else if (offer.tipo_oferta !== 'sin_suplementos') {
                         const numeric = Number(offer.porcentaje_descuento);
                         payload.porcentaje_descuento = Number.isFinite(numeric) ? numeric : '';
                     }
@@ -5523,12 +5646,15 @@
                         offer.errors.nombre_oferta = strings.manageOffersNameError || 'Introduce un nombre para esta oferta.';
                         isValid = false;
                     }
-                    if (offer.tipo_oferta !== 'sin_suplementos') {
+                    const isIvaIncluido = offer.tipo_oferta === 'iva_incluido';
+                    if (offer.tipo_oferta !== 'sin_suplementos' && !isIvaIncluido) {
                         const numeric = Number(offer.porcentaje_descuento);
                         if (!Number.isFinite(numeric) || numeric <= 0 || numeric > 100) {
                             offer.errors.porcentaje_descuento = strings.manageOffersDiscountError || 'Introduce un porcentaje entre 1 y 100.';
                             isValid = false;
                         }
+                    } else if (isIvaIncluido) {
+                        offer.porcentaje_descuento = '0';
                     }
                     if (!offer.aplicacion) {
                         offer.errors.aplicacion = strings.manageOffersScopeError || 'Selecciona un ámbito de aplicación.';
