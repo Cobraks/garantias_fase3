@@ -437,9 +437,25 @@ class ClientRestController
          * WordPress exige las capabilities `delete_users` y `delete_user` en `wp_delete_user()`.
          * Para roles a los que permitimos gestionar clientes (director comercial, gestor de
          * garantías) pero que no tienen esas capabilities asignadas, forzamos un pase explícito
-         * de `map_meta_cap` sólo para el usuario objetivo de esta petición.
+         * de capabilities sólo para el usuario objetivo de esta petición.
          */
         $temp_cap_filters = [];
+
+        if ($can_manage_clients) {
+            $temp_cap_filters[] = static function (array $allcaps, array $caps, array $args, WP_User $user) use ($user_id): array {
+                if ((int) $user->ID !== get_current_user_id()) {
+                    return $allcaps;
+                }
+
+                $allcaps['delete_users']          = true;
+                $allcaps['delete_user']           = true;
+                $allcaps['delete_user:' . $user_id] = true;
+
+                return $allcaps;
+            };
+
+            add_filter('user_has_cap', $temp_cap_filters[array_key_last($temp_cap_filters)], 10, 4);
+        }
 
         if ($can_manage_clients && ! current_user_can('delete_users')) {
             $temp_cap_filters[] = static function (array $caps, string $cap, int $user_id_check, array $args): array {
@@ -473,6 +489,7 @@ class ClientRestController
 
         foreach ($temp_cap_filters as $filter) {
             remove_filter('map_meta_cap', $filter, 10);
+            remove_filter('user_has_cap', $filter, 10);
         }
 
         if (! $deleted) {
