@@ -426,7 +426,10 @@ class ClientRestController
 
         $can_delete_users = $can_manage_clients
             || current_user_can('delete_users')
-            || current_user_can('delete_user', $user_id);
+            || current_user_can('delete_user', $user_id)
+            || current_user_can('manage_network_users')
+            || current_user_can('remove_user', $user_id)
+            || current_user_can('remove_users');
 
         if (! $can_delete_users) {
             return new WP_REST_Response(
@@ -3974,8 +3977,11 @@ class ClientRestController
 
         if ($should_elevate_caps) {
             $filters[] = static function (array $allcaps, array $caps = [], array $args = [], $user = null): array {
-                $allcaps['delete_users'] = true;
-                $allcaps['delete_user']  = true;
+                $allcaps['delete_users']         = true;
+                $allcaps['delete_user']          = true;
+                $allcaps['manage_network_users'] = true;
+                $allcaps['remove_users']         = true;
+                $allcaps['remove_user']          = true;
 
                 return $allcaps;
             };
@@ -3983,11 +3989,14 @@ class ClientRestController
             add_filter('user_has_cap', $filters[array_key_last($filters)], 10, 4);
 
             $filters[] = static function (array $caps, string $cap, int $user_id_check, array $args) use ($user_id): array {
-                if ($cap === 'delete_users') {
+                if ($cap === 'delete_users' || $cap === 'manage_network_users' || $cap === 'remove_users') {
                     return ['exist'];
                 }
 
-                if ($cap === 'delete_user' && isset($args[0]) && (int) $args[0] === $user_id) {
+                if (in_array($cap, ['delete_user', 'remove_user'], true)
+                    && isset($args[0])
+                    && (int) $args[0] === $user_id
+                ) {
                     return ['exist'];
                 }
 
