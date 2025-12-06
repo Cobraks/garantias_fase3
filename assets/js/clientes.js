@@ -403,8 +403,27 @@
             return list.map(normalizeRole).filter(Boolean);
         };
 
-        const isParticularRole = (roles) => {
-            const normalizedRoles = normalizeRoleList(roles);
+        const collectClientRoles = (candidate) => {
+            if (Array.isArray(candidate)) {
+                return normalizeRoleList(candidate);
+            }
+
+            if (candidate && typeof candidate === 'object') {
+                const directRoles = normalizeRoleList(candidate.roles);
+                const salesChannelRoles = normalizeRoleList([
+                    candidate.sales_channel?.role,
+                    candidate.sales_channel?.slug,
+                    candidate.sales_channel?.key,
+                ]);
+
+                return [...directRoles, ...salesChannelRoles].filter(Boolean);
+            }
+
+            return [];
+        };
+
+        const isParticularRole = (rolesOrClient) => {
+            const normalizedRoles = collectClientRoles(rolesOrClient);
             const isProfessional = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
             const isParticular = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
             return isParticular || !isProfessional;
@@ -3272,7 +3291,7 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = normalizeRoleList(item.roles);
+            const roles = collectClientRoles(item);
             const isParticular = isParticularRole(roles);
 
             const displayName = getDisplayName(name);
@@ -6714,7 +6733,7 @@
                         return;
                     }
 
-                    const normalizedRoles = normalizeRoleList(item.roles);
+                    const normalizedRoles = collectClientRoles(item);
                     const isProfessional = !isParticularRole(normalizedRoles);
                     const displayName = getDisplayName(item.name || {}) || '';
                     const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
