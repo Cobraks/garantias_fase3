@@ -3608,13 +3608,13 @@
             const emailField = overlay.querySelector('[data-delete-user-email]');
             let previousActiveElement = null;
 
-            function setDetails({ name = '', company = '', registered = '', email = '', isProfessional = false }) {
+            function setDetails({ name = '', company = '', registered = '', email = '', showCompany = false }) {
                 if (nameField) {
                     nameField.textContent = name || '—';
                 }
 
                 if (companyRow) {
-                    companyRow.hidden = !isProfessional;
+                    companyRow.hidden = !showCompany;
                 }
 
                 if (companyField) {
@@ -3664,7 +3664,7 @@
                     company: typeof context.company === 'string' ? context.company : '',
                     registered: typeof context.registered === 'string' ? context.registered : '',
                     email: typeof context.email === 'string' ? context.email : '',
-                    isProfessional: Boolean(context.isProfessional),
+                    showCompany: Boolean(context.showCompany),
                 });
 
                 overlay.hidden = false;
@@ -6739,20 +6739,21 @@
                         return;
                     }
 
-                    const { isProfessional } = classifyClientRoles(item);
+                    const { isParticular } = classifyClientRoles(item);
                     const displayName = getDisplayName(item.name || {}) || '';
                     const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
                     const registeredLabel = formatRegisteredWithTime(item.registered || {});
                     const loginEmail = typeof item.contact?.login_email === 'string' && item.contact.login_email
                         ? item.contact.login_email.trim()
                         : '';
+                    const showCompany = !isParticular && companyName !== '';
 
                     deleteUserModal.open({
                         name: displayName,
                         company: companyName,
                         registered: registeredLabel,
                         email: loginEmail,
-                        isProfessional,
+                        showCompany,
                     });
                 });
             }
