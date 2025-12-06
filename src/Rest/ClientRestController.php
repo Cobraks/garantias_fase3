@@ -433,64 +433,17 @@ class ClientRestController
             );
         }
 
-        /**
-         * WordPress exige las capabilities `delete_users` y `delete_user` en `wp_delete_user()`.
-         * Para roles a los que permitimos gestionar clientes (director comercial, gestor de
-         * garantías) pero que no tienen esas capabilities asignadas, forzamos un pase explícito
-         * de capabilities sólo para el usuario objetivo de esta petición.
-         */
-        $temp_cap_filters = [];
-
-        if ($can_manage_clients) {
-            $temp_cap_filters[] = static function (array $allcaps, array $caps, array $args, WP_User $user) use ($user_id): array {
-                if ((int) $user->ID !== get_current_user_id()) {
-                    return $allcaps;
+        $deleted = self::run_with_delete_capabilities(
+            $can_manage_clients,
+            $user_id,
+            static function (int $user_id_to_delete): bool {
+                if (! function_exists('wp_delete_user')) {
+                    require_once ABSPATH . 'wp-admin/includes/user.php';
                 }
 
-                $allcaps['delete_users']          = true;
-                $allcaps['delete_user']           = true;
-                $allcaps['delete_user:' . $user_id] = true;
-
-                return $allcaps;
-            };
-
-            add_filter('user_has_cap', $temp_cap_filters[array_key_last($temp_cap_filters)], 10, 4);
-        }
-
-        if ($can_manage_clients && ! current_user_can('delete_users')) {
-            $temp_cap_filters[] = static function (array $caps, string $cap, int $user_id_check, array $args): array {
-                if ($cap === 'delete_users') {
-                    return ['exist'];
-                }
-
-                return $caps;
-            };
-
-            add_filter('map_meta_cap', $temp_cap_filters[array_key_last($temp_cap_filters)], 10, 4);
-        }
-
-        if ($can_manage_clients && ! current_user_can('delete_user', $user_id)) {
-            $temp_cap_filters[] = static function (array $caps, string $cap, int $user_id_check, array $args) use ($user_id): array {
-                if ($cap === 'delete_user' && isset($args[0]) && (int) $args[0] === $user_id) {
-                    return ['exist'];
-                }
-
-                return $caps;
-            };
-
-            add_filter('map_meta_cap', $temp_cap_filters[array_key_last($temp_cap_filters)], 10, 4);
-        }
-
-        if (! function_exists('wp_delete_user')) {
-            require_once ABSPATH . 'wp-admin/includes/user.php';
-        }
-
-        $deleted = wp_delete_user($user_id);
-
-        foreach ($temp_cap_filters as $filter) {
-            remove_filter('map_meta_cap', $filter, 10);
-            remove_filter('user_has_cap', $filter, 10);
-        }
+                return (bool) wp_delete_user($user_id_to_delete);
+            }
+        );
 
         if (! $deleted) {
             return new WP_REST_Response(
@@ -4011,5 +3964,45 @@ class ClientRestController
         }
 
         return $timestamp < $now;
+    }
+
+    private static function run_with_delete_capabilities(bool $can_manage_clients, int $user_id, callable $callback): bool
+    {
+        $filters = [];
+
+        if ($can_manage_clients) {
+            $filters[] = static function (array $allcaps, array $caps = [], array $args = [], $user = null): array {
+                $allcaps['delete_users'] = true;
+                $allcaps['delete_user']  = true;
+
+                return $allcaps;
+            };
+
+            add_filter('user_has_cap', $filters[array_key_last($filters)], 10, 4);
+
+            $filters[] = static function (array $caps, string $cap, int $user_id_check, array $args) use ($user_id): array {
+                if ($cap === 'delete_users') {
+                    return ['exist'];
+                }
+
+                if ($cap === 'delete_user' && isset($args[0]) && (int) $args[0] === $user_id) {
+                    return ['exist'];
+                }
+
+                return $caps;
+            };
+
+            add_filter('map_meta_cap', $filters[array_key_last($filters)], 10, 4);
+        }
+
+        try {
+            /** @psalm-suppress InvalidArgument */
+            return (bool) $callback($user_id);
+        } finally {
+            foreach ($filters as $filter) {
+                remove_filter('user_has_cap', $filter, 10);
+                remove_filter('map_meta_cap', $filter, 10);
+            }
+        }
     }
 }
