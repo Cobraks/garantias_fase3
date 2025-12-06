@@ -37,7 +37,7 @@ class NotificationCategories
             ],
             'registrations' => [
                 'label' => __('Registros', 'garantias-online-360vo'),
-                'icons' => ['check_shield', 'person_add'],
+                'icons' => ['check_shield', 'person_add', 'delete'],
                 'permission' => 'management',
             ],
             'other' => [

@@ -3611,28 +3611,20 @@
                         <span class="client-delete-modal__icon" aria-hidden="true">${iconDelete}</span>
                         <div class="client-delete-modal__titles">
                             <p class="client-delete-modal__eyebrow">${escapeHtml(strings.deleteUserWarning || 'Acción irreversible')}</p>
-                            <h2 id="${confirmTitleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserTitle || 'Eliminar usuario permanentemente')}</h2>
+                            <h2 id="${confirmTitleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserFinalTitle || '¿Seguro que quieres eliminarlo?')}</h2>
                         </div>
                     </div>
                     <div class="client-delete-modal__body">
-                        <dl class="client-delete-modal__details">
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserUser || 'Usuario')}</dt>
-                                <dd data-delete-user-name></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row" data-delete-user-company-row>
-                                <dt>${escapeHtml(strings.deleteUserCompany || 'Empresa')}</dt>
-                                <dd data-delete-user-company></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserRegistered || 'Fecha de registro')}</dt>
-                                <dd data-delete-user-registered></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserEmail || 'Correo electrónico')}</dt>
-                                <dd data-delete-user-email></dd>
-                            </div>
-                        </dl>
+                        <ul class="client-delete-modal__summary">
+                            <li class="client-delete-modal__summary-item">
+                                <span class="client-delete-modal__summary-label">Se eliminará por completo al usuario</span>
+                                <strong data-delete-user-name></strong>
+                            </li>
+                            <li class="client-delete-modal__summary-item">Ya no podrá acceder con su cuenta</li>
+                            <li class="client-delete-modal__summary-item">Si tiene un código de verificación pendiente, se reiniciará</li>
+                            <li class="client-delete-modal__summary-item">El usuario tendrá que registrarse de nuevo</li>
+                            <li class="client-delete-modal__summary-item">Esta acción es irreversible</li>
+                        </ul>
                         <p class="client-delete-modal__status" data-delete-user-status hidden></p>
                         <label class="client-delete-modal__checkbox client-delete-modal__checkbox--final" data-delete-user-final hidden>
                             <input type="checkbox" class="client-delete-modal__checkbox-input" data-delete-user-final-input>
@@ -3929,26 +3921,48 @@
 
             async function performDeletion() {
                 const userId = Number(currentContext?.id || currentContext?.userId);
+                // Debug: log initial deletion intent and context
+                console.log('[DeleteUser] performDeletion:init', {
+                    userId,
+                    context: currentContext,
+                    restBase,
+                    restNonceValue,
+                });
                 if (!Number.isFinite(userId) || userId <= 0) {
                     setStatus(strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.', 'error');
+                    console.error('[DeleteUser] performDeletion:invalid-user', { userId, context: currentContext });
                     return;
                 }
 
                 setProcessingState(true);
 
                 try {
+                    console.log('[DeleteUser] performDeletion:request:start', { userId });
                     const response = await fetch(`${restBase}go/v1/clientes/${userId}/delete`, {
                         method: 'DELETE',
                         credentials: 'same-origin',
                         headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
                     });
 
+                    console.log('[DeleteUser] performDeletion:response:meta', {
+                        status: response?.status,
+                        ok: response?.ok,
+                        statusText: response?.statusText,
+                    });
+
                     const payload = await response.json().catch(() => ({}));
+
+                    console.log('[DeleteUser] performDeletion:response:payload', payload);
 
                     if (!response.ok) {
                         if (response.status === 409 && Number.isFinite(payload?.guarantees)) {
                             confirmMode = 'blocked';
                             setProcessingState(false);
+                            console.warn('[DeleteUser] performDeletion:blocked-guarantees', {
+                                userId,
+                                guarantees: Number(payload.guarantees),
+                                payload,
+                            });
                             openConfirmOverlay('blocked', Number(payload.guarantees));
                             return;
                         }
@@ -3958,10 +3972,17 @@
                             : (strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.');
 
                         setProcessingState(false);
+                        console.error('[DeleteUser] performDeletion:error-response', {
+                            userId,
+                            status: response.status,
+                            payload,
+                            message,
+                        });
                         setStatus(message, 'error');
                         return;
                     }
 
+                    console.log('[DeleteUser] performDeletion:success', { userId, payload, context: currentContext });
                     if (typeof currentContext?.onDeleted === 'function') {
                         currentContext.onDeleted(userId);
                     }
@@ -3969,6 +3990,7 @@
                     closeAll();
                 } catch (error) {
                     setProcessingState(false);
+                    console.error('[DeleteUser] performDeletion:exception', { error, userId, context: currentContext });
                     setStatus(strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.', 'error');
                 }
             }
@@ -7109,6 +7131,8 @@
                     const showCompany = !isParticular && companyName !== '';
 
                     deleteUserModal.open({
+                        id: Number(item?.id),
+                        userId: Number(item?.id),
                         name: displayName,
                         company: companyName,
                         registered: registeredLabel,
