@@ -21,6 +21,7 @@ use function number_format_i18n;
 use function sanitize_key;
 use function set_transient;
 use function time;
+use function wp_get_current_user;
 
 if (! defined('ABSPATH')) {
     exit;
@@ -418,7 +419,14 @@ class ClientRestController
             );
         }
 
-        if (! current_user_can('delete_user', $user_id)) {
+        $current_user     = wp_get_current_user();
+        $current_user_obj = $current_user instanceof WP_User ? $current_user : null;
+        $current_roles    = array_map('strval', (array) ($current_user_obj?->roles ?? []));
+        $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
+            || in_array('go_garantias', $current_roles, true)
+            || current_user_can('manage_options');
+
+        if (! $can_manage_clients && ! current_user_can('delete_user', $user_id) && ! current_user_can('delete_users')) {
             return new WP_REST_Response(
                 ['message' => __('No tienes permisos para eliminar este usuario.', 'garantias-online-360vo')],
                 403

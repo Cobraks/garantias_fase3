@@ -4012,6 +4012,9 @@
 .client-delete-modal[hidden] {
     display: none !important;
 }
+.client-delete-modal [hidden] {
+    display: none !important;
+}
 .client-delete-modal__dialog {
     position: relative;
     width: min(560px, calc(100vw - 2.5rem));

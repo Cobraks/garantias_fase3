@@ -447,9 +447,10 @@
                         return new Intl.DateTimeFormat('es-ES', {
                             dateStyle: 'short',
                             timeStyle: 'short',
+                            timeZone: 'Europe/Madrid',
                         }).format(parsedDate);
                     } catch (error) {
-                        return parsedDate.toLocaleString('es-ES');
+                        return parsedDate.toLocaleString('es-ES', { timeZone: 'Europe/Madrid' });
                     }
                 }
             }
