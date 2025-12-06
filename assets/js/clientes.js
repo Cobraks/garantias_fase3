@@ -3611,28 +3611,20 @@
                         <span class="client-delete-modal__icon" aria-hidden="true">${iconDelete}</span>
                         <div class="client-delete-modal__titles">
                             <p class="client-delete-modal__eyebrow">${escapeHtml(strings.deleteUserWarning || 'Acción irreversible')}</p>
-                            <h2 id="${confirmTitleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserTitle || 'Eliminar usuario permanentemente')}</h2>
+                            <h2 id="${confirmTitleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserFinalTitle || '¿Seguro que quieres eliminarlo?')}</h2>
                         </div>
                     </div>
                     <div class="client-delete-modal__body">
-                        <dl class="client-delete-modal__details">
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserUser || 'Usuario')}</dt>
-                                <dd data-delete-user-name></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row" data-delete-user-company-row>
-                                <dt>${escapeHtml(strings.deleteUserCompany || 'Empresa')}</dt>
-                                <dd data-delete-user-company></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserRegistered || 'Fecha de registro')}</dt>
-                                <dd data-delete-user-registered></dd>
-                            </div>
-                            <div class="client-delete-modal__detail-row">
-                                <dt>${escapeHtml(strings.deleteUserEmail || 'Correo electrónico')}</dt>
-                                <dd data-delete-user-email></dd>
-                            </div>
-                        </dl>
+                        <ul class="client-delete-modal__summary">
+                            <li class="client-delete-modal__summary-item">
+                                <span class="client-delete-modal__summary-label">Se eliminará por completo al usuario</span>
+                                <strong data-delete-user-name></strong>
+                            </li>
+                            <li class="client-delete-modal__summary-item">Ya no podrá acceder con su cuenta</li>
+                            <li class="client-delete-modal__summary-item">Si tiene un código de verificación pendiente, se reiniciará</li>
+                            <li class="client-delete-modal__summary-item">El usuario tendrá que registrarse de nuevo</li>
+                            <li class="client-delete-modal__summary-item">Esta acción es irreversible</li>
+                        </ul>
                         <p class="client-delete-modal__status" data-delete-user-status hidden></p>
                         <label class="client-delete-modal__checkbox client-delete-modal__checkbox--final" data-delete-user-final hidden>
                             <input type="checkbox" class="client-delete-modal__checkbox-input" data-delete-user-final-input>
