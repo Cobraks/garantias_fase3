@@ -1581,7 +1581,6 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
-    border: 1px solid #f7d5d5;
     border-radius: 16px;
     align-items: flex-start;
 }
@@ -1962,8 +1961,8 @@
     margin-left: auto;
     align-self: flex-start;
     background-color: var(--surface);
-    color: var(--text-secondary);
-    border: none;
+    color: var(--danger-color, #dc2626);
+    border: 1px solid var(--danger-color, #dc2626);
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
@@ -1980,7 +1979,8 @@
 }
 :root[data-theme='dark'] .client-detail__delete-button {
     background-color: var(--surface);
-    color: var(--text-color);
+    color: var(--danger-color, #dc2626);
+    border-color: var(--danger-color, #dc2626);
 }
 :root[data-theme='dark'] .client-detail__delete-button:hover,
 :root[data-theme='dark'] .client-detail__delete-button:focus-visible {
