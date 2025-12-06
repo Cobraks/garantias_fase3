@@ -1013,15 +1013,12 @@
     border-color: rgba(248, 113, 113, 0.4);
 }
 :root[data-theme='dark'] .client-detail__delete-button {
-    background-color: transparent;
-    border-color: rgba(248, 113, 113, 0.65);
-    color: #fca5a5;
+    background-color: var(--surface);
+    color: var(--text-color);
 }
 :root[data-theme='dark'] .client-detail__delete-button:hover,
 :root[data-theme='dark'] .client-detail__delete-button:focus-visible {
-    background-color: rgba(239, 68, 68, 0.12);
-    border-color: rgba(248, 113, 113, 0.85);
-    color: #fecdd3;
+    background-color: rgba(148, 163, 184, 0.12);
 }
 :root[data-theme='dark'] .client-detail__stat--guarantees {
     background: transparent;
@@ -1620,14 +1617,15 @@
     padding: 8px 16px;
     width: fit-content;
     max-width: 100%;
+    margin-left: auto;
     align-self: flex-start;
-    background-color: transparent;
-    color: #ef4444;
-    border: 1px solid #ef4444;
+    background-color: var(--surface);
+    color: var(--text-secondary);
+    border: none;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 .client-detail__delete-button svg {
     width: 20px;
@@ -1635,10 +1633,8 @@
 }
 .client-detail__delete-button:hover,
 .client-detail__delete-button:focus-visible {
-    background-color: rgba(239, 68, 68, 0.08);
-    border-color: #dc2626;
-    color: #dc2626;
-    box-shadow: 0 10px 30px rgba(185, 28, 28, 0.12);
+    background-color: var(--go-color-f1f5f9);
+    color: var(--text-color);
 }
 .client-detail__avatar {
     width: 64px;
