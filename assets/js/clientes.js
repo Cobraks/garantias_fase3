@@ -7139,6 +7139,8 @@
                     const showCompany = !isParticular && companyName !== '';
 
                     deleteUserModal.open({
+                        id: Number(item?.id),
+                        userId: Number(item?.id),
                         name: displayName,
                         company: companyName,
                         registered: registeredLabel,
