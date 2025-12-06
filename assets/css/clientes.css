@@ -1012,14 +1012,6 @@
     background-color: rgba(100, 15, 15, 0.2);
     border-color: rgba(248, 113, 113, 0.4);
 }
-:root[data-theme='dark'] .client-detail__delete-button {
-    background-color: var(--surface);
-    color: var(--text-color);
-}
-:root[data-theme='dark'] .client-detail__delete-button:hover,
-:root[data-theme='dark'] .client-detail__delete-button:focus-visible {
-    background-color: rgba(148, 163, 184, 0.12);
-}
 :root[data-theme='dark'] .client-detail__stat--guarantees {
     background: transparent;
     border: none;
@@ -1608,34 +1600,6 @@
     color: var(--text-color);
     border-bottom-color: currentColor;
 }
-.client-detail__delete-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 8px;
-    min-height: 44px;
-    padding: 8px 16px;
-    width: fit-content;
-    max-width: 100%;
-    margin-left: auto;
-    align-self: flex-start;
-    background-color: var(--surface);
-    color: var(--text-secondary);
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-.client-detail__delete-button svg {
-    width: 20px;
-    height: 20px;
-}
-.client-detail__delete-button:hover,
-.client-detail__delete-button:focus-visible {
-    background-color: var(--go-color-f1f5f9);
-    color: var(--text-color);
-}
 .client-detail__avatar {
     width: 64px;
     height: 64px;
@@ -1981,6 +1945,42 @@
     background: var(--primary-color-hover);
     transform: translateY(-1px);
     box-shadow: 0 10px 20px rgba(var(--go-color-0f172a-rgb), 0.18);
+}
+.client-detail__delete-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 44px;
+    padding: 8px 16px;
+    width: fit-content;
+    max-width: 100%;
+    margin-left: auto;
+    align-self: flex-start;
+    background-color: var(--surface);
+    color: var(--text-secondary);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+.client-detail__delete-button svg {
+    width: 20px;
+    height: 20px;
+}
+.client-detail__delete-button:hover,
+.client-detail__delete-button:focus-visible {
+    background-color: var(--go-color-f1f5f9);
+    color: var(--text-color);
+}
+:root[data-theme='dark'] .client-detail__delete-button {
+    background-color: var(--surface);
+    color: var(--text-color);
+}
+:root[data-theme='dark'] .client-detail__delete-button:hover,
+:root[data-theme='dark'] .client-detail__delete-button:focus-visible {
+    background-color: rgba(148, 163, 184, 0.12);
 }
 .client-detail__actions {
     margin-top: 0;
