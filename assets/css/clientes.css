@@ -1921,6 +1921,7 @@
     color: var(--text-color);
     text-decoration: none;
 }
+/*
 .client-detail button:not(.client-detail__action) {
     appearance: none;
     border: none;
@@ -1937,15 +1938,18 @@
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
+
 :root[data-theme='dark'] .client-detail button:not(.client-detail__action) {
     color: rgba(248, 250, 252, 0.96);
 }
+
 .client-detail button:not(.client-detail__action):hover,
 .client-detail button:not(.client-detail__action):focus-visible {
     background: var(--primary-color-hover);
     transform: translateY(-1px);
     box-shadow: 0 10px 20px rgba(var(--go-color-0f172a-rgb), 0.18);
 }
+*/
 .client-detail__delete-button {
     display: inline-flex;
     align-items: center;
