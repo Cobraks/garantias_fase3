@@ -308,8 +308,7 @@ class ClientRestController
         }
 
         $roles = array_map('strval', (array) $current_user->roles);
-        $has_client_access = in_array('go_director_comercial', $roles, true)
-            || in_array('go_garantias', $roles, true);
+        $has_client_access = in_array('go_director_comercial', $roles, true);
 
         if (! $has_client_access) {
             return false;
@@ -423,7 +422,6 @@ class ClientRestController
         $current_user_obj = $current_user instanceof WP_User ? $current_user : null;
         $current_roles    = array_map('strval', (array) ($current_user_obj?->roles ?? []));
         $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
-            || in_array('go_garantias', $current_roles, true)
             || current_user_can('manage_options');
 
         if (! $can_manage_clients && ! current_user_can('delete_user', $user_id) && ! current_user_can('delete_users')) {

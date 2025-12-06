@@ -167,8 +167,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
 
     $is_admin = current_user_can('manage_options');
     $current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
-    $has_client_manager_role = in_array('go_director_comercial', $current_roles, true)
-        || in_array('go_garantias', $current_roles, true);
+    $has_client_manager_role = in_array('go_director_comercial', $current_roles, true);
     $can_assign_commercials = $is_admin || $has_client_manager_role;
     $can_manage_offers = $is_admin;
     $can_manage_sepa = $is_admin;
