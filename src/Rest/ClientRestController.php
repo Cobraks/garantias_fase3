@@ -424,7 +424,11 @@ class ClientRestController
         $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
             || current_user_can('manage_options');
 
-        if (! $can_manage_clients && ! current_user_can('delete_user', $user_id) && ! current_user_can('delete_users')) {
+        $can_delete_users = $can_manage_clients
+            || current_user_can('delete_users')
+            || current_user_can('delete_user', $user_id);
+
+        if (! $can_delete_users) {
             return new WP_REST_Response(
                 ['message' => __('No tienes permisos para eliminar este usuario.', 'garantias-online-360vo')],
                 403
@@ -432,7 +436,7 @@ class ClientRestController
         }
 
         $deleted = self::run_with_delete_capabilities(
-            $can_manage_clients,
+            $can_delete_users,
             $user_id,
             static function (int $user_id_to_delete): bool {
                 if (! function_exists('wp_delete_user')) {
@@ -3964,11 +3968,11 @@ class ClientRestController
         return $timestamp < $now;
     }
 
-    private static function run_with_delete_capabilities(bool $can_manage_clients, int $user_id, callable $callback): bool
+    private static function run_with_delete_capabilities(bool $should_elevate_caps, int $user_id, callable $callback): bool
     {
         $filters = [];
 
-        if ($can_manage_clients) {
+        if ($should_elevate_caps) {
             $filters[] = static function (array $allcaps, array $caps = [], array $args = [], $user = null): array {
                 $allcaps['delete_users'] = true;
                 $allcaps['delete_user']  = true;
