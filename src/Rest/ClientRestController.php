@@ -424,12 +424,7 @@ class ClientRestController
         $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
             || current_user_can('manage_options');
 
-        $can_delete_users = $can_manage_clients
-            || current_user_can('delete_users')
-            || current_user_can('delete_user', $user_id)
-            || current_user_can('manage_network_users')
-            || current_user_can('remove_user', $user_id)
-            || current_user_can('remove_users');
+        $can_delete_users = $can_manage_clients;
 
         if (! $can_delete_users) {
             return new WP_REST_Response(
@@ -439,7 +434,7 @@ class ClientRestController
         }
 
         $deleted = self::run_with_delete_capabilities(
-            $can_delete_users,
+            $can_manage_clients,
             $user_id,
             static function (int $user_id_to_delete): bool {
                 if (! function_exists('wp_delete_user')) {
