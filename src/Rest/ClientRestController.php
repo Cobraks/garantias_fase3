@@ -308,8 +308,7 @@ class ClientRestController
         }
 
         $roles = array_map('strval', (array) $current_user->roles);
-        $has_client_access = in_array('go_director_comercial', $roles, true)
-            || in_array('go_garantias', $roles, true);
+        $has_client_access = in_array('go_director_comercial', $roles, true);
 
         if (! $has_client_access) {
             return false;
@@ -423,10 +422,11 @@ class ClientRestController
         $current_user_obj = $current_user instanceof WP_User ? $current_user : null;
         $current_roles    = array_map('strval', (array) ($current_user_obj?->roles ?? []));
         $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
-            || in_array('go_garantias', $current_roles, true)
             || current_user_can('manage_options');
 
-        if (! $can_manage_clients && ! current_user_can('delete_user', $user_id) && ! current_user_can('delete_users')) {
+        $can_delete_users = $can_manage_clients;
+
+        if (! $can_delete_users) {
             return new WP_REST_Response(
                 ['message' => __('No tienes permisos para eliminar este usuario.', 'garantias-online-360vo')],
                 403
@@ -3966,14 +3966,17 @@ class ClientRestController
         return $timestamp < $now;
     }
 
-    private static function run_with_delete_capabilities(bool $can_manage_clients, int $user_id, callable $callback): bool
+    private static function run_with_delete_capabilities(bool $should_elevate_caps, int $user_id, callable $callback): bool
     {
         $filters = [];
 
-        if ($can_manage_clients) {
+        if ($should_elevate_caps) {
             $filters[] = static function (array $allcaps, array $caps = [], array $args = [], $user = null): array {
-                $allcaps['delete_users'] = true;
-                $allcaps['delete_user']  = true;
+                $allcaps['delete_users']         = true;
+                $allcaps['delete_user']          = true;
+                $allcaps['manage_network_users'] = true;
+                $allcaps['remove_users']         = true;
+                $allcaps['remove_user']          = true;
 
                 return $allcaps;
             };
@@ -3981,11 +3984,14 @@ class ClientRestController
             add_filter('user_has_cap', $filters[array_key_last($filters)], 10, 4);
 
             $filters[] = static function (array $caps, string $cap, int $user_id_check, array $args) use ($user_id): array {
-                if ($cap === 'delete_users') {
+                if ($cap === 'delete_users' || $cap === 'manage_network_users' || $cap === 'remove_users') {
                     return ['exist'];
                 }
 
-                if ($cap === 'delete_user' && isset($args[0]) && (int) $args[0] === $user_id) {
+                if (in_array($cap, ['delete_user', 'remove_user'], true)
+                    && isset($args[0])
+                    && (int) $args[0] === $user_id
+                ) {
                     return ['exist'];
                 }
 
