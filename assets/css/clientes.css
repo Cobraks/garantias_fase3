@@ -4078,6 +4078,31 @@
     flex-direction: column;
     gap: 1.25rem;
 }
+.client-delete-modal__summary {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    color: #111827;
+    font-weight: 600;
+    line-height: 1.5;
+}
+.client-delete-modal__summary-item {
+    list-style: disc;
+    display: flex;
+    gap: 0.35rem;
+    align-items: baseline;
+}
+.client-delete-modal__summary-label {
+    display: inline-block;
+    color: #111827;
+    font-weight: 700;
+}
+.client-delete-modal__summary-item strong {
+    color: #991b1b;
+    font-weight: 700;
+}
 .client-delete-modal__status {
     margin: 0;
     padding: 0.85rem 1rem;

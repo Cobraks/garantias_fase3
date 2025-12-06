@@ -46,6 +46,8 @@ class PushMessageFactory
                 return $this->build_sepa_uploaded($activity_record);
             case 'sepa.activated':
                 return $this->build_sepa_activated($activity_record);
+            case 'client.deleted':
+                return $this->build_client_deleted($activity_record);
             case 'client.commercials_updated':
                 return $this->build_client_commercials_updated($activity_record);
             default:
@@ -764,6 +766,77 @@ class PushMessageFactory
                     'url'    => $profile_url,
                 ],
             ] : [],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_client_deleted(array $record): array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+
+        $client_id = isset($context['client_id']) ? (int) $context['client_id'] : 0;
+        if ($client_id <= 0 && isset($record['target_id'])) {
+            $client_id = (int) $record['target_id'];
+        }
+
+        $company_label = $this->resolve_company_label($client_id, $context, '');
+        if ($company_label === '' && ! empty($context['client_name'])) {
+            $company_label = $this->sanitize_plain_text((string) $context['client_name']);
+        }
+        if ($company_label === '' && ! empty($context['client_username'])) {
+            $company_label = $this->sanitize_plain_text((string) $context['client_username']);
+        }
+        if ($company_label === '' && ! empty($context['client_email'])) {
+            $company_label = $this->sanitize_plain_text((string) $context['client_email']);
+        }
+        if ($company_label === '') {
+            $company_label = __('Cliente', 'garantias-online-360vo');
+        }
+
+        $actor_label = $this->resolve_actor_label($record, $context);
+        $meta = [];
+        if ($actor_label !== '') {
+            $meta[] = $this->meta_entry(__('Eliminado por', 'garantias-online-360vo'), $actor_label, 'actor');
+        }
+
+        if (! empty($context['client_email'])) {
+            $email = sanitize_email((string) $context['client_email']);
+            if ($email !== '') {
+                $meta[] = $this->meta_entry(__('Correo', 'garantias-online-360vo'), $email, 'actor');
+            }
+        }
+
+        if (! empty($context['client_username'])) {
+            $username = $this->sanitize_plain_text((string) $context['client_username']);
+            if ($username !== '') {
+                $meta[] = $this->meta_entry(__('Usuario', 'garantias-online-360vo'), $username);
+            }
+        }
+
+        $body = $actor_label !== ''
+            ? sprintf(
+                /* translators: 1: actor label, 2: client label */
+                __('%1$s ha eliminado al usuario <strong>%2$s</strong>.', 'garantias-online-360vo'),
+                esc_html($actor_label),
+                esc_html($company_label)
+            )
+            : sprintf(
+                /* translators: %s client label */
+                __('Se ha eliminado al usuario <strong>%s</strong>.', 'garantias-online-360vo'),
+                esc_html($company_label)
+            );
+
+        return [
+            'title' => __('Usuario eliminado', 'garantias-online-360vo'),
+            'body'  => $body,
+            'link'  => home_url('/garantias-online/clientes/'),
+            'icon'      => Svg::data_uri('delete'),
+            'icon_slug' => 'delete',
+            'tone'      => 'warning',
+            'badge'     => __('Eliminado', 'garantias-online-360vo'),
+            'meta'      => $meta,
         ];
     }
 
