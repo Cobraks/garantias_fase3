@@ -410,6 +410,33 @@
             return isParticular || !isProfessional;
         };
 
+        const formatRegisteredWithTime = (registered) => {
+            const value = registered || {};
+            const isoValue = typeof value.iso === 'string' ? value.iso.trim() : '';
+
+            if (isoValue) {
+                const parsedDate = new Date(isoValue);
+                if (!Number.isNaN(parsedDate.getTime())) {
+                    try {
+                        return new Intl.DateTimeFormat('es-ES', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                        }).format(parsedDate);
+                    } catch (error) {
+                        return parsedDate.toLocaleString('es-ES');
+                    }
+                }
+            }
+
+            const displayValue = typeof value.display === 'string' ? value.display.trim() : '';
+            if (displayValue !== '') {
+                return displayValue;
+            }
+
+            const rawValue = typeof value.raw === 'string' ? value.raw.trim() : '';
+            return rawValue;
+        };
+
         if (detail) {
             detail.addEventListener('click', (event) => {
                 const item = getActionItemFromTarget(event.target);
@@ -6691,9 +6718,7 @@
                     const isProfessional = !isParticularRole(normalizedRoles);
                     const displayName = getDisplayName(item.name || {}) || '';
                     const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
-                    const registeredLabel = typeof item.registered?.display === 'string' && item.registered.display.trim() !== ''
-                        ? item.registered.display.trim()
-                        : (typeof item.registered?.iso === 'string' ? item.registered.iso : '');
+                    const registeredLabel = formatRegisteredWithTime(item.registered || {});
                     const loginEmail = typeof item.contact?.login_email === 'string' && item.contact.login_email
                         ? item.contact.login_email.trim()
                         : '';

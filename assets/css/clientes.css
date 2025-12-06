@@ -1013,15 +1013,15 @@
     border-color: rgba(248, 113, 113, 0.4);
 }
 :root[data-theme='dark'] .client-detail__delete-button {
-    background-color: rgba(127, 29, 29, 0.35);
-    border-color: rgba(248, 113, 113, 0.6);
-    color: #fecaca;
+    background-color: transparent;
+    border-color: rgba(248, 113, 113, 0.65);
+    color: #fca5a5;
 }
 :root[data-theme='dark'] .client-detail__delete-button:hover,
 :root[data-theme='dark'] .client-detail__delete-button:focus-visible {
-    background-color: rgba(127, 29, 29, 0.5);
-    border-color: rgba(254, 202, 202, 0.8);
-    color: #fee2e2;
+    background-color: rgba(239, 68, 68, 0.12);
+    border-color: rgba(248, 113, 113, 0.85);
+    color: #fecdd3;
 }
 :root[data-theme='dark'] .client-detail__stat--guarantees {
     background: transparent;
@@ -1587,13 +1587,14 @@
 .client-detail__admin {
     padding: 24px;
     background-color: var(--client-surface-alt);
-    text-align: center;
+    text-align: left;
     margin-top: 8px;
     display: flex;
     flex-direction: column;
     gap: 12px;
     border: 1px solid #f7d5d5;
     border-radius: 16px;
+    align-items: flex-start;
 }
 .client-detail__admin-link {
     font-size: 0.9rem;
@@ -1613,15 +1614,18 @@
 .client-detail__delete-button {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
-    padding: 12px 16px;
-    width: 100%;
-    background-color: #fef2f2;
-    color: #b91c1c;
-    border: 1px solid #fca5a5;
-    border-radius: 12px;
-    font-weight: 700;
+    min-height: 44px;
+    padding: 8px 16px;
+    width: fit-content;
+    max-width: 100%;
+    align-self: flex-start;
+    background-color: transparent;
+    color: #ef4444;
+    border: 1px solid #ef4444;
+    border-radius: 8px;
+    font-weight: 600;
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1631,10 +1635,10 @@
 }
 .client-detail__delete-button:hover,
 .client-detail__delete-button:focus-visible {
-    background-color: #fee2e2;
-    border-color: #f87171;
-    color: #991b1b;
-    box-shadow: 0 10px 30px rgba(185, 28, 28, 0.15);
+    background-color: rgba(239, 68, 68, 0.08);
+    border-color: #dc2626;
+    color: #dc2626;
+    box-shadow: 0 10px 30px rgba(185, 28, 28, 0.12);
 }
 .client-detail__avatar {
     width: 64px;
