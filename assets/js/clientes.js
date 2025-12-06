@@ -422,12 +422,19 @@
             return [];
         };
 
-        const isParticularRole = (rolesOrClient) => {
+        const classifyClientRoles = (rolesOrClient) => {
             const normalizedRoles = collectClientRoles(rolesOrClient);
-            const isProfessional = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
-            const isParticular = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
-            return isParticular || !isProfessional;
+            const hasProfessionalRole = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
+            const hasParticularRole = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
+
+            return {
+                roles: normalizedRoles,
+                isProfessional: hasProfessionalRole && !hasParticularRole,
+                isParticular: hasParticularRole || !hasProfessionalRole,
+            };
         };
+
+        const isParticularRole = (rolesOrClient) => classifyClientRoles(rolesOrClient).isParticular;
 
         const formatRegisteredWithTime = (registered) => {
             const value = registered || {};
@@ -3291,8 +3298,7 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = collectClientRoles(item);
-            const isParticular = isParticularRole(roles);
+            const { roles, isParticular } = classifyClientRoles(item);
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
@@ -6733,8 +6739,7 @@
                         return;
                     }
 
-                    const normalizedRoles = collectClientRoles(item);
-                    const isProfessional = !isParticularRole(normalizedRoles);
+                    const { isProfessional } = classifyClientRoles(item);
                     const displayName = getDisplayName(item.name || {}) || '';
                     const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
                     const registeredLabel = formatRegisteredWithTime(item.registered || {});
