@@ -17,6 +17,7 @@ use function get_current_user_id;
 use function get_transient;
 use function home_url;
 use function is_user_logged_in;
+use function number_format_i18n;
 use function sanitize_key;
 use function set_transient;
 use function time;
@@ -210,6 +211,23 @@ class ClientRestController
 
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/delete',
+            [
+                [
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => [__CLASS__, 'delete_user'],
+                    'permission_callback' => [__CLASS__, 'permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::REST_BASE . '/(?P<id>\d+)/sepa/activate',
             [
                 [
@@ -312,6 +330,10 @@ class ClientRestController
             }
         }
 
+        if ($method === 'DELETE' && preg_match('#/clientes/\d+/delete/?$#', $route)) {
+            return true;
+        }
+
         return false;
     }
 
@@ -342,6 +364,94 @@ class ClientRestController
 
         return new WP_REST_Response(
             self::prepare_offers_response($user_id),
+            200
+        );
+    }
+
+    public static function delete_user(WP_REST_Request $request): WP_REST_Response
+    {
+        if (! self::permissions_check($request)) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('Identificador de usuario no válido.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $current_user_id = get_current_user_id();
+        if ($current_user_id > 0 && $current_user_id === $user_id) {
+            return new WP_REST_Response(
+                ['message' => __('No puedes eliminar tu propio usuario desde este panel.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El usuario indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $guarantees = self::count_guarantees($user_id);
+        if ($guarantees > 0) {
+            $message = sprintf(
+                __('Este usuario tiene %s garantías. No puedes eliminarlo desde aquí, contacta con el Departamento de Desarrollo y Programación', 'garantias-online-360vo'),
+                number_format_i18n($guarantees)
+            );
+
+            return new WP_REST_Response(
+                [
+                    'message'     => $message,
+                    'guarantees'  => $guarantees,
+                    'can_delete'  => false,
+                ],
+                409
+            );
+        }
+
+        if (! current_user_can('delete_user', $user_id)) {
+            return new WP_REST_Response(
+                ['message' => __('No tienes permisos para eliminar este usuario.', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        if (! function_exists('wp_delete_user')) {
+            require_once ABSPATH . 'wp-admin/includes/user.php';
+        }
+
+        $deleted = wp_delete_user($user_id);
+        if (! $deleted) {
+            return new WP_REST_Response(
+                ['message' => __('No se ha podido eliminar el usuario.', 'garantias-online-360vo')],
+                500
+            );
+        }
+
+        ActivityLogger::log(
+            'client.deleted',
+            [
+                'target_type' => 'user',
+                'target_id'   => (int) $user_id,
+                'context'     => self::build_client_log_context($user),
+            ]
+        );
+
+        return new WP_REST_Response(
+            [
+                'deleted'    => true,
+                'id'         => $user_id,
+                'guarantees' => 0,
+            ],
             200
         );
     }

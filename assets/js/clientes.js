@@ -44,11 +44,13 @@
         const iconManageSepa = icons.manageSepa || '';
         const iconSave = icons.save || '';
         const iconPdf = icons.pdf || '';
+        const iconDelete = icons.delete || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const canManageOffers = Boolean(permissions.canManageOffers);
         const canManageSepa = Boolean(permissions.canManageSepa);
         const canViewAdminLink = Boolean(permissions.canViewAdminLink);
+        const canDeleteUser = Boolean(permissions.canDeleteUser);
         const router = config.router || {};
         const basePath = typeof router.basePath === 'string' ? router.basePath : '';
         const normalizedBasePath = basePath ? (basePath.endsWith('/') ? basePath : `${basePath}/`) : '';
@@ -231,6 +233,7 @@
         };
 
         const assignDialog = createAssignDialog();
+        const deleteUserModal = canDeleteUser ? createDeleteUserModal() : null;
         const offersDialog = canManageOffers
             ? createOffersDialog({
                 restRoot,
@@ -400,11 +403,64 @@
             return list.map(normalizeRole).filter(Boolean);
         };
 
-        const isParticularRole = (roles) => {
-            const normalizedRoles = normalizeRoleList(roles);
-            const isProfessional = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
-            const isParticular = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
-            return isParticular || !isProfessional;
+        const collectClientRoles = (candidate) => {
+            if (Array.isArray(candidate)) {
+                return normalizeRoleList(candidate);
+            }
+
+            if (candidate && typeof candidate === 'object') {
+                const directRoles = normalizeRoleList(candidate.roles);
+                const salesChannelRoles = normalizeRoleList([
+                    candidate.sales_channel?.role,
+                    candidate.sales_channel?.slug,
+                    candidate.sales_channel?.key,
+                ]);
+
+                return [...directRoles, ...salesChannelRoles].filter(Boolean);
+            }
+
+            return [];
+        };
+
+        const classifyClientRoles = (rolesOrClient) => {
+            const normalizedRoles = collectClientRoles(rolesOrClient);
+            const hasProfessionalRole = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
+            const hasParticularRole = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
+
+            return {
+                roles: normalizedRoles,
+                isProfessional: hasProfessionalRole && !hasParticularRole,
+                isParticular: hasParticularRole || !hasProfessionalRole,
+            };
+        };
+
+        const isParticularRole = (rolesOrClient) => classifyClientRoles(rolesOrClient).isParticular;
+
+        const formatRegisteredWithTime = (registered) => {
+            const value = registered || {};
+            const isoValue = typeof value.iso === 'string' ? value.iso.trim() : '';
+
+            if (isoValue) {
+                const parsedDate = new Date(isoValue);
+                if (!Number.isNaN(parsedDate.getTime())) {
+                    try {
+                        return new Intl.DateTimeFormat('es-ES', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                        }).format(parsedDate);
+                    } catch (error) {
+                        return parsedDate.toLocaleString('es-ES');
+                    }
+                }
+            }
+
+            const displayValue = typeof value.display === 'string' ? value.display.trim() : '';
+            if (displayValue !== '') {
+                return displayValue;
+            }
+
+            const rawValue = typeof value.raw === 'string' ? value.raw.trim() : '';
+            return rawValue;
         };
 
         if (detail) {
@@ -3242,8 +3298,7 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = normalizeRoleList(item.roles);
-            const isParticular = isParticularRole(roles);
+            const { roles, isParticular } = classifyClientRoles(item);
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
@@ -3362,7 +3417,28 @@
             const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
             const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
             const adminLinkHtml = canViewAdminLink && adminLink !== ''
-                ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Edita en panel de administración WordPress')}</a></div>`
+                ? `<a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Edita en panel de administración WordPress')}</a>`
+                : '';
+            const deleteUserButtonHtml = canDeleteUser
+                ? `
+                        <button type="button" class="client-detail__delete-button" data-delete-user>
+                            ${iconDelete}
+                            <span>${escapeHtml(strings.deleteUser || 'Eliminar usuario permanentemente')}</span>
+                        </button>
+                `
+                : '';
+            const adminActions = [];
+
+            if (deleteUserButtonHtml.trim() !== '') {
+                adminActions.push(deleteUserButtonHtml.trim());
+            }
+
+            if (adminLinkHtml.trim() !== '') {
+                adminActions.push(adminLinkHtml.trim());
+            }
+
+            const adminSectionHtml = adminActions.length > 0
+                ? `<div class="client-detail__admin">${adminActions.join('')}</div>`
                 : '';
             const hasCommercials = commercialCount > 0;
             const assignButton = canAssignCommercials
@@ -3461,12 +3537,537 @@
                         ${sepaActionsHtml}
                         ${sepaNoticeHtml}
                     </section>
-                    ${adminLinkHtml}
+                    ${adminSectionHtml}
                 </div>
             `;
         }
 
+
+        function createDeleteUserModal() {
+            const initialOverlay = document.createElement('div');
+            const confirmOverlay = document.createElement('div');
+            const titleId = uniqueId('client-delete-title');
+            const confirmTitleId = uniqueId('client-delete-title-final');
+
+            initialOverlay.className = 'client-delete-modal client-delete-modal--initial';
+            initialOverlay.hidden = true;
+            initialOverlay.setAttribute('aria-hidden', 'true');
+            initialOverlay.innerHTML = `
+                <div class="client-delete-modal__backdrop" data-delete-user-close></div>
+                <div class="client-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1">
+                    <button type="button" class="client-delete-modal__close" data-delete-user-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">&times;</button>
+                    <div class="client-delete-modal__header">
+                        <span class="client-delete-modal__icon" aria-hidden="true">${iconDelete}</span>
+                        <div class="client-delete-modal__titles">
+                            <p class="client-delete-modal__eyebrow">${escapeHtml(strings.deleteUserWarning || 'Acción irreversible')}</p>
+                            <h2 id="${titleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserTitle || 'Eliminar usuario permanentemente')}</h2>
+                        </div>
+                    </div>
+                    <div class="client-delete-modal__body">
+                        <dl class="client-delete-modal__details">
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserUser || 'Usuario')}</dt>
+                                <dd data-delete-user-name></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row" data-delete-user-company-row>
+                                <dt>${escapeHtml(strings.deleteUserCompany || 'Empresa')}</dt>
+                                <dd data-delete-user-company></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserRegistered || 'Fecha de registro')}</dt>
+                                <dd data-delete-user-registered></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserEmail || 'Correo electrónico')}</dt>
+                                <dd data-delete-user-email></dd>
+                            </div>
+                        </dl>
+                        <label class="client-delete-modal__checkbox" data-delete-user-primary>
+                            <input type="checkbox" class="client-delete-modal__checkbox-input" data-delete-user-primary-input>
+                            <span class="client-delete-modal__checkbox-label">${escapeHtml(strings.deleteUserCheckbox || 'Confirmo que quiero eliminar a este usuario.')}</span>
+                        </label>
+                    </div>
+                    <div class="client-delete-modal__footer">
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--ghost" data-delete-user-close>
+                            ${escapeHtml(strings.deleteUserCancel || 'Cancelar')}
+                        </button>
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--danger" data-delete-user-confirm-primary disabled>
+                            <span class="client-delete-modal__btn-label" data-delete-user-confirm-primary-label>${escapeHtml(strings.deleteUserConfirm || 'Eliminar usuario')}</span>
+                            <span class="client-delete-modal__btn-spinner" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            confirmOverlay.className = 'client-delete-modal client-delete-modal--confirm client-delete-modal--armed';
+            confirmOverlay.hidden = true;
+            confirmOverlay.setAttribute('aria-hidden', 'true');
+            confirmOverlay.innerHTML = `
+                <div class="client-delete-modal__backdrop" data-delete-user-close></div>
+                <div class="client-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="${confirmTitleId}" tabindex="-1">
+                    <button type="button" class="client-delete-modal__close" data-delete-user-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">&times;</button>
+                    <div class="client-delete-modal__header">
+                        <span class="client-delete-modal__icon" aria-hidden="true">${iconDelete}</span>
+                        <div class="client-delete-modal__titles">
+                            <p class="client-delete-modal__eyebrow">${escapeHtml(strings.deleteUserWarning || 'Acción irreversible')}</p>
+                            <h2 id="${confirmTitleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserTitle || 'Eliminar usuario permanentemente')}</h2>
+                        </div>
+                    </div>
+                    <div class="client-delete-modal__body">
+                        <dl class="client-delete-modal__details">
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserUser || 'Usuario')}</dt>
+                                <dd data-delete-user-name></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row" data-delete-user-company-row>
+                                <dt>${escapeHtml(strings.deleteUserCompany || 'Empresa')}</dt>
+                                <dd data-delete-user-company></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserRegistered || 'Fecha de registro')}</dt>
+                                <dd data-delete-user-registered></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserEmail || 'Correo electrónico')}</dt>
+                                <dd data-delete-user-email></dd>
+                            </div>
+                        </dl>
+                        <p class="client-delete-modal__status" data-delete-user-status hidden></p>
+                        <label class="client-delete-modal__checkbox client-delete-modal__checkbox--final" data-delete-user-final hidden>
+                            <input type="checkbox" class="client-delete-modal__checkbox-input" data-delete-user-final-input>
+                            <span class="client-delete-modal__checkbox-label">${escapeHtml(strings.deleteUserFinalCheckbox || 'Confirmo que quiero eliminar definitivamente a este usuario.')}</span>
+                        </label>
+                    </div>
+                    <div class="client-delete-modal__footer">
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--ghost" data-delete-user-close>
+                            ${escapeHtml(strings.deleteUserCancel || 'Cancelar')}
+                        </button>
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--danger" data-delete-user-confirm-final disabled>
+                            <span class="client-delete-modal__btn-label" data-delete-user-confirm-final-label>${escapeHtml(strings.deleteUserFinalCta || strings.deleteUserFinalConfirm || 'Eliminar definitivamente')}</span>
+                            <span class="client-delete-modal__btn-spinner" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(initialOverlay);
+            document.body.appendChild(confirmOverlay);
+
+            const initialDialog = initialOverlay.querySelector('.client-delete-modal__dialog');
+            const confirmDialog = confirmOverlay.querySelector('.client-delete-modal__dialog');
+            const primaryCheckbox = initialOverlay.querySelector('[data-delete-user-primary-input]');
+            const primaryRow = initialOverlay.querySelector('[data-delete-user-primary]');
+            const primaryConfirmButton = initialOverlay.querySelector('[data-delete-user-confirm-primary]');
+            const primaryConfirmLabel = initialOverlay.querySelector('[data-delete-user-confirm-primary-label]');
+
+            const confirmButton = confirmOverlay.querySelector('[data-delete-user-confirm-final]');
+            const confirmLabel = confirmOverlay.querySelector('[data-delete-user-confirm-final-label]');
+            const confirmSpinner = confirmOverlay.querySelector('.client-delete-modal__btn-spinner');
+            const statusEl = confirmOverlay.querySelector('[data-delete-user-status]');
+            const finalCheckbox = confirmOverlay.querySelector('[data-delete-user-final-input]');
+            const finalRow = confirmOverlay.querySelector('[data-delete-user-final]');
+
+            let previousActiveElement = null;
+            let currentContext = null;
+            let isProcessingDelete = false;
+            let confirmMode = 'final';
+
+            const getGuaranteeCount = () => {
+                if (!currentContext) {
+                    return 0;
+                }
+
+                const directValue = Number(currentContext.guaranteeCount ?? currentContext.guaranteesCount);
+                if (Number.isFinite(directValue)) {
+                    return Math.max(0, directValue);
+                }
+
+                if (currentContext.guarantees && typeof currentContext.guarantees.count !== 'undefined') {
+                    const nested = Number(currentContext.guarantees.count);
+                    if (Number.isFinite(nested)) {
+                        return Math.max(0, nested);
+                    }
+                }
+
+                return 0;
+            };
+
+            function getFinalActionLabel() {
+                const explicitLabel = typeof strings.deleteUserFinalCta === 'string' && strings.deleteUserFinalCta.trim() !== ''
+                    ? strings.deleteUserFinalCta.trim()
+                    : '';
+                if (explicitLabel) {
+                    return explicitLabel;
+                }
+
+                const secondaryLabel = typeof strings.deleteUserFinalConfirm === 'string' && strings.deleteUserFinalConfirm.trim() !== ''
+                    ? strings.deleteUserFinalConfirm.trim()
+                    : '';
+                if (secondaryLabel) {
+                    return secondaryLabel;
+                }
+
+                return 'Eliminar definitivamente';
+            }
+
+            function setStatus(message = '', variant = '') {
+                if (!statusEl) {
+                    return;
+                }
+
+                const text = typeof message === 'string' ? message.trim() : '';
+                statusEl.textContent = text;
+                statusEl.hidden = text === '';
+
+                if (text === '') {
+                    delete statusEl.dataset.variant;
+                } else if (variant) {
+                    statusEl.dataset.variant = variant;
+                } else {
+                    delete statusEl.dataset.variant;
+                }
+            }
+
+            function setProcessingState(active) {
+                isProcessingDelete = Boolean(active);
+
+                if (confirmButton) {
+                    confirmButton.classList.toggle('is-loading', isProcessingDelete);
+                    if (isProcessingDelete) {
+                        confirmButton.disabled = true;
+                    }
+                }
+
+                if (confirmSpinner) {
+                    confirmSpinner.hidden = !isProcessingDelete;
+                }
+
+                if (confirmLabel) {
+                    const labelText = isProcessingDelete
+                        ? (strings.deleteUserDeleting || 'Eliminando usuario')
+                        : (confirmMode === 'final'
+                            ? getFinalActionLabel()
+                            : (strings.deleteUserConfirm || 'Eliminar usuario'));
+                    confirmLabel.textContent = labelText;
+                }
+
+                if (!isProcessingDelete) {
+                    syncConfirmState();
+                }
+            }
+
+            function setDetails(target, { name = '', company = '', registered = '', email = '', showCompany = false }) {
+                if (!target) {
+                    return;
+                }
+
+                const nameField = target.querySelector('[data-delete-user-name]');
+                const companyField = target.querySelector('[data-delete-user-company]');
+                const companyRow = target.querySelector('[data-delete-user-company-row]');
+                const registeredField = target.querySelector('[data-delete-user-registered]');
+                const emailField = target.querySelector('[data-delete-user-email]');
+
+                if (nameField) {
+                    nameField.textContent = name || '—';
+                }
+
+                if (companyRow) {
+                    companyRow.hidden = !showCompany;
+                }
+
+                if (companyField) {
+                    companyField.textContent = company || '—';
+                }
+
+                if (registeredField) {
+                    registeredField.textContent = registered || '—';
+                }
+
+                if (emailField) {
+                    emailField.textContent = email || '—';
+                }
+            }
+
+            function setSharedDetails(details) {
+                setDetails(initialOverlay, details);
+                setDetails(confirmOverlay, details);
+            }
+
+            function syncConfirmState() {
+                if (confirmMode === 'blocked') {
+                    if (confirmButton) {
+                        confirmButton.disabled = true;
+                    }
+                    return;
+                }
+
+                if (confirmButton) {
+                    confirmButton.disabled = !(finalCheckbox && finalCheckbox.checked) || isProcessingDelete;
+                }
+            }
+
+            function resetInitialOverlay() {
+                if (primaryCheckbox) {
+                    primaryCheckbox.checked = false;
+                }
+                if (primaryConfirmButton) {
+                    primaryConfirmButton.disabled = true;
+                }
+                if (primaryConfirmLabel) {
+                    primaryConfirmLabel.textContent = strings.deleteUserConfirm || 'Eliminar usuario';
+                }
+            }
+
+            function resetConfirmOverlay() {
+                setStatus('');
+                confirmMode = 'final';
+                isProcessingDelete = false;
+                if (finalCheckbox) {
+                    finalCheckbox.checked = false;
+                }
+                if (finalRow) {
+                    finalRow.hidden = false;
+                }
+                if (confirmButton) {
+                    confirmButton.hidden = false;
+                    confirmButton.classList.remove('is-loading');
+                    confirmButton.disabled = true;
+                }
+                if (confirmSpinner) {
+                    confirmSpinner.hidden = true;
+                }
+                if (confirmLabel) {
+                    confirmLabel.textContent = getFinalActionLabel();
+                }
+            }
+
+            function hideOverlay(target) {
+                if (!target) {
+                    return;
+                }
+                target.classList.remove('is-open');
+                target.setAttribute('aria-hidden', 'true');
+                target.hidden = true;
+            }
+
+            function showOverlay(target, dialog) {
+                if (!target) {
+                    return;
+                }
+                target.hidden = false;
+                target.classList.add('is-open');
+                target.setAttribute('aria-hidden', 'false');
+
+                window.requestAnimationFrame(() => {
+                    if (dialog && typeof dialog.focus === 'function') {
+                        dialog.focus({ preventScroll: true });
+                    }
+                });
+            }
+
+            function closeAll() {
+                setStatus('');
+                setProcessingState(false);
+                resetInitialOverlay();
+                resetConfirmOverlay();
+                hideOverlay(confirmOverlay);
+                hideOverlay(initialOverlay);
+                document.removeEventListener('keydown', handleKeydown);
+                currentContext = null;
+
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeAll();
+                }
+            }
+
+            function openConfirmOverlay(mode = 'final', guaranteeCount = 0) {
+                resetConfirmOverlay();
+                confirmMode = mode === 'blocked' ? 'blocked' : 'final';
+
+                if (confirmMode === 'blocked') {
+                    const guaranteeMessage = strings.deleteUserHasGuarantees
+                        ? strings.deleteUserHasGuarantees.replace('%s', String(guaranteeCount))
+                        : `Este usuario tiene ${guaranteeCount} garantías.`;
+                    const helpMessage = strings.deleteUserCannotDelete
+                        || 'No puedes eliminarlo desde aquí, contacta con el Departamento de Desarrollo y Programación';
+
+                    setStatus(`${guaranteeMessage} ${helpMessage}`, 'error');
+                    if (finalRow) {
+                        finalRow.hidden = true;
+                    }
+                    if (confirmButton) {
+                        confirmButton.hidden = true;
+                        confirmButton.disabled = true;
+                    }
+                } else {
+                    setStatus('');
+                    if (finalRow) {
+                        finalRow.hidden = false;
+                    }
+                    if (confirmButton) {
+                        confirmButton.hidden = false;
+                        confirmButton.disabled = !(finalCheckbox && finalCheckbox.checked);
+                    }
+                    if (confirmLabel) {
+                        confirmLabel.textContent = getFinalActionLabel();
+                    }
+                }
+
+                hideOverlay(initialOverlay);
+                showOverlay(confirmOverlay, confirmDialog);
+                document.addEventListener('keydown', handleKeydown);
+                syncConfirmState();
+            }
+
+            async function performDeletion() {
+                const userId = Number(currentContext?.id || currentContext?.userId);
+                if (!Number.isFinite(userId) || userId <= 0) {
+                    setStatus(strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.', 'error');
+                    return;
+                }
+
+                setProcessingState(true);
+
+                try {
+                    const response = await fetch(`${restBase}go/v1/clientes/${userId}/delete`, {
+                        method: 'DELETE',
+                        credentials: 'same-origin',
+                        headers: restNonceValue ? { 'X-WP-Nonce': restNonceValue } : {},
+                    });
+
+                    const payload = await response.json().catch(() => ({}));
+
+                    if (!response.ok) {
+                        if (response.status === 409 && Number.isFinite(payload?.guarantees)) {
+                            confirmMode = 'blocked';
+                            setProcessingState(false);
+                            openConfirmOverlay('blocked', Number(payload.guarantees));
+                            return;
+                        }
+
+                        const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
+                            ? payload.message.trim()
+                            : (strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.');
+
+                        setProcessingState(false);
+                        setStatus(message, 'error');
+                        return;
+                    }
+
+                    if (typeof currentContext?.onDeleted === 'function') {
+                        currentContext.onDeleted(userId);
+                    }
+
+                    closeAll();
+                } catch (error) {
+                    setProcessingState(false);
+                    setStatus(strings.deleteUserError || 'No se ha podido eliminar al usuario. Inténtalo de nuevo o contacta con soporte.', 'error');
+                }
+            }
+
+            function setSharedContext(context = {}) {
+                currentContext = context || {};
+
+                setSharedDetails({
+                    name: typeof context.name === 'string' ? context.name : '',
+                    company: typeof context.company === 'string' ? context.company : '',
+                    registered: typeof context.registered === 'string' ? context.registered : '',
+                    email: typeof context.email === 'string' ? context.email : '',
+                    showCompany: Boolean(context.showCompany),
+                });
+            }
+
+            if (primaryCheckbox) {
+                primaryCheckbox.addEventListener('change', () => {
+                    if (primaryConfirmButton) {
+                        primaryConfirmButton.disabled = !primaryCheckbox.checked;
+                    }
+                });
+            }
+
+            if (finalCheckbox) {
+                finalCheckbox.addEventListener('change', () => {
+                    syncConfirmState();
+                });
+            }
+
+            const closeButtons = document.querySelectorAll('[data-delete-user-close]');
+            closeButtons.forEach((button) => {
+                button.addEventListener('click', closeAll);
+            });
+
+            initialOverlay.addEventListener('click', (event) => {
+                if (event.target === initialOverlay) {
+                    closeAll();
+                }
+            });
+
+            confirmOverlay.addEventListener('click', (event) => {
+                if (event.target === confirmOverlay) {
+                    closeAll();
+                }
+            });
+
+            if (primaryConfirmButton) {
+                primaryConfirmButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+
+                    if (!currentContext || !primaryCheckbox || !primaryCheckbox.checked) {
+                        return;
+                    }
+
+                    const guaranteesCount = getGuaranteeCount();
+
+                    if (guaranteesCount > 0) {
+                        openConfirmOverlay('blocked', guaranteesCount);
+                        return;
+                    }
+
+                    openConfirmOverlay('final');
+                });
+            }
+
+            if (confirmButton) {
+                confirmButton.addEventListener('click', async (event) => {
+                    event.preventDefault();
+
+                    if (isProcessingDelete || confirmMode !== 'final' || !currentContext) {
+                        return;
+                    }
+
+                    if (!finalCheckbox || !finalCheckbox.checked) {
+                        return;
+                    }
+
+                    await performDeletion();
+                });
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+                setSharedContext(context || {});
+                resetInitialOverlay();
+                resetConfirmOverlay();
+                hideOverlay(confirmOverlay);
+                showOverlay(initialOverlay, initialDialog);
+                document.addEventListener('keydown', handleKeydown);
+            }
+
+            return {
+                open,
+                close: closeAll,
+            };
+        }
+
         function createAssignDialog() {
+
             const overlay = document.createElement('div');
             overlay.className = 'client-dialog';
             overlay.hidden = true;
@@ -6489,6 +7090,63 @@
                     });
                 });
             }
+
+            const deleteUserButton = container.querySelector('[data-delete-user]');
+            if (deleteUserButton && deleteUserModal && typeof deleteUserModal.open === 'function') {
+                deleteUserButton.addEventListener('click', () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const { isParticular } = classifyClientRoles(item);
+                    const displayName = getDisplayName(item.name || {}) || '';
+                    const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
+                    const registeredLabel = formatRegisteredWithTime(item.registered || {});
+                    const loginEmail = typeof item.contact?.login_email === 'string' && item.contact.login_email
+                        ? item.contact.login_email.trim()
+                        : '';
+                    const showCompany = !isParticular && companyName !== '';
+
+                    deleteUserModal.open({
+                        name: displayName,
+                        company: companyName,
+                        registered: registeredLabel,
+                        email: loginEmail,
+                        showCompany,
+                        guaranteeCount: Number(item?.guarantees?.count || 0),
+                        onDeleted: handleUserDeleted,
+                    });
+                });
+            }
+        }
+
+        function handleUserDeleted(userId) {
+            const normalizedId = Number(userId);
+            const normalizedKey = String(normalizedId);
+
+            cache.delete(normalizedKey);
+
+            const row = tbody.querySelector(`tr[data-id="${normalizedKey}"]`);
+            if (row) {
+                if (selectedRow === row) {
+                    clearSelection();
+                    showEmptyDetail('backward', { animate: true });
+                }
+                row.remove();
+            }
+
+            if (cardsList) {
+                const card = cardsList.querySelector(`[data-id="${normalizedKey}"]`);
+                if (card) {
+                    if (selectedCard === card) {
+                        clearSelection();
+                        showEmptyDetail('backward', { animate: true });
+                    }
+                    card.remove();
+                }
+            }
+
+            loadPage(Math.max(1, state.page || 1), false, { preserveEmptyDetail: true });
         }
 
         let activePanel = panel1;

@@ -121,6 +121,12 @@ class EventCatalog
             'level'    => 'info',
             'message'  => '{{actor_name}} actualizó los comerciales asignados de {{context.client_name}}.',
         ],
+        'client.deleted' => [
+            'label'    => 'Cliente eliminado',
+            'category' => 'user',
+            'level'    => 'warning',
+            'message'  => '{{actor_name}} eliminó al cliente {{context.client_name}}.',
+        ],
         'auth.password_recovery.invalid_user' => [
             'label'    => 'Solicitud de restablecimiento sin cuenta',
             'category' => 'auth',
