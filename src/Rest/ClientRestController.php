@@ -371,7 +371,9 @@ class ClientRestController
 
     public static function delete_user(WP_REST_Request $request): WP_REST_Response
     {
+        error_log('[GO][ClientDelete] Init delete_user handler');
         if (! self::permissions_check($request)) {
+            error_log('[GO][ClientDelete] permissions_check failed');
             return new WP_REST_Response(
                 ['message' => __('Acceso denegado', 'garantias-online-360vo')],
                 403
@@ -379,7 +381,9 @@ class ClientRestController
         }
 
         $user_id = (int) $request->get_param('id');
+        error_log(sprintf('[GO][ClientDelete] Request user_id=%d', $user_id));
         if ($user_id <= 0) {
+            error_log('[GO][ClientDelete] Invalid user id');
             return new WP_REST_Response(
                 ['message' => __('Identificador de usuario no válido.', 'garantias-online-360vo')],
                 400
@@ -387,7 +391,9 @@ class ClientRestController
         }
 
         $current_user_id = get_current_user_id();
+        error_log(sprintf('[GO][ClientDelete] Current user id=%d', $current_user_id));
         if ($current_user_id > 0 && $current_user_id === $user_id) {
+            error_log('[GO][ClientDelete] Attempt to delete own account, blocking');
             return new WP_REST_Response(
                 ['message' => __('No puedes eliminar tu propio usuario desde este panel.', 'garantias-online-360vo')],
                 400
@@ -396,6 +402,7 @@ class ClientRestController
 
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
+            error_log('[GO][ClientDelete] User not found');
             return new WP_REST_Response(
                 ['message' => __('El usuario indicado no existe.', 'garantias-online-360vo')],
                 404
@@ -403,6 +410,7 @@ class ClientRestController
         }
 
         $guarantees = self::count_guarantees($user_id);
+        error_log(sprintf('[GO][ClientDelete] Guarantees count for user_id=%d: %d', $user_id, $guarantees));
         if ($guarantees > 0) {
             $message = sprintf(
                 __('Este usuario tiene %s garantías. No puedes eliminarlo desde aquí, contacta con el Departamento de Desarrollo y Programación', 'garantias-online-360vo'),
@@ -422,11 +430,18 @@ class ClientRestController
         $current_user     = wp_get_current_user();
         $current_user_obj = $current_user instanceof WP_User ? $current_user : null;
         $current_roles    = array_map('strval', (array) ($current_user_obj?->roles ?? []));
+        error_log(sprintf('[GO][ClientDelete] Current user roles: %s', wp_json_encode($current_roles)));
         $can_manage_clients = in_array('go_director_comercial', $current_roles, true)
             || in_array('go_garantias', $current_roles, true)
             || current_user_can('manage_options');
+        error_log(sprintf('[GO][ClientDelete] can_manage_clients=%s delete_user_cap=%s delete_users_cap=%s',
+            $can_manage_clients ? 'true' : 'false',
+            current_user_can('delete_user', $user_id) ? 'true' : 'false',
+            current_user_can('delete_users') ? 'true' : 'false'
+        ));
 
         if (! $can_manage_clients && ! current_user_can('delete_user', $user_id) && ! current_user_can('delete_users')) {
+            error_log('[GO][ClientDelete] Capability check failed for deletion');
             return new WP_REST_Response(
                 ['message' => __('No tienes permisos para eliminar este usuario.', 'garantias-online-360vo')],
                 403
@@ -441,11 +456,17 @@ class ClientRestController
                     require_once ABSPATH . 'wp-admin/includes/user.php';
                 }
 
-                return (bool) wp_delete_user($user_id_to_delete);
+                $result = (bool) wp_delete_user($user_id_to_delete);
+                error_log(sprintf('[GO][ClientDelete] wp_delete_user result for %d: %s', $user_id_to_delete, $result ? 'true' : 'false'));
+
+                return $result;
             }
         );
 
+        error_log(sprintf('[GO][ClientDelete] Final deletion result for user_id=%d: %s', $user_id, $deleted ? 'true' : 'false'));
+
         if (! $deleted) {
+            error_log('[GO][ClientDelete] Deletion failed after attempting wp_delete_user');
             return new WP_REST_Response(
                 ['message' => __('No se ha podido eliminar el usuario.', 'garantias-online-360vo')],
                 500
@@ -3970,6 +3991,11 @@ class ClientRestController
     {
         $filters = [];
 
+        error_log(sprintf('[GO][ClientDelete] run_with_delete_capabilities start: can_manage_clients=%s target_user_id=%d',
+            $can_manage_clients ? 'true' : 'false',
+            $user_id
+        ));
+
         if ($can_manage_clients) {
             $filters[] = static function (array $allcaps, array $caps = [], array $args = [], $user = null): array {
                 $allcaps['delete_users'] = true;
@@ -3997,12 +4023,17 @@ class ClientRestController
 
         try {
             /** @psalm-suppress InvalidArgument */
-            return (bool) $callback($user_id);
+            $result = (bool) $callback($user_id);
+            error_log(sprintf('[GO][ClientDelete] run_with_delete_capabilities callback result: %s', $result ? 'true' : 'false'));
+
+            return $result;
         } finally {
             foreach ($filters as $filter) {
                 remove_filter('user_has_cap', $filter, 10);
                 remove_filter('map_meta_cap', $filter, 10);
             }
+
+            error_log('[GO][ClientDelete] run_with_delete_capabilities filters cleaned');
         }
     }
 }
