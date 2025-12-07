@@ -32,6 +32,9 @@ class ClientRestController
     public const NAMESPACE = 'go/v1';
     public const REST_BASE = 'clientes';
 
+    private const IVA_PERCENTAGE = 21.0;
+    private const IVA_INCLUDED_DISCOUNT = (self::IVA_PERCENTAGE / (100 + self::IVA_PERCENTAGE)) * 100;
+
     private const QUICK_FILTERS = [
         'pendiente_pago',
         'sin_finalizar',
@@ -326,7 +329,7 @@ class ClientRestController
 
         $route = (string) $request->get_route();
         if ($method === 'POST' || $method === 'PUT' || $method === 'PATCH') {
-            if (preg_match('#/clientes/\d+/commercials/?$#', $route)) {
+            if (preg_match('#/clientes/\d+/(commercials|offers)/?$#', $route)) {
                 return true;
             }
         }
@@ -622,7 +625,7 @@ class ClientRestController
                     );
                 }
             } elseif ($is_tax_included) {
-                $discount = 0.0;
+                $discount = self::IVA_INCLUDED_DISCOUNT;
             }
 
             $caducidad_iso = isset($offer['caducidad_iso']) ? sanitize_text_field($offer['caducidad_iso']) : '';
@@ -3060,7 +3063,7 @@ class ClientRestController
 
             $discount = isset($offer['porcentaje_descuento']) ? (float) $offer['porcentaje_descuento'] : 0.0;
             if ($type_value === 'iva_incluido') {
-                $discount = 0.0;
+                $discount = self::IVA_INCLUDED_DISCOUNT;
             }
 
             $meta = null;
@@ -3281,7 +3284,7 @@ class ClientRestController
 
             $discount = null;
             if ($type_value === 'iva_incluido') {
-                $discount = 0.0;
+                $discount = self::IVA_INCLUDED_DISCOUNT;
             } elseif ($type_value !== 'sin_suplementos') {
                 $raw_discount = $offer['porcentaje_descuento'] ?? null;
                 if ($raw_discount !== null && $raw_discount !== '') {
