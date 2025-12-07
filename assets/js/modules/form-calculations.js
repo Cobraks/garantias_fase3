@@ -44,6 +44,7 @@ import { setupPlanSelection } from "./plan-selection.js";
 const THRESHOLD_REFRESH_MAX_AGE = 15 * 1000;
 const THRESHOLD_REFRESH_MIN_INTERVAL = 3000;
 let lastThresholdRefreshTs = 0;
+const IVA_INCLUIDO_DISCOUNT = IVA_PORCENTAJE / (100 + IVA_PORCENTAJE);
 
 async function ensureFreshThresholdMeta() {
         const ofertas = getCurrentOfertas();
@@ -1642,7 +1643,7 @@ async function getDescuentosAplicables(
         (getCurrentOfertas() || []).forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
                 const esIvaIncluido = oferta?.tipo_oferta === "iva_incluido";
-                if (esSinSuplementos || esIvaIncluido) return;
+                if (esSinSuplementos) return;
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
@@ -1651,6 +1652,20 @@ async function getDescuentosAplicables(
                 if (!incluirCaducadas && caducada) return;
 
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (esIvaIncluido) {
+                        const ivaDiscountPct = Number(oferta.porcentaje_descuento);
+                        const porcentajeAplicado =
+                                Number.isFinite(ivaDiscountPct) && ivaDiscountPct > 0
+                                        ? ivaDiscountPct / 100
+                                        : IVA_INCLUIDO_DISCOUNT;
+                        descuentos.push({
+                                porcentaje: porcentajeAplicado,
+                                nombre: oferta.nombre,
+                                caducada,
+                        });
+                        return;
+                }
 
                 if (
                         specialPriceActive &&
@@ -1724,7 +1739,7 @@ function getDescuentosAplicablesSync(
         ofertas.forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
                 const esIvaIncluido = oferta?.tipo_oferta === "iva_incluido";
-                if (esSinSuplementos || esIvaIncluido) return;
+                if (esSinSuplementos) return;
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
@@ -1732,6 +1747,20 @@ function getDescuentosAplicablesSync(
                         oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
                 if (!incluirCaducadas && caducada) return;
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (esIvaIncluido) {
+                        const ivaDiscountPct = Number(oferta.porcentaje_descuento);
+                        const porcentajeAplicado =
+                                Number.isFinite(ivaDiscountPct) && ivaDiscountPct > 0
+                                        ? ivaDiscountPct / 100
+                                        : IVA_INCLUIDO_DISCOUNT;
+                        descuentos.push({
+                                porcentaje: porcentajeAplicado,
+                                nombre: oferta.nombre,
+                                caducada,
+                        });
+                        return;
+                }
 
                 if (
                         specialPriceActive &&
@@ -1824,9 +1853,7 @@ async function getOfertaIvaIncluidoAplicable(modalidad, { incluirCaducadas = fal
 }
 
 function getIvaPercentageForModalidad(modalidad, { incluirCaducadas = false } = {}) {
-        return getOfertaIvaIncluidoAplicableSync(modalidad, { incluirCaducadas })
-                ? 0
-                : IVA_PORCENTAJE;
+        return IVA_PORCENTAJE;
 }
 
 // --------- RENDERIZADO DE RECARGOS Y DESCUENTOS ---------
