@@ -256,11 +256,17 @@ async function buildSummaryHTML() {
                 const breakdown = calcularRecargos(modalidad, valoresForm);
 
                 const descuentos = await getDescuentosAplicables(modalidad);
-                let multiplicador = 1;
-                descuentos.forEach((d) => {
-                        multiplicador *= 1 - d.porcentaje;
-                });
+                const descuentosPorcentaje = descuentos.filter(
+                        (d) => d?.tipo !== "iva_incluido"
+                );
+                const multiplicador = descuentosPorcentaje.reduce(
+                        (acc, d) => acc * (1 - d.porcentaje),
+                        1
+                );
                 const descuentoTotal = 1 - multiplicador;
+                const aplicaIvaIncluido = descuentos.some(
+                        (d) => d?.tipo === "iva_incluido"
+                );
 
                 const ofertaSinSuplementos = await getOfertaSinSuplementosAplicable(modalidad);
                 const sinSuplementos =
@@ -284,14 +290,21 @@ async function buildSummaryHTML() {
                                 ? Math.round(precioAntesDescuento * (1 - descuentoTotal) * 100) / 100
                                 : null;
 
+                const precioConIvaAntesDescuento =
+                        precioFinal !== null
+                                ? Math.round(precioFinal * (1 + ivaAplicado / 100) * 100) / 100
+                                : null;
                 const iva =
                         precioFinal !== null
                                 ? Math.round(precioFinal * (ivaAplicado / 100) * 100) / 100
                                 : null;
-
+                const descuentoIvaIncluido =
+                        aplicaIvaIncluido && iva !== null ? iva : 0;
                 const totalConIva =
-                        precioFinal !== null && iva !== null
-                                ? Math.round((precioFinal + iva) * 100) / 100
+                        precioConIvaAntesDescuento !== null
+                                ? Math.round(
+                                          (precioConIvaAntesDescuento - descuentoIvaIncluido) * 100
+                                  ) / 100
                                 : null;
 
                 const summaryItems = [];
@@ -377,8 +390,10 @@ async function buildSummaryHTML() {
 
                 if (descuentos.length) {
                         for (const desc of descuentos) {
-                                const descuentoEuros =
-                                        precioAntesDescuento !== null
+                                const esIvaIncluido = desc?.tipo === "iva_incluido";
+                                const descuentoEuros = esIvaIncluido
+                                        ? descuentoIvaIncluido
+                                        : precioAntesDescuento !== null
                                                 ? Math.round(precioAntesDescuento * desc.porcentaje * 100) / 100
                                                 : null;
                                 const nombre = desc.nombre || "";
@@ -394,13 +409,19 @@ async function buildSummaryHTML() {
                                         tipo: "descuento",
                                         importe: descuentoEuros !== null ? descuentoEuros : "",
                                         porcentaje:
-                                                typeof desc.porcentaje === "number"
-                                                        ? Math.round(desc.porcentaje * 10000) / 100
-                                                        : "",
+                                                esIvaIncluido || typeof desc.porcentaje !== "number"
+                                                        ? ""
+                                                        : Math.round(desc.porcentaje * 10000) / 100,
                                         razon: nombre,
                                         orden: orden++,
                                         destacado: false,
-                                        base_calculo: precioAntesDescuento !== null ? precioAntesDescuento : "",
+                                        base_calculo: esIvaIncluido
+                                                ? precioConIvaAntesDescuento !== null
+                                                        ? precioConIvaAntesDescuento
+                                                        : ""
+                                                : precioAntesDescuento !== null
+                                                        ? precioAntesDescuento
+                                                        : "",
                                 });
                         }
                 }
