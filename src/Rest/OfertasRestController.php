@@ -15,6 +15,8 @@ class OfertasRestController
 {
     const NAMESPACE = 'go/v1';
     const REST_BASE = 'ofertas-usuario';
+    private const IVA_PERCENTAGE = 21.0;
+    private const IVA_INCLUDED_DISCOUNT = (self::IVA_PERCENTAGE / (100 + self::IVA_PERCENTAGE)) * 100;
 
     public static function register_routes()
     {
@@ -111,7 +113,7 @@ class OfertasRestController
             }
 
             if ($es_iva_incluido) {
-                $porcentaje_descuento = 0.0;
+                $porcentaje_descuento = self::IVA_INCLUDED_DISCOUNT;
             }
 
             $meses = self::sanitize_offer_months($oferta['meses'] ?? []);
