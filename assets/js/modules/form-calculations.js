@@ -44,7 +44,6 @@ import { setupPlanSelection } from "./plan-selection.js";
 const THRESHOLD_REFRESH_MAX_AGE = 15 * 1000;
 const THRESHOLD_REFRESH_MIN_INTERVAL = 3000;
 let lastThresholdRefreshTs = 0;
-const IVA_INCLUIDO_DISCOUNT = IVA_PORCENTAJE / (100 + IVA_PORCENTAJE);
 
 async function ensureFreshThresholdMeta() {
         const ofertas = getCurrentOfertas();
@@ -1654,15 +1653,11 @@ async function getDescuentosAplicables(
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
 
                 if (esIvaIncluido) {
-                        const ivaDiscountPct = Number(oferta.porcentaje_descuento);
-                        const porcentajeAplicado =
-                                Number.isFinite(ivaDiscountPct) && ivaDiscountPct > 0
-                                        ? ivaDiscountPct / 100
-                                        : IVA_INCLUIDO_DISCOUNT;
                         descuentos.push({
-                                porcentaje: porcentajeAplicado,
+                                porcentaje: 0,
                                 nombre: oferta.nombre,
                                 caducada,
+                                tipo: "iva_incluido",
                         });
                         return;
                 }
@@ -1694,6 +1689,7 @@ async function getDescuentosAplicables(
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
                         caducada,
+                        tipo: oferta.tipo_oferta,
                 });
         });
 
@@ -1716,6 +1712,7 @@ async function getDescuentoTotal(modalidad) {
         const descuentos = await getDescuentosAplicables(modalidad);
         let multiplicador = 1;
         descuentos.forEach((d) => {
+                if (d?.tipo === "iva_incluido") return;
                 multiplicador *= 1 - d.porcentaje;
         });
         return 1 - multiplicador;
@@ -1749,15 +1746,11 @@ function getDescuentosAplicablesSync(
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
 
                 if (esIvaIncluido) {
-                        const ivaDiscountPct = Number(oferta.porcentaje_descuento);
-                        const porcentajeAplicado =
-                                Number.isFinite(ivaDiscountPct) && ivaDiscountPct > 0
-                                        ? ivaDiscountPct / 100
-                                        : IVA_INCLUIDO_DISCOUNT;
                         descuentos.push({
-                                porcentaje: porcentajeAplicado,
+                                porcentaje: 0,
                                 nombre: oferta.nombre,
                                 caducada,
+                                tipo: "iva_incluido",
                         });
                         return;
                 }
@@ -1787,6 +1780,7 @@ function getDescuentosAplicablesSync(
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
                         caducada,
+                        tipo: oferta.tipo_oferta,
                 });
         });
         return descuentos;
@@ -2461,6 +2455,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const descuentos = getDescuentosAplicablesSync(m);
                         let multiplicador = 1;
                         descuentos.forEach((d) => {
+                                if (d?.tipo === "iva_incluido") return;
                                 multiplicador *= 1 - d.porcentaje;
                         });
                         const descuentoTotalSync = 1 - multiplicador;
@@ -2473,6 +2468,9 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const factorAplicado = aplicaSinSuplementos ? 1 : factorRecargos;
                         const tieneRecargos = breakdown.recargoTotal > 0;
                         const ivaAplicado = getIvaPercentageForModalidad(m);
+                        const ofertaIvaIncluido =
+                                getOfertaIvaIncluidoAplicableSyncFromState(m) || null;
+                        const aplicaIvaIncluido = !!ofertaIvaIncluido;
 
                         const precioConRecargos =
                                 precioBase !== null
@@ -2496,12 +2494,24 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                                   precioAntesDescuento * (1 - descuentoTotalSync)
                                           )
                                         : null;
-                        const precioIVA =
+                        const precioConIvaAntesDescuento =
                                 precioFinal !== null
-                                        ? redondearEuros(precioFinal * (1 + ivaAplicado / 100))
+                                        ? redondearEuros(
+                                                  precioFinal * (1 + ivaAplicado / 100),
+                                          )
                                         : null;
                         const ivaSolo =
-                                precioFinal !== null ? redondearEuros(precioIVA - precioFinal) : null;
+                                precioFinal !== null
+                                        ? redondearEuros(precioConIvaAntesDescuento - precioFinal)
+                                        : null;
+                        const descuentoIvaIncluido =
+                                aplicaIvaIncluido && ivaSolo !== null ? ivaSolo : 0;
+                        const precioIVA =
+                                precioConIvaAntesDescuento !== null
+                                        ? redondearEuros(
+                                                  precioConIvaAntesDescuento - descuentoIvaIncluido,
+                                          )
+                                        : null;
 
                         const puedeRevertirDescuento =
                                 descuentoTotalSync > 0 &&
@@ -2534,6 +2544,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                                         conIVA: precioSinEspecialIVA,
                                                 };
                                         }
+                                }
+                                if (aplicaIvaIncluido && precioConIvaAntesDescuento !== null) {
+                                        return {
+                                                sinIVA: precioFinal,
+                                                conIVA: precioConIvaAntesDescuento,
+                                        };
                                 }
                                 if (aplicaSinSuplementos && tieneRecargos && precioConRecargos !== null) {
                                         return {
