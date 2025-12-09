@@ -11,6 +11,14 @@ export const AVAILABLE_DOCS = [
                 icon: "pdf",
         },
         {
+                key: "proforma",
+                field: "proforma_url",
+                routeType: "proforma",
+                listLabel: "Factura proforma",
+                successLabel: "Descargar factura proforma",
+                icon: "pdf",
+        },
+        {
                 key: "cobertura",
                 field: "cobertura_url",
                 routeType: "cobertura",
