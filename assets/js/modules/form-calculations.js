@@ -820,6 +820,145 @@ function getSpecialLimitEstilo(limite) {
         return estilo;
 }
 
+const BREAKDOWN_LIMIT_SETS = [
+        {
+                keys: ["essential normal"],
+                limits: [
+                        { label: "Motor", amount: 1200 },
+                        { label: "Alimentación y encendido", amount: 400 },
+                        { label: "Diferencial", amount: 400 },
+                        { label: "Sistema de refrigeración", amount: 400 },
+                        { label: "Sistema eléctrico / electrónico", amount: 400 },
+                        { label: "Sistema de frenos", amount: 400 },
+                ],
+        },
+        {
+                keys: ["essential particulares"],
+                limits: [
+                        { label: "Motor", amount: 1200 },
+                        { label: "Alimentación y encendido", amount: 400 },
+                        { label: "Transmisión", amount: 700 },
+                        { label: "Diferencial", amount: 400 },
+                        { label: "Sistema de refrigeración", amount: 400 },
+                        { label: "Sistema eléctrico / electrónico", amount: 400 },
+                        { label: "Dirección", amount: 400 },
+                        { label: "Sistema de frenos", amount: 400 },
+                        { label: "Aire acondicionado, climatizador y calefacción", amount: 400 },
+                ],
+        },
+        {
+                keys: ["essential plus particulares"],
+                limits: [
+                        { label: "Motor", amount: 2100 },
+                        { label: "Alimentación y encendido", amount: 600 },
+                        { label: "Transmisión", amount: 12000 },
+                        { label: "Diferencial", amount: 600 },
+                        { label: "Sistema de refrigeración", amount: 600 },
+                        { label: "Sistema eléctrico / electrónico", amount: 600 },
+                        { label: "Dirección", amount: 600 },
+                        { label: "Sistema de frenos", amount: 600 },
+                        { label: "Aire acondicionado, climatizador y calefacción", amount: 600 },
+                ],
+        },
+        {
+                keys: ["exclusive particulares"],
+                limits: [
+                        { label: "Motor", amount: 5000 },
+                        { label: "Transmisión", amount: 2200 },
+                        { label: "Averías eléctricas / electrónicas", amount: 1000 },
+                        { label: "Resto de averías", amount: 1000 },
+                ],
+        },
+        {
+                keys: [
+                        "quad nuevo exclusive",
+                        "quad ocasion confort",
+                        "moto ocasion confort",
+                        "moto nueva exclusive",
+                ],
+                limits: [
+                        { label: "Sistema eléctrico / electrónico", amount: 400 },
+                        { label: "Resto de averías", amount: 1000 },
+                ],
+        },
+];
+
+function normalizePlanKey(value) {
+        if (!value) return "";
+        try {
+                return String(value)
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(/[\u0300-\u036f]/g, "")
+                        .replace(/\s+/g, " ")
+                        .trim();
+        } catch (e) {
+                return String(value).toLowerCase().replace(/\s+/g, " ").trim();
+        }
+}
+
+function getBreakdownLimitsForModalidad(modalidad) {
+        if (!modalidad || typeof modalidad !== "object") return null;
+
+        const candidates = [
+                modalidad?.acf?.detalles_modalidad?.nombre_mostrar,
+                modalidad?.title,
+                modalidad?.post_title,
+                modalidad?.post_name,
+        ]
+                .map(normalizePlanKey)
+                .filter(Boolean);
+
+        if (!candidates.length) return null;
+
+        for (const set of BREAKDOWN_LIMIT_SETS) {
+                if (!Array.isArray(set.keys)) continue;
+                const hasMatch = set.keys.some((key) => {
+                        const normalized = normalizePlanKey(key);
+                        return normalized && candidates.includes(normalized);
+                });
+                if (hasMatch && Array.isArray(set.limits) && set.limits.length) {
+                        return set.limits;
+                }
+        }
+
+        return null;
+}
+
+function renderBreakdownLimits(limits) {
+        if (!Array.isArray(limits) || !limits.length) return "";
+
+        const items = limits
+                .map(({ label, amount }) => {
+                        const safeLabel = escapeHtml(label || "");
+                        const valor = Number(amount);
+                        const valorTexto = Number.isFinite(valor) ? formatEuroValue(valor) : "";
+                        if (!safeLabel && !valorTexto) return "";
+
+                        const labelSpan = safeLabel
+                                ? `<span class="form__plan-conditions-item-label">${safeLabel}</span>`
+                                : "";
+                        const valueSpan = valorTexto
+                                ? `<span class="form__plan-conditions-item-value form__plan-conditions-item-value--accent">${escapeHtml(
+                                          valorTexto
+                                  )}</span>`
+                                : "";
+
+                        return `<li class="form__plan-conditions-item">${labelSpan}${valueSpan}</li>`;
+                })
+                .filter(Boolean)
+                .join("");
+
+        if (!items) return "";
+
+        return `
+        <div class="form__plan-conditions form__plan-conditions--breakdown">
+                <div class="form__plan-conditions-title">Límites por avería</div>
+                <ul class="form__plan-conditions-list" role="list">${items}</ul>
+        </div>
+    `;
+}
+
 function getLimitItemClassNames(limite) {
         const classes = ["form__plan-conditions-item"];
         const estilo = getOptionValue(limite?.estilo_limite);
@@ -1350,27 +1489,30 @@ function renderSpecialLimits(descInfo, valoresForm, subtitleHtml = "") {
     `;
 }
 
-function renderPlanDescription(descInfo, valoresForm) {
+function renderPlanDescription(descInfo, valoresForm, modalidad = null) {
         const tipo = getOptionValue(descInfo?.tipo_descripcion) || "descripcion";
         const subtitleHtml = getDescriptionSubtitleHtml(descInfo);
+        const breakdownLimits = getBreakdownLimitsForModalidad(modalidad);
+        const breakdownHtml = renderBreakdownLimits(breakdownLimits);
 
         if (tipo === "listado_ventajas") {
                 const listadoHtml = renderVentajasList(descInfo);
-                if (!listadoHtml) return subtitleHtml;
-                return `${subtitleHtml}${listadoHtml}`;
+                const base = listadoHtml ? `${subtitleHtml}${listadoHtml}` : subtitleHtml;
+                return `${base}${breakdownHtml}`;
         }
 
         if (tipo === "limites") {
                 if (isTruthy(descInfo?.condiciones_especiales)) {
                         const especiales = renderSpecialLimits(descInfo, valoresForm, subtitleHtml);
-                        if (especiales) return especiales;
+                        if (especiales) return `${especiales}${breakdownHtml}`;
                 }
-                return renderStandardLimits(descInfo, subtitleHtml);
+                const limitesHtml = renderStandardLimits(descInfo, subtitleHtml);
+                return `${limitesHtml}${breakdownHtml}`;
         }
 
         const descripcion = descInfo?.descripcion_garantia || "";
-        if (!descripcion && !subtitleHtml) return "";
-        return `${subtitleHtml}${descripcion}`;
+        if (!descripcion && !subtitleHtml) return breakdownHtml;
+        return `${subtitleHtml}${descripcion}${breakdownHtml}`;
 }
 
 // --------- Condiciones / comparadores ---------
@@ -1642,7 +1784,7 @@ async function getDescuentosAplicables(
         (getCurrentOfertas() || []).forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
                 const esIvaIncluido = oferta?.tipo_oferta === "iva_incluido";
-                if (esSinSuplementos || esIvaIncluido) return;
+                if (esSinSuplementos) return;
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
@@ -1651,6 +1793,16 @@ async function getDescuentosAplicables(
                 if (!incluirCaducadas && caducada) return;
 
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (esIvaIncluido) {
+                        descuentos.push({
+                                porcentaje: 0,
+                                nombre: oferta.nombre,
+                                caducada,
+                                tipo: "iva_incluido",
+                        });
+                        return;
+                }
 
                 if (
                         specialPriceActive &&
@@ -1679,6 +1831,7 @@ async function getDescuentosAplicables(
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
                         caducada,
+                        tipo: oferta.tipo_oferta,
                 });
         });
 
@@ -1701,6 +1854,7 @@ async function getDescuentoTotal(modalidad) {
         const descuentos = await getDescuentosAplicables(modalidad);
         let multiplicador = 1;
         descuentos.forEach((d) => {
+                if (d?.tipo === "iva_incluido") return;
                 multiplicador *= 1 - d.porcentaje;
         });
         return 1 - multiplicador;
@@ -1724,7 +1878,7 @@ function getDescuentosAplicablesSync(
         ofertas.forEach((oferta) => {
                 const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
                 const esIvaIncluido = oferta?.tipo_oferta === "iva_incluido";
-                if (esSinSuplementos || esIvaIncluido) return;
+                if (esSinSuplementos) return;
                 if (!oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
                         return;
                 if (oferta.estado === false) return;
@@ -1732,6 +1886,16 @@ function getDescuentosAplicablesSync(
                         oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;
                 if (!incluirCaducadas && caducada) return;
                 if (!ofertaAplicaAmodalidad(oferta, modalidad)) return;
+
+                if (esIvaIncluido) {
+                        descuentos.push({
+                                porcentaje: 0,
+                                nombre: oferta.nombre,
+                                caducada,
+                                tipo: "iva_incluido",
+                        });
+                        return;
+                }
 
                 if (
                         specialPriceActive &&
@@ -1758,6 +1922,7 @@ function getDescuentosAplicablesSync(
                         porcentaje: oferta.porcentaje_descuento / 100,
                         nombre: oferta.nombre,
                         caducada,
+                        tipo: oferta.tipo_oferta,
                 });
         });
         return descuentos;
@@ -1824,9 +1989,7 @@ async function getOfertaIvaIncluidoAplicable(modalidad, { incluirCaducadas = fal
 }
 
 function getIvaPercentageForModalidad(modalidad, { incluirCaducadas = false } = {}) {
-        return getOfertaIvaIncluidoAplicableSync(modalidad, { incluirCaducadas })
-                ? 0
-                : IVA_PORCENTAJE;
+        return IVA_PORCENTAJE;
 }
 
 // --------- RENDERIZADO DE RECARGOS Y DESCUENTOS ---------
@@ -2381,7 +2544,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
 			const estilos = descInfo?.estilos || {};
 
 			const title = detalles.nombre_mostrar || m.title || "";
-                        const description = renderPlanDescription(descInfo, valoresForm);
+                        const description = renderPlanDescription(descInfo, valoresForm, m);
 			const pdf = detalles.documentos?.coberturas?.url || null;
 
 			let badge = "";
@@ -2434,6 +2597,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const descuentos = getDescuentosAplicablesSync(m);
                         let multiplicador = 1;
                         descuentos.forEach((d) => {
+                                if (d?.tipo === "iva_incluido") return;
                                 multiplicador *= 1 - d.porcentaje;
                         });
                         const descuentoTotalSync = 1 - multiplicador;
@@ -2446,6 +2610,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         const factorAplicado = aplicaSinSuplementos ? 1 : factorRecargos;
                         const tieneRecargos = breakdown.recargoTotal > 0;
                         const ivaAplicado = getIvaPercentageForModalidad(m);
+                        const ofertaIvaIncluido =
+                                getOfertaIvaIncluidoAplicableSyncFromState(m) || null;
+                        const aplicaIvaIncluido = !!ofertaIvaIncluido;
+                        const preciosConIVAPlan = aplicaIvaIncluido ? true : preciosConIVA;
 
                         const precioConRecargos =
                                 precioBase !== null
@@ -2469,12 +2637,24 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                                   precioAntesDescuento * (1 - descuentoTotalSync)
                                           )
                                         : null;
-                        const precioIVA =
+                        const precioConIvaAntesDescuento =
                                 precioFinal !== null
-                                        ? redondearEuros(precioFinal * (1 + ivaAplicado / 100))
+                                        ? redondearEuros(
+                                                  precioFinal * (1 + ivaAplicado / 100),
+                                          )
                                         : null;
                         const ivaSolo =
-                                precioFinal !== null ? redondearEuros(precioIVA - precioFinal) : null;
+                                precioFinal !== null
+                                        ? redondearEuros(precioConIvaAntesDescuento - precioFinal)
+                                        : null;
+                        const descuentoIvaIncluido =
+                                aplicaIvaIncluido && ivaSolo !== null ? ivaSolo : 0;
+                        const precioIVA =
+                                precioConIvaAntesDescuento !== null
+                                        ? redondearEuros(
+                                                  precioConIvaAntesDescuento - descuentoIvaIncluido,
+                                          )
+                                        : null;
 
                         const puedeRevertirDescuento =
                                 descuentoTotalSync > 0 &&
@@ -2507,6 +2687,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                                                         conIVA: precioSinEspecialIVA,
                                                 };
                                         }
+                                }
+                                if (aplicaIvaIncluido && precioConIvaAntesDescuento !== null) {
+                                        return {
+                                                sinIVA: precioFinal,
+                                                conIVA: precioConIvaAntesDescuento,
+                                        };
                                 }
                                 if (aplicaSinSuplementos && tieneRecargos && precioConRecargos !== null) {
                                         return {
@@ -2591,7 +2777,7 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                     <div class="form__plan-price-wrapper">
 						${(() => {
                                                         if (precioAnteriorInfo) {
-                                                                const valorAnterior = preciosConIVA
+                                                                const valorAnterior = preciosConIVAPlan
                                                                         ? precioAnteriorInfo.conIVA
                                                                         : precioAnteriorInfo.sinIVA;
                                                                 if (valorAnterior != null) {
@@ -2605,10 +2791,10 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         <span class="plan-price-skeleton"></span>
                         <span class="form__plan-price-text">
                             <span class="plan-price-value" style="display:${
-                                                                                                                        preciosConIVA ? "inline" : "none"
+                                                                                                                        preciosConIVAPlan ? "inline" : "none"
                                                                                                                 }">${priceConIva}</span>
                             <span class="plan-price-value-noiva" style="display:${
-                                                                                                                        preciosConIVA ? "none" : "inline"
+                                                                                                                        preciosConIVAPlan ? "none" : "inline"
                                                                                                                 }">${priceSinIva}</span>
                             <span class="form__plan-price-euro" style="display:${
                                                                                                                         euroDisplay
@@ -2616,12 +2802,12 @@ function renderPlans(modalidades, valoresForm, opciones = {}) {
                         </span>
                     </div>
                     <div class="form__plan-iva" style="display:${
-                                                                                        preciosConIVA && !isConsultar
+                                                                                        preciosConIVAPlan && !isConsultar
                                                                                                 ? "block"
                                                                                                 : "none"
                                                                                 }">IVA incluido</div>
                     <div class="form__plan-iva-no" style="display:${
-                                                                                        !preciosConIVA && !isConsultar
+                                                                                        !preciosConIVAPlan && !isConsultar
                                                                                                 ? "block"
                                                                                                 : "none"
                                                                                 }">${priceIvaOnly}</div>

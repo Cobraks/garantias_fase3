@@ -170,7 +170,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $has_client_manager_role = in_array('go_director_comercial', $current_roles, true)
         || in_array('go_garantias', $current_roles, true);
     $can_assign_commercials = $is_admin || $has_client_manager_role;
-    $can_manage_offers = $is_admin;
+    $can_manage_offers = $is_admin || $has_client_manager_role;
     $can_manage_sepa = $is_admin;
     $can_view_admin_link = $is_admin;
     $can_delete_users = $is_admin || $has_client_manager_role;
