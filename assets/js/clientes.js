@@ -5177,6 +5177,17 @@
                         const numeric = Number(raw.porcentaje_descuento);
                         discount = Number.isFinite(numeric) ? String(numeric) : '';
                     }
+                    const thresholdValue = Number(raw?.cantidad_garantias_mes);
+                    const windowValue = Number(raw?.numero_garantias_con_descuento);
+                    const months = Array.isArray(raw?.meses)
+                        ? raw.meses.reduce((acc, value) => {
+                            const numeric = Number(value);
+                            if (Number.isFinite(numeric) && numeric > 0) {
+                                acc.push(numeric);
+                            }
+                            return acc;
+                        }, [])
+                        : [];
                     const selection = [];
                     if (Array.isArray(raw?.seleccion_modalidad)) {
                         raw.seleccion_modalidad.forEach((value) => {
@@ -5197,6 +5208,9 @@
                         caducidad_iso: isoDate,
                         caducidad_oferta: localDate,
                         seleccion_modalidad: selection,
+                        cantidad_garantias_mes: Number.isFinite(thresholdValue) && thresholdValue > 0 ? String(thresholdValue) : '',
+                        numero_garantias_con_descuento: Number.isFinite(windowValue) && windowValue > 0 ? String(windowValue) : '1',
+                        meses: months,
                         estado: raw?.estado !== false,
                         errors: {},
                         dom: {},
@@ -5827,6 +5841,52 @@
                 const discountFieldObj = createFieldElement(discountId, strings.manageOffersDiscountLabel || 'Porcentaje de descuento', discountInput);
                 grid.appendChild(discountFieldObj.field);
 
+                const thresholdId = uniqueId('offer-threshold');
+                const thresholdInput = document.createElement('input');
+                thresholdInput.type = 'number';
+                thresholdInput.min = '1';
+                thresholdInput.step = '1';
+                thresholdInput.id = thresholdId;
+                thresholdInput.className = 'client-offer-card__input';
+                thresholdInput.placeholder = '';
+                thresholdInput.value = offer.cantidad_garantias_mes || '';
+                const thresholdFieldObj = createFieldElement(
+                    thresholdId,
+                    strings.manageOffersThresholdLabel || '¿Cada cuántas garantías?',
+                    thresholdInput,
+                );
+                grid.appendChild(thresholdFieldObj.field);
+
+                const windowId = uniqueId('offer-window');
+                const windowInput = document.createElement('input');
+                windowInput.type = 'number';
+                windowInput.min = '1';
+                windowInput.step = '1';
+                windowInput.id = windowId;
+                windowInput.className = 'client-offer-card__input';
+                windowInput.placeholder = '';
+                windowInput.value = offer.numero_garantias_con_descuento || '1';
+                const windowFieldObj = createFieldElement(
+                    windowId,
+                    strings.manageOffersWindowLabel || 'Nº Garantías con descuento',
+                    windowInput,
+                );
+                grid.appendChild(windowFieldObj.field);
+
+                const monthsId = uniqueId('offer-months');
+                const monthsContainer = document.createElement('div');
+                monthsContainer.className = 'client-offer-card__modalities';
+                monthsContainer.id = monthsId;
+                const monthsList = document.createElement('div');
+                monthsList.className = 'client-offer-card__modalities-list';
+                monthsContainer.appendChild(monthsList);
+                const monthsFieldObj = createFieldElement(
+                    monthsId,
+                    strings.manageOffersMonthsLabel || 'Duración (meses)',
+                    monthsContainer,
+                );
+                grid.appendChild(monthsFieldObj.field);
+
                 const scopeId = uniqueId('offer-scope');
                 const scopeSelect = document.createElement('select');
                 scopeSelect.id = scopeId;
@@ -5888,6 +5948,13 @@
                     modalitiesList,
                     modalitiesField: modalitiesFieldObj.field,
                     modalitiesContainer,
+                    thresholdInput,
+                    monthsList,
+                    monthsField: monthsFieldObj.field,
+                    monthsContainer,
+                    windowInput,
+                    thresholdField: thresholdFieldObj.field,
+                    windowField: windowFieldObj.field,
                     expiryInput,
                     statusInput,
                     statusText,
@@ -5899,6 +5966,9 @@
                         aplicacion: scopeFieldObj.error,
                         seleccion_modalidad: modalitiesFieldObj.error,
                         caducidad_iso: expiryFieldObj.error,
+                        cantidad_garantias_mes: thresholdFieldObj.error,
+                        numero_garantias_con_descuento: windowFieldObj.error,
+                        meses: monthsFieldObj.error,
                     },
                     fieldWrappers: {
                         tipo_oferta: typeFieldObj.field,
@@ -5907,10 +5977,14 @@
                         aplicacion: scopeFieldObj.field,
                         seleccion_modalidad: modalitiesFieldObj.field,
                         caducidad_iso: expiryFieldObj.field,
+                        cantidad_garantias_mes: thresholdFieldObj.field,
+                        numero_garantias_con_descuento: windowFieldObj.field,
+                        meses: monthsFieldObj.field,
                     },
                 };
 
                 setupModalitiesList(offer);
+                setupMonthsList(offer);
                 syncOfferVisibility(offer);
                 applyOfferErrors(offer);
                 updateOfferMetadata(offer, index);
@@ -5930,6 +6004,18 @@
                             offer.nombre_oferta = 'IVA incluido';
                         }
                     }
+                    if (offer.tipo_oferta !== 'descuento_cada' && offer.tipo_oferta !== 'descuento_a_partir') {
+                        offer.cantidad_garantias_mes = '';
+                        thresholdInput.value = '';
+                    }
+                    if (offer.tipo_oferta !== 'descuento_cada') {
+                        offer.numero_garantias_con_descuento = '1';
+                        windowInput.value = '1';
+                    }
+                    if (offer.tipo_oferta !== 'por_duracion') {
+                        offer.meses = [];
+                        setupMonthsList(offer);
+                    }
                     clearFieldError(offer, 'tipo_oferta');
                     if (offer.tipo_oferta !== 'personalizar') {
                         clearFieldError(offer, 'nombre_oferta');
@@ -5937,6 +6023,9 @@
                     if (offer.tipo_oferta === 'sin_suplementos' || offer.tipo_oferta === 'iva_incluido') {
                         clearFieldError(offer, 'porcentaje_descuento');
                     }
+                    clearFieldError(offer, 'cantidad_garantias_mes');
+                    clearFieldError(offer, 'numero_garantias_con_descuento');
+                    clearFieldError(offer, 'meses');
                     syncOfferVisibility(offer);
                     updateOfferMetadata(offer, index);
                     updateDirtyState();
@@ -5969,6 +6058,18 @@
                     offer.caducidad_iso = event.target.value;
                     offer.caducidad_oferta = formatIsoToLocal(event.target.value);
                     clearFieldError(offer, 'caducidad_iso');
+                    updateDirtyState();
+                });
+
+                thresholdInput.addEventListener('input', (event) => {
+                    offer.cantidad_garantias_mes = event.target.value;
+                    clearFieldError(offer, 'cantidad_garantias_mes');
+                    updateDirtyState();
+                });
+
+                windowInput.addEventListener('input', (event) => {
+                    offer.numero_garantias_con_descuento = event.target.value;
+                    clearFieldError(offer, 'numero_garantias_con_descuento');
                     updateDirtyState();
                 });
 
@@ -6037,6 +6138,53 @@
                 });
             }
 
+            function setupMonthsList(offer) {
+                if (!offer.dom || !offer.dom.monthsList) {
+                    return;
+                }
+                const list = offer.dom.monthsList;
+                list.innerHTML = '';
+                const selected = Array.isArray(offer.meses) ? offer.meses.slice() : [];
+                const options = [6, 12, 24, 36];
+
+                options.forEach((value) => {
+                    const item = document.createElement('label');
+                    item.className = 'client-offer-card__modalities-item';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'client-offer-card__checkbox';
+                    checkbox.value = String(value);
+                    checkbox.checked = selected.includes(value);
+                    const marker = document.createElement('span');
+                    marker.className = 'client-offer-card__checkbox-marker';
+                    const text = document.createElement('span');
+                    text.className = 'client-offer-card__modalities-text';
+                    const title = document.createElement('span');
+                    title.className = 'client-offer-card__modalities-name';
+                    title.textContent = `${value} meses`;
+                    text.appendChild(title);
+                    checkbox.addEventListener('change', (event) => {
+                        const numeric = Number(event.target.value);
+                        if (!Number.isFinite(numeric)) {
+                            return;
+                        }
+                        if (event.target.checked) {
+                            if (!offer.meses.includes(numeric)) {
+                                offer.meses.push(numeric);
+                            }
+                        } else {
+                            offer.meses = offer.meses.filter((month) => month !== numeric);
+                        }
+                        clearFieldError(offer, 'meses');
+                        updateDirtyState();
+                    });
+                    item.appendChild(checkbox);
+                    item.appendChild(marker);
+                    item.appendChild(text);
+                    list.appendChild(item);
+                });
+            }
+
             function syncOfferVisibility(offer) {
                 if (!offer.dom) {
                     return;
@@ -6047,6 +6195,9 @@
                 const isPersonalizada = offer.tipo_oferta === 'personalizar';
                 const isSinSuplementos = offer.tipo_oferta === 'sin_suplementos';
                 const isIvaIncluido = offer.tipo_oferta === 'iva_incluido';
+                const isThresholdType = offer.tipo_oferta === 'descuento_cada' || offer.tipo_oferta === 'descuento_a_partir';
+                const isEachType = offer.tipo_oferta === 'descuento_cada';
+                const isDurationType = offer.tipo_oferta === 'por_duracion';
                 const isSeleccion = offer.aplicacion === 'seleccion';
                 if (offer.dom.fieldWrappers?.nombre_oferta) {
                     offer.dom.fieldWrappers.nombre_oferta.classList.toggle('is-hidden', !isPersonalizada);
@@ -6059,6 +6210,15 @@
                 }
                 if (offer.dom.modalitiesField) {
                     offer.dom.modalitiesField.classList.toggle('is-hidden', !isSeleccion);
+                }
+                if (offer.dom.fieldWrappers?.cantidad_garantias_mes) {
+                    offer.dom.fieldWrappers.cantidad_garantias_mes.classList.toggle('is-hidden', !isThresholdType);
+                }
+                if (offer.dom.fieldWrappers?.numero_garantias_con_descuento) {
+                    offer.dom.fieldWrappers.numero_garantias_con_descuento.classList.toggle('is-hidden', !isEachType);
+                }
+                if (offer.dom.fieldWrappers?.meses) {
+                    offer.dom.fieldWrappers.meses.classList.toggle('is-hidden', !isDurationType);
                 }
                 if (offer.dom.note) {
                     offer.dom.note.hidden = !isSinSuplementos;
@@ -6202,8 +6362,35 @@
                         aplicacion: scope,
                         caducidad_iso: offer.caducidad_iso || '',
                         seleccion_modalidad: scope === 'seleccion' ? selected : [],
+                        cantidad_garantias_mes: null,
+                        numero_garantias_con_descuento: null,
+                        meses: [],
                         estado: Boolean(offer.estado),
                     };
+                    if (offer.tipo_oferta === 'descuento_cada' || offer.tipo_oferta === 'descuento_a_partir') {
+                        const thresholdValue = Number(offer.cantidad_garantias_mes);
+                        payload.cantidad_garantias_mes = Number.isFinite(thresholdValue) && thresholdValue > 0
+                            ? thresholdValue
+                            : '';
+                    }
+                    if (offer.tipo_oferta === 'descuento_cada') {
+                        const windowValue = Number(offer.numero_garantias_con_descuento);
+                        payload.numero_garantias_con_descuento = Number.isFinite(windowValue) && windowValue > 0
+                            ? windowValue
+                            : '';
+                    }
+                    if (offer.tipo_oferta === 'por_duracion') {
+                        const months = Array.isArray(offer.meses)
+                            ? offer.meses.reduce((acc, value) => {
+                                const numeric = Number(value);
+                                if (Number.isFinite(numeric) && numeric > 0) {
+                                    acc.push(numeric);
+                                }
+                                return acc;
+                            }, [])
+                            : [];
+                        payload.meses = months;
+                    }
                     if (offer.tipo_oferta === 'iva_incluido') {
                         payload.porcentaje_descuento = 0;
                     } else if (offer.tipo_oferta !== 'sin_suplementos') {
@@ -6261,6 +6448,9 @@
                     offer.errors.aplicacion = '';
                     offer.errors.seleccion_modalidad = '';
                     offer.errors.caducidad_iso = '';
+                    offer.errors.cantidad_garantias_mes = '';
+                    offer.errors.numero_garantias_con_descuento = '';
+                    offer.errors.meses = '';
 
                     if (!offer.tipo_oferta) {
                         offer.errors.tipo_oferta = strings.manageOffersTypeError || 'Selecciona un tipo de oferta.';
@@ -6287,6 +6477,26 @@
                     if (offer.aplicacion === 'seleccion' && (!Array.isArray(offer.seleccion_modalidad) || offer.seleccion_modalidad.length === 0)) {
                         offer.errors.seleccion_modalidad = strings.manageOffersModalitiesError || 'Selecciona al menos una modalidad.';
                         isValid = false;
+                    }
+                    if (offer.tipo_oferta === 'descuento_cada' || offer.tipo_oferta === 'descuento_a_partir') {
+                        const thresholdNumeric = Number(offer.cantidad_garantias_mes);
+                        if (!Number.isFinite(thresholdNumeric) || thresholdNumeric <= 0) {
+                            offer.errors.cantidad_garantias_mes = strings.manageOffersThresholdError || 'Introduce un número de garantías válido.';
+                            isValid = false;
+                        }
+                    }
+                    if (offer.tipo_oferta === 'descuento_cada') {
+                        const windowNumeric = Number(offer.numero_garantias_con_descuento);
+                        if (!Number.isFinite(windowNumeric) || windowNumeric <= 0) {
+                            offer.errors.numero_garantias_con_descuento = strings.manageOffersWindowError || 'Introduce cuántas garantías reciben descuento.';
+                            isValid = false;
+                        }
+                    }
+                    if (offer.tipo_oferta === 'por_duracion') {
+                        if (!Array.isArray(offer.meses) || offer.meses.length === 0) {
+                            offer.errors.meses = strings.manageOffersMonthsError || 'Selecciona al menos una duración.';
+                            isValid = false;
+                        }
                     }
                     if (offer.caducidad_iso && !/^\d{4}-\d{2}-\d{2}$/.test(offer.caducidad_iso)) {
                         offer.errors.caducidad_iso = strings.manageOffersExpiryError || 'Introduce una fecha válida.';
