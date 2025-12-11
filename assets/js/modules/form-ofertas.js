@@ -12,7 +12,9 @@ import {
 import { getRestRoot, getRestNonce } from "./config.js";
 import {
         setCurrentOfertas,
+        setCurrentOfertasMeta,
         getCurrentOfertas,
+        getCurrentOfertasMeta,
         getVisibleModalidades,
         setSpecialFixedOffers,
         getSpecialFixedOffers,
@@ -53,7 +55,41 @@ function shouldSkipLoaderForSelf({ ofertas = null } = {}) {
 // Cache simple por userId con posibilidad de invalidar
 const ofertasCache = new Map(); // cacheKey -> { ofertas, especiales, meta, fetchedAt, version }
 const CACHE_TTL = 24 * 60 * 60 * 1000; // 24h
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
+
+function toPositiveInt(value) {
+        if (value === null || typeof value === "undefined" || value === "") return null;
+        const num = Number(value);
+        if (!Number.isFinite(num)) return null;
+        const intVal = Math.trunc(num);
+        return intVal > 0 ? intVal : null;
+}
+
+function getMonthlyActivatedGuarantees(meta = null) {
+        const rawMeta = meta || getCurrentOfertasMeta();
+        const raw = rawMeta ? rawMeta.garantias_activadas_mes : null;
+        const num = Number(raw);
+        return Number.isFinite(num) && num >= 0 ? num : 0;
+}
+
+export function shouldApplyDescuentoCada(oferta, meta = null) {
+        if (!oferta || oferta.tipo_oferta !== "descuento_cada") return false;
+
+        const threshold = toPositiveInt(oferta?.cantidad_garantias_mes);
+        const usosMaximos = toPositiveInt(oferta?.numero_garantias_con_descuento);
+
+        if (threshold === null || usosMaximos === null || usosMaximos <= 0) {
+                return false;
+        }
+
+        const activadasMes = getMonthlyActivatedGuarantees(meta);
+        if (activadasMes < threshold) {
+                return false;
+        }
+
+        const usadas = Math.max(0, activadasMes - threshold);
+        return usadas < usosMaximos;
+}
 
 function isValidCacheEntry(entry) {
         if (!entry || typeof entry !== "object") return false;
@@ -115,6 +151,7 @@ function normalizeOfertasResponse(payload) {
 function applyOfertasState(entry) {
         if (!entry || typeof entry !== "object") {
                 setCurrentOfertas([]);
+                setCurrentOfertasMeta({});
                 setSpecialFixedOffers([], { enabled: false });
                 return;
         }
@@ -131,6 +168,7 @@ function applyOfertasState(entry) {
         );
 
         setCurrentOfertas(ofertas);
+        setCurrentOfertasMeta(meta);
         setSpecialFixedOffers(especiales, {
                 ...meta,
                 enabled: enabledFlag,
@@ -207,14 +245,6 @@ function normalizeToArray(value) {
 
 function toLowerSlug(value) {
         return typeof value === "string" ? value.toLowerCase() : "";
-}
-
-function toPositiveInt(value) {
-        if (value === null || typeof value === "undefined" || value === "") return null;
-        const num = Number(value);
-        if (!Number.isFinite(num)) return null;
-        const intVal = Math.trunc(num);
-        return intVal > 0 ? intVal : null;
 }
 
 function getSlugSet(field) {
@@ -406,14 +436,26 @@ export function ofertaAplicaAmodalidad(oferta, modalidad) {
 export function filterOfertasPorModalidades(
 	ofertas = [],
 	modalidades = [],
-	{ incluirCaducadas = false } = {}
+	{ incluirCaducadas = false } = {},
 ) {
 	const now = Date.now() / 1000;
 	return (ofertas || []).filter((oferta) => {
-        if (oferta.estado === false) return false;
-        const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
-        if (!esSinSuplementos && !oferta.porcentaje_descuento && oferta.porcentaje_descuento !== 0)
-                return false;
+		if (oferta.estado === false) return false;
+		const esSinSuplementos = oferta?.tipo_oferta === "sin_suplementos";
+		if (
+			!esSinSuplementos &&
+			!oferta.porcentaje_descuento &&
+			oferta.porcentaje_descuento !== 0
+		) {
+			return false;
+		}
+
+		if (
+			oferta.tipo_oferta === "descuento_cada" &&
+			!shouldApplyDescuentoCada(oferta)
+		) {
+			return false;
+		}
 
 		const caducada =
 			oferta.timestamp_caducidad && now > oferta.timestamp_caducidad;

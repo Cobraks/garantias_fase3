@@ -7,6 +7,7 @@
  */
 
 let currentOfertas = null;
+let currentOfertasMeta = {};
 let visibleModalidades = [];
 const formCache = {
         selectedModalidadId: null,
@@ -24,6 +25,7 @@ let specialFixedOffersMeta = {
 
 const listeners = {
         ofertas: [],
+        ofertasMeta: [],
         modalidades: [],
         limites: [],
         selectedModalidad: [],
@@ -36,14 +38,24 @@ function notify(topic, payload) {
 
 // Ofertas
 export function setCurrentOfertas(ofertas) {
-	currentOfertas = ofertas;
-	notify("ofertas", ofertas);
+        currentOfertas = ofertas;
+        notify("ofertas", ofertas);
 }
 export function getCurrentOfertas() {
-	return currentOfertas;
+        return currentOfertas;
+}
+export function setCurrentOfertasMeta(meta) {
+        currentOfertasMeta = meta || {};
+        notify("ofertasMeta", currentOfertasMeta);
+}
+export function getCurrentOfertasMeta() {
+        return currentOfertasMeta;
+}
+export function subscribeOfertasMeta(cb) {
+        listeners.ofertasMeta.push(cb);
 }
 export function subscribeOfertas(cb) {
-	listeners.ofertas.push(cb);
+        listeners.ofertas.push(cb);
 }
 
 // Modalidades visibles
