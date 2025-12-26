@@ -44,11 +44,13 @@
         const iconManageSepa = icons.manageSepa || '';
         const iconSave = icons.save || '';
         const iconPdf = icons.pdf || '';
+        const iconDelete = icons.delete || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const canManageOffers = Boolean(permissions.canManageOffers);
         const canManageSepa = Boolean(permissions.canManageSepa);
         const canViewAdminLink = Boolean(permissions.canViewAdminLink);
+        const canDeleteUser = Boolean(permissions.canDeleteUser);
         const router = config.router || {};
         const basePath = typeof router.basePath === 'string' ? router.basePath : '';
         const normalizedBasePath = basePath ? (basePath.endsWith('/') ? basePath : `${basePath}/`) : '';
@@ -231,6 +233,7 @@
         };
 
         const assignDialog = createAssignDialog();
+        const deleteUserModal = canDeleteUser ? createDeleteUserModal() : null;
         const offersDialog = canManageOffers
             ? createOffersDialog({
                 restRoot,
@@ -400,11 +403,64 @@
             return list.map(normalizeRole).filter(Boolean);
         };
 
-        const isParticularRole = (roles) => {
-            const normalizedRoles = normalizeRoleList(roles);
-            const isProfessional = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
-            const isParticular = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
-            return isParticular || !isProfessional;
+        const collectClientRoles = (candidate) => {
+            if (Array.isArray(candidate)) {
+                return normalizeRoleList(candidate);
+            }
+
+            if (candidate && typeof candidate === 'object') {
+                const directRoles = normalizeRoleList(candidate.roles);
+                const salesChannelRoles = normalizeRoleList([
+                    candidate.sales_channel?.role,
+                    candidate.sales_channel?.slug,
+                    candidate.sales_channel?.key,
+                ]);
+
+                return [...directRoles, ...salesChannelRoles].filter(Boolean);
+            }
+
+            return [];
+        };
+
+        const classifyClientRoles = (rolesOrClient) => {
+            const normalizedRoles = collectClientRoles(rolesOrClient);
+            const hasProfessionalRole = normalizedRoles.some((role) => PROFESSIONAL_ROLES.includes(role));
+            const hasParticularRole = normalizedRoles.some((role) => PARTICULAR_ROLES.includes(role));
+
+            return {
+                roles: normalizedRoles,
+                isProfessional: hasProfessionalRole && !hasParticularRole,
+                isParticular: hasParticularRole || !hasProfessionalRole,
+            };
+        };
+
+        const isParticularRole = (rolesOrClient) => classifyClientRoles(rolesOrClient).isParticular;
+
+        const formatRegisteredWithTime = (registered) => {
+            const value = registered || {};
+            const isoValue = typeof value.iso === 'string' ? value.iso.trim() : '';
+
+            if (isoValue) {
+                const parsedDate = new Date(isoValue);
+                if (!Number.isNaN(parsedDate.getTime())) {
+                    try {
+                        return new Intl.DateTimeFormat('es-ES', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                        }).format(parsedDate);
+                    } catch (error) {
+                        return parsedDate.toLocaleString('es-ES');
+                    }
+                }
+            }
+
+            const displayValue = typeof value.display === 'string' ? value.display.trim() : '';
+            if (displayValue !== '') {
+                return displayValue;
+            }
+
+            const rawValue = typeof value.raw === 'string' ? value.raw.trim() : '';
+            return rawValue;
         };
 
         if (detail) {
@@ -3242,8 +3298,7 @@
             const salesChannel = item.sales_channel || {};
             const guarantees = item.guarantees || {};
             const sepa = item.sepa || {};
-            const roles = normalizeRoleList(item.roles);
-            const isParticular = isParticularRole(roles);
+            const { roles, isParticular } = classifyClientRoles(item);
 
             const displayName = getDisplayName(name);
             const avatarAlt = displayName || name.company || '';
@@ -3362,7 +3417,28 @@
             const preferencesSection = renderPreferences(item.documents || {}, item.services || {});
             const adminLink = item.links && typeof item.links.admin === 'string' ? item.links.admin.trim() : '';
             const adminLinkHtml = canViewAdminLink && adminLink !== ''
-                ? `<div class="client-detail__admin"><a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Edita en panel de administración WordPress')}</a></div>`
+                ? `<a class="client-detail__admin-link" href="${escapeAttribute(adminLink)}" target="_blank" rel="noopener">${escapeHtml(strings.adminLink || 'Edita en panel de administración WordPress')}</a>`
+                : '';
+            const deleteUserButtonHtml = canDeleteUser
+                ? `
+                        <button type="button" class="client-detail__delete-button" data-delete-user>
+                            ${iconDelete}
+                            <span>${escapeHtml(strings.deleteUser || 'Eliminar usuario permanentemente')}</span>
+                        </button>
+                `
+                : '';
+            const adminActions = [];
+
+            if (deleteUserButtonHtml.trim() !== '') {
+                adminActions.push(deleteUserButtonHtml.trim());
+            }
+
+            if (adminLinkHtml.trim() !== '') {
+                adminActions.push(adminLinkHtml.trim());
+            }
+
+            const adminSectionHtml = adminActions.length > 0
+                ? `<div class="client-detail__admin">${adminActions.join('')}</div>`
                 : '';
             const hasCommercials = commercialCount > 0;
             const assignButton = canAssignCommercials
@@ -3461,9 +3537,175 @@
                         ${sepaActionsHtml}
                         ${sepaNoticeHtml}
                     </section>
-                    ${adminLinkHtml}
+                    ${adminSectionHtml}
                 </div>
             `;
+        }
+
+        function createDeleteUserModal() {
+            const overlay = document.createElement('div');
+            const titleId = uniqueId('client-delete-title');
+
+            overlay.className = 'client-delete-modal';
+            overlay.hidden = true;
+            overlay.setAttribute('aria-hidden', 'true');
+            overlay.innerHTML = `
+                <div class="client-delete-modal__backdrop" data-delete-user-close></div>
+                <div class="client-delete-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="${titleId}" tabindex="-1">
+                    <button type="button" class="client-delete-modal__close" data-delete-user-close aria-label="${escapeHtml(strings.close || 'Cerrar')}">&times;</button>
+                    <div class="client-delete-modal__header">
+                        <span class="client-delete-modal__icon" aria-hidden="true">${iconDelete}</span>
+                        <div class="client-delete-modal__titles">
+                            <p class="client-delete-modal__eyebrow">${escapeHtml(strings.deleteUserWarning || 'Acción irreversible')}</p>
+                            <h2 id="${titleId}" class="client-delete-modal__title">${escapeHtml(strings.deleteUserTitle || 'Eliminar usuario permanentemente')}</h2>
+                        </div>
+                    </div>
+                    <div class="client-delete-modal__body">
+                        <dl class="client-delete-modal__details">
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserUser || 'Usuario')}</dt>
+                                <dd data-delete-user-name></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row" data-delete-user-company-row>
+                                <dt>${escapeHtml(strings.deleteUserCompany || 'Empresa')}</dt>
+                                <dd data-delete-user-company></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserRegistered || 'Fecha de registro')}</dt>
+                                <dd data-delete-user-registered></dd>
+                            </div>
+                            <div class="client-delete-modal__detail-row">
+                                <dt>${escapeHtml(strings.deleteUserEmail || 'Correo electrónico')}</dt>
+                                <dd data-delete-user-email></dd>
+                            </div>
+                        </dl>
+                        <label class="client-delete-modal__checkbox">
+                            <input type="checkbox" class="client-delete-modal__checkbox-input">
+                            <span class="client-delete-modal__checkbox-label">${escapeHtml(strings.deleteUserCheckbox || 'Confirmo que quiero eliminar a este usuario.')}</span>
+                        </label>
+                    </div>
+                    <div class="client-delete-modal__footer">
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--ghost" data-delete-user-close>
+                            ${escapeHtml(strings.deleteUserCancel || 'Cancelar')}
+                        </button>
+                        <button type="button" class="client-delete-modal__btn client-delete-modal__btn--danger" data-delete-user-confirm disabled>
+                            ${escapeHtml(strings.deleteUserConfirm || 'Eliminar usuario')}
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            const dialog = overlay.querySelector('.client-delete-modal__dialog');
+            const closeButtons = overlay.querySelectorAll('[data-delete-user-close]');
+            const confirmButton = overlay.querySelector('[data-delete-user-confirm]');
+            const checkbox = overlay.querySelector('.client-delete-modal__checkbox-input');
+            const nameField = overlay.querySelector('[data-delete-user-name]');
+            const companyField = overlay.querySelector('[data-delete-user-company]');
+            const companyRow = overlay.querySelector('[data-delete-user-company-row]');
+            const registeredField = overlay.querySelector('[data-delete-user-registered]');
+            const emailField = overlay.querySelector('[data-delete-user-email]');
+            let previousActiveElement = null;
+
+            function setDetails({ name = '', company = '', registered = '', email = '', showCompany = false }) {
+                if (nameField) {
+                    nameField.textContent = name || '—';
+                }
+
+                if (companyRow) {
+                    companyRow.hidden = !showCompany;
+                }
+
+                if (companyField) {
+                    companyField.textContent = company || '—';
+                }
+
+                if (registeredField) {
+                    registeredField.textContent = registered || '—';
+                }
+
+                if (emailField) {
+                    emailField.textContent = email || '—';
+                }
+            }
+
+            function close() {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlay.hidden = true;
+                document.removeEventListener('keydown', handleKeydown);
+
+                if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
+                    previousActiveElement.focus();
+                }
+            }
+
+            function handleKeydown(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault();
+                    close();
+                }
+            }
+
+            function open(context = {}) {
+                previousActiveElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+                if (checkbox) {
+                    checkbox.checked = false;
+                }
+
+                if (confirmButton) {
+                    confirmButton.disabled = true;
+                }
+
+                setDetails({
+                    name: typeof context.name === 'string' ? context.name : '',
+                    company: typeof context.company === 'string' ? context.company : '',
+                    registered: typeof context.registered === 'string' ? context.registered : '',
+                    email: typeof context.email === 'string' ? context.email : '',
+                    showCompany: Boolean(context.showCompany),
+                });
+
+                overlay.hidden = false;
+                overlay.classList.add('is-open');
+                overlay.setAttribute('aria-hidden', 'false');
+                document.addEventListener('keydown', handleKeydown);
+
+                window.requestAnimationFrame(() => {
+                    if (dialog && typeof dialog.focus === 'function') {
+                        dialog.focus({ preventScroll: true });
+                    }
+                });
+            }
+
+            if (checkbox && confirmButton) {
+                checkbox.addEventListener('change', () => {
+                    confirmButton.disabled = !checkbox.checked;
+                });
+            }
+
+            closeButtons.forEach((button) => {
+                button.addEventListener('click', close);
+            });
+
+            overlay.addEventListener('click', (event) => {
+                if (event.target === overlay) {
+                    close();
+                }
+            });
+
+            if (confirmButton) {
+                confirmButton.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    close();
+                });
+            }
+
+            return {
+                open,
+                close,
+            };
         }
 
         function createAssignDialog() {
@@ -6486,6 +6728,32 @@
                     sepaDialog.open({
                         subject: getCompanyLabelFromItem(item),
                         item,
+                    });
+                });
+            }
+
+            const deleteUserButton = container.querySelector('[data-delete-user]');
+            if (deleteUserButton && deleteUserModal && typeof deleteUserModal.open === 'function') {
+                deleteUserButton.addEventListener('click', () => {
+                    if (!item) {
+                        return;
+                    }
+
+                    const { isParticular } = classifyClientRoles(item);
+                    const displayName = getDisplayName(item.name || {}) || '';
+                    const companyName = typeof item.name?.company === 'string' ? item.name.company.trim() : '';
+                    const registeredLabel = formatRegisteredWithTime(item.registered || {});
+                    const loginEmail = typeof item.contact?.login_email === 'string' && item.contact.login_email
+                        ? item.contact.login_email.trim()
+                        : '';
+                    const showCompany = !isParticular && companyName !== '';
+
+                    deleteUserModal.open({
+                        name: displayName,
+                        company: companyName,
+                        registered: registeredLabel,
+                        email: loginEmail,
+                        showCompany,
                     });
                 });
             }

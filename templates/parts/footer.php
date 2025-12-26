@@ -173,6 +173,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $can_manage_offers = $is_admin;
     $can_manage_sepa = $is_admin;
     $can_view_admin_link = $is_admin;
+    $can_delete_users = $is_admin || $has_client_manager_role;
 
     $clients_config = [
         'rest' => [
@@ -187,6 +188,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'canManageOffers'      => $can_manage_offers,
             'canManageSepa'        => $can_manage_sepa,
             'canViewAdminLink'     => $can_view_admin_link,
+            'canDeleteUser'        => $can_delete_users,
         ],
         'router' => [
             'basePath' => trailingslashit(wp_make_link_relative(home_url('/garantias-online/clientes/'))),
@@ -240,6 +242,16 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'workshopAddress'      => __('Dirección', 'garantias-online-360vo'),
             'workshopTaxId'        => __('CIF/NIF', 'garantias-online-360vo'),
             'workshopFiscal'       => __('Denominación fiscal', 'garantias-online-360vo'),
+            'deleteUser'           => __('Eliminar usuario permanentemente', 'garantias-online-360vo'),
+            'deleteUserTitle'      => __('Eliminar usuario permanentemente', 'garantias-online-360vo'),
+            'deleteUserWarning'    => __('Acción irreversible', 'garantias-online-360vo'),
+            'deleteUserUser'       => __('Usuario', 'garantias-online-360vo'),
+            'deleteUserCompany'    => __('Empresa', 'garantias-online-360vo'),
+            'deleteUserRegistered' => __('Fecha de registro', 'garantias-online-360vo'),
+            'deleteUserEmail'      => __('Correo electrónico', 'garantias-online-360vo'),
+            'deleteUserCheckbox'   => __('Confirmo que quiero eliminar a este usuario.', 'garantias-online-360vo'),
+            'deleteUserCancel'     => __('Cancelar', 'garantias-online-360vo'),
+            'deleteUserConfirm'    => __('Eliminar usuario', 'garantias-online-360vo'),
             'adminLink'            => __('Edita en panel de administración WordPress', 'garantias-online-360vo'),
             'offersBadgeSingular'  => __('1 oferta activa', 'garantias-online-360vo'),
             'offersBadgePlural'    => __('%s ofertas activas', 'garantias-online-360vo'),
@@ -405,6 +417,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'manageSepa' => Svg::icon('payment'),
             'save' => Svg::icon('save'),
             'pdf' => Svg::icon('pdf'),
+            'delete' => Svg::icon('delete'),
         ],
     ];
     ?>
