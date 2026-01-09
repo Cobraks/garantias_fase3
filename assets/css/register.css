@@ -1740,6 +1740,10 @@ footer.footer .footer__wrapper {
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
+  .register-page .summary-container {
+    position: relative;
+  }
+
   .register-page .channel-selector {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

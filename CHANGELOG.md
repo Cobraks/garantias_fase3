@@ -2,6 +2,7 @@
 
 ## 6.2.5 - 2026-09-26
 - FIX Casilla aceptar condiciones quedaba por debajo de anterior / Registrarme en registro en pantallas de 1360px de anchura y poca altura
+- FIX position relative para el summary container del register-page (ahora aunque la pantalla tenga poca altura, no quedará la casilla de aceptar términos por debajo de los datos anteriores. )
 
 ## 6.0.0 - 2025-11-25
 - Añadida fecha de contratación
