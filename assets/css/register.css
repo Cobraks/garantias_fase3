@@ -1805,6 +1805,7 @@ footer.footer .footer__wrapper {
 
   .register-page .form-panel {
     padding: 2.75rem 3.25rem 5.75rem;
+    padding-block: 0;
   }
 
   .register-page .progress-container {

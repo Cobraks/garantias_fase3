@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 6.2.5 - 2026-09-26
+- FIX Casilla aceptar condiciones quedaba por debajo de anterior / Registrarme en registro en pantallas de 1360px de anchura y poca altura
+
 ## 6.0.0 - 2025-11-25
 - Añadida fecha de contratación
 - Añadido detalle de facturación (desglose de recargos y descuentos en la propia garantía)
@@ -29,6 +32,8 @@
 - Además, ahora aprece en tiempo real, no hace falta actualizar la página.
 - Notificación cuando una garantía ha sido inicalizada
 - Arreglado toast de notificaciones cuando el header está escondido.
+- Corregido No se guardaba tracción ni matrícula en el certificado de las Exclusive.
+- Corregido No aparecía tracción en el panel de detalles de la garantía
 
 
 ## Referencia interna: patrones sospechosos para validaciones de contacto
