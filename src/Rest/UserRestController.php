@@ -115,7 +115,7 @@ class UserRestController
         $args = [
             'role'    => $role ? $role : '', // Si no hay role, devuelve todos
             'fields'  => 'all_with_meta',
-            'number'  => 25,
+            'number'  => -1,
             'orderby' => 'display_name',
             'order'   => 'ASC',
         ];
