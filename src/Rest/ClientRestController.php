@@ -5,6 +5,8 @@ namespace GarantiasOnline360VO\Rest;
 use GarantiasOnline360VO\Account\AccountViewModel;
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\GuaranteeCPT;
+use GarantiasOnline360VO\Register\RegistrationMeta;
+use GarantiasOnline360VO\Register\RegistrationService;
 use GarantiasOnline360VO\Register\SepaMandateService;
 use WP_Error;
 use WP_Query;
@@ -297,6 +299,40 @@ class ClientRestController
                 ],
             ]
         );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/verification/resend',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'resend_verification'],
+                    'permission_callback' => [__CLASS__, 'verification_permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::REST_BASE . '/(?P<id>\d+)/verification/validate',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'validate_verification'],
+                    'permission_callback' => [__CLASS__, 'verification_permissions_check'],
+                    'args'                => [
+                        'id' => [
+                            'validate_callback' => 'absint',
+                        ],
+                    ],
+                ],
+            ]
+        );
     }
 
     public static function permissions_check($request = null): bool
@@ -339,6 +375,148 @@ class ClientRestController
         }
 
         return false;
+    }
+
+    public static function verification_permissions_check(): bool
+    {
+        if (current_user_can('manage_options')) {
+            return true;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof WP_User) {
+            return false;
+        }
+
+        $roles = array_map('strval', (array) $current_user->roles);
+
+        return in_array('go_director_comercial', $roles, true)
+            || in_array('go_garantias', $roles, true);
+    }
+
+    public static function resend_verification(WP_REST_Request $request): WP_REST_Response
+    {
+        if (! self::verification_permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('Identificador de usuario no válido.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El usuario indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        if (! RegistrationMeta::is_verification_required($user_id)) {
+            return new WP_REST_Response(
+                ['message' => __('Este usuario ya está verificado.', 'garantias-online-360vo')],
+                409
+            );
+        }
+
+        $token = get_user_meta($user_id, RegistrationMeta::TOKEN, true);
+        $token = is_string($token) ? $token : '';
+        if ($token === '') {
+            return new WP_REST_Response(
+                ['message' => __('No se ha encontrado una solicitud de verificación pendiente.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        $service = new RegistrationService();
+        $result  = $service->resend($token);
+        if ($result instanceof WP_Error) {
+            return new WP_REST_Response(
+                ['message' => $result->get_error_message()],
+                400
+            );
+        }
+
+        return new WP_REST_Response(
+            [
+                'verification' => self::format_verification_status($user_id),
+            ],
+            200
+        );
+    }
+
+    public static function validate_verification(WP_REST_Request $request): WP_REST_Response
+    {
+        if (! self::verification_permissions_check()) {
+            return new WP_REST_Response(
+                ['message' => __('Acceso denegado', 'garantias-online-360vo')],
+                403
+            );
+        }
+
+        $user_id = (int) $request->get_param('id');
+        if ($user_id <= 0) {
+            return new WP_REST_Response(
+                ['message' => __('Identificador de usuario no válido.', 'garantias-online-360vo')],
+                400
+            );
+        }
+
+        $user = get_user_by('id', $user_id);
+        if (! $user instanceof WP_User) {
+            return new WP_REST_Response(
+                ['message' => __('El usuario indicado no existe.', 'garantias-online-360vo')],
+                404
+            );
+        }
+
+        if (! RegistrationMeta::is_verification_required($user_id)) {
+            return new WP_REST_Response(
+                ['message' => __('Este usuario ya está verificado.', 'garantias-online-360vo')],
+                409
+            );
+        }
+
+        $meta_keys = [
+            RegistrationMeta::STATUS,
+            RegistrationMeta::REQUIRED,
+            RegistrationMeta::HASH,
+            RegistrationMeta::EXPIRES,
+            RegistrationMeta::TOKEN,
+            RegistrationMeta::ATTEMPTS,
+            RegistrationMeta::LOCKED_UNTIL,
+            RegistrationMeta::RESEND_COUNT,
+            RegistrationMeta::RESEND_WINDOW,
+            RegistrationMeta::RESEND_LAST,
+        ];
+
+        foreach ($meta_keys as $meta_key) {
+            delete_user_meta($user_id, $meta_key);
+        }
+
+        RegistrationMeta::mark_required($user_id, false);
+        update_user_meta($user_id, RegistrationMeta::VERIFIED_AT, current_time('mysql', true));
+
+        ActivityLogger::log('user.verification_verified', [
+            'actor_id' => $user_id,
+            'context'  => [
+                'user_email' => $user->user_email,
+            ],
+        ]);
+
+        return new WP_REST_Response(
+            [
+                'verification' => self::format_verification_status($user_id),
+            ],
+            200
+        );
     }
 
     public static function get_user_offers(WP_REST_Request $request)
@@ -1931,6 +2109,7 @@ class ClientRestController
         $sepa_details = self::format_sepa_details($payments);
         $documents    = self::format_documents($account['documents'] ?? []);
         $web360       = self::format_web_service((int) $user->ID);
+        $verification = self::format_verification_status((int) $user->ID);
 
         $login_email = sanitize_email($user->user_email);
         $primary_email = sanitize_email($user_data['email'] ?? $login_email);
@@ -2001,10 +2180,35 @@ class ClientRestController
             'services'     => [
                 'web360' => $web360,
             ],
+            'verification' => $verification,
             'links'        => $links,
             'status'       => [
                 'online' => self::is_user_online((int) $user->ID),
             ],
+        ];
+    }
+
+    private static function format_verification_status(int $user_id): array
+    {
+        $required = RegistrationMeta::is_verification_required($user_id);
+        $verified_at = get_user_meta($user_id, RegistrationMeta::VERIFIED_AT, true);
+        $last_sent_raw = get_user_meta($user_id, RegistrationMeta::RESEND_LAST, true);
+        $last_sent = is_numeric($last_sent_raw) ? (int) $last_sent_raw : 0;
+        $last_sent_value = $last_sent > 0 ? gmdate('Y-m-d H:i:s', $last_sent) : '';
+
+        $empty_date = [
+            'raw'     => '',
+            'display' => '',
+            'iso'     => '',
+        ];
+
+        return [
+            'pending'     => $required,
+            'status'      => $required ? 'pending' : 'verified',
+            'last_sent'   => $last_sent_value !== '' ? self::format_registered($last_sent_value) : $empty_date,
+            'verified_at' => is_string($verified_at) && $verified_at !== ''
+                ? self::format_registered($verified_at)
+                : $empty_date,
         ];
     }
 

@@ -172,6 +172,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
     $can_assign_commercials = $is_admin || $has_client_manager_role;
     $can_manage_offers = $is_admin || $has_client_manager_role;
     $can_manage_sepa = $is_admin;
+    $can_manage_verification = $is_admin || $has_client_manager_role;
     $can_view_admin_link = $is_admin;
     $can_delete_users = $is_admin || $has_client_manager_role;
 
@@ -187,6 +188,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'canAssignCommercials' => $can_assign_commercials,
             'canManageOffers'      => $can_manage_offers,
             'canManageSepa'        => $can_manage_sepa,
+            'canManageVerification'=> $can_manage_verification,
             'canViewAdminLink'     => $can_view_admin_link,
             'canDeleteUser'        => $can_delete_users,
         ],
@@ -228,6 +230,15 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'sepaEmpty'            => __('Sin información del mandato', 'garantias-online-360vo'),
             'sepaDetails'          => __('Ver datos del deudor SEPA', 'garantias-online-360vo'),
             'paymentMethod'        => __('Método de pago', 'garantias-online-360vo'),
+            'verificationStatus'   => __('Estado de verificación', 'garantias-online-360vo'),
+            'verificationSentAt'   => __('Solicitud enviada', 'garantias-online-360vo'),
+            'verificationState'    => __('Estado', 'garantias-online-360vo'),
+            'verificationPending'  => __('Sin verificar', 'garantias-online-360vo'),
+            'verificationResend'   => __('Reenviar código de verificación', 'garantias-online-360vo'),
+            'verificationValidate' => __('Validar manualmente', 'garantias-online-360vo'),
+            'verificationValidateConfirm' => __('¿Quieres validar manualmente este usuario?', 'garantias-online-360vo'),
+            'verificationResendError' => __('No se ha podido reenviar el código de verificación.', 'garantias-online-360vo'),
+            'verificationValidateError' => __('No se ha podido validar el usuario.', 'garantias-online-360vo'),
             'salesChannel'         => __('Canal de venta', 'garantias-online-360vo'),
             'registered'           => __('Registro', 'garantias-online-360vo'),
             'guarantees'           => __('Nº Garantías', 'garantias-online-360vo'),
@@ -424,6 +435,7 @@ $can_manage_notifications = current_user_can('manage_options') || ! empty($notif
             'save' => Svg::icon('save'),
             'pdf' => Svg::icon('pdf'),
             'delete' => Svg::icon('delete'),
+            'check' => Svg::icon('check'),
         ],
     ];
     ?>
