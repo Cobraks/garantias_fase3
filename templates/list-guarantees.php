@@ -131,6 +131,11 @@ $admin_summary_actions     = [];
 $admin_summary_json        = '';
 $can_view_summary          = false;
 $show_kpi_grid             = $is_admin_user;
+$summary_periods           = [];
+$summary_years             = [];
+$summary_months            = [];
+$summary_selected_year     = (int) wp_date('Y');
+$summary_selected_month    = (int) wp_date('n');
 
 $format_summary_number = static function ($value): string {
     $number = is_numeric($value) ? (float) $value : 0.0;
@@ -206,6 +211,25 @@ if (($is_admin_user || $is_director || $is_professional)
         }
         $admin_summary_pending = isset($admin_summary_data['pending']) && is_array($admin_summary_data['pending'])
             ? $admin_summary_data['pending']
+            : [];
+
+        $summary_periods = isset($admin_summary_data['periods']) && is_array($admin_summary_data['periods'])
+            ? $admin_summary_data['periods']
+            : [];
+        $summary_years = isset($summary_periods['years']) && is_array($summary_periods['years'])
+            ? array_values(array_filter(array_map('intval', $summary_periods['years'])))
+            : [];
+        $summary_current = isset($summary_periods['current']) && is_array($summary_periods['current'])
+            ? $summary_periods['current']
+            : [];
+        $summary_selected_year = isset($summary_current['year']) ? (int) $summary_current['year'] : $summary_selected_year;
+        $summary_selected_month = isset($summary_current['month']) ? (int) $summary_current['month'] : $summary_selected_month;
+        $summary_months_by_year = isset($summary_periods['months']) && is_array($summary_periods['months'])
+            ? $summary_periods['months']
+            : [];
+        $summary_months = isset($summary_months_by_year[$summary_selected_year])
+            && is_array($summary_months_by_year[$summary_selected_year])
+            ? $summary_months_by_year[$summary_selected_year]
             : [];
 
         $pending_draft      = $admin_summary_pending['draft'] ?? [];
@@ -611,7 +635,6 @@ if (($is_admin_user || $is_director || $is_professional)
         </p>
         <?php if ($can_view_summary) : ?>
             <?php
-            $summary_context_base = uniqid('summary-context-');
             $has_admin_summary    = $admin_summary_json !== '' && ! empty($admin_summary_states);
 
             $state_color_vars = [
@@ -712,17 +735,30 @@ if (($is_admin_user || $is_director || $is_professional)
                 }
             }
 
-            $summary_amount_label = $admin_summary_context_key === 'year'
-                ? __('Valor acumulado', 'garantias-online-360vo')
-                : ($summary_month_name !== ''
-                    ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_month_name)
-                    : __('Acumulado mensual', 'garantias-online-360vo'));
+            $summary_year_label = $admin_summary_context_key === 'year'
+                ? (isset($admin_summary_default['label']) ? (string) $admin_summary_default['label'] : '')
+                : '';
+            $summary_year_label = trim($summary_year_label);
 
-            $summary_count_label = $admin_summary_context_key === 'year'
+            $summary_amount_label = $admin_summary_context_key === 'global'
+                ? __('Valor acumulado', 'garantias-online-360vo')
+                : ($admin_summary_context_key === 'year'
+                    ? ($summary_year_label !== ''
+                        ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_year_label)
+                        : __('Valor acumulado', 'garantias-online-360vo'))
+                    : ($summary_month_name !== ''
+                        ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_month_name)
+                        : __('Acumulado mensual', 'garantias-online-360vo')));
+
+            $summary_count_label = $admin_summary_context_key === 'global'
                 ? __('Total garantías', 'garantias-online-360vo')
-                : ($summary_month_name !== ''
-                    ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_month_name)
-                    : __('Garantías este mes', 'garantias-online-360vo'));
+                : ($admin_summary_context_key === 'year'
+                    ? ($summary_year_label !== ''
+                        ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_year_label)
+                        : __('Total garantías', 'garantias-online-360vo'))
+                    : ($summary_month_name !== ''
+                        ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_month_name)
+                        : __('Garantías este mes', 'garantias-online-360vo')));
 
             $summary_trends = isset($admin_summary_default['trends']) && is_array($admin_summary_default['trends'])
                 ? $admin_summary_default['trends']
@@ -742,7 +778,9 @@ if (($is_admin_user || $is_director || $is_professional)
             $amount_trend_value = isset($amount_trend['formatted']) ? (string) $amount_trend['formatted'] : '0%';
             $amount_trend_suffix = isset($amount_trend['label']) ? (string) $amount_trend['label'] : ($admin_summary_context_key === 'year'
                 ? __('vs año ant.', 'garantias-online-360vo')
-                : __('vs mes ant.', 'garantias-online-360vo'));
+                : ($admin_summary_context_key === 'global'
+                    ? ''
+                    : __('vs mes ant.', 'garantias-online-360vo')));
             $amount_trend_text = trim($amount_trend_value . ' ' . $amount_trend_suffix);
             if ($amount_trend_text === '') {
                 $amount_trend_text = '—';
@@ -761,7 +799,9 @@ if (($is_admin_user || $is_director || $is_professional)
             $count_trend_value = isset($count_trend['formatted']) ? (string) $count_trend['formatted'] : '0%';
             $count_trend_suffix = isset($count_trend['label']) ? (string) $count_trend['label'] : ($admin_summary_context_key === 'year'
                 ? __('vs año ant.', 'garantias-online-360vo')
-                : __('vs mes ant.', 'garantias-online-360vo'));
+                : ($admin_summary_context_key === 'global'
+                    ? ''
+                    : __('vs mes ant.', 'garantias-online-360vo')));
             $count_trend_text = trim($count_trend_value . ' ' . $count_trend_suffix);
             if ($count_trend_text === '') {
                 $count_trend_text = '—';
@@ -794,34 +834,55 @@ if (($is_admin_user || $is_director || $is_professional)
                 <header class="guarantee-admin-summary__header">
                     <h4 class="guarantee-admin-summary__title"><?php esc_html_e('Resumen de Garantías', 'garantias-online-360vo'); ?></h4>
                     <?php if (! $is_professional) : ?>
-                        <?php
-                        $summary_context_global_id = $summary_context_base . '-global';
-                        $summary_context_month_id  = $summary_context_base . '-month';
-                        ?>
-                        <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_context_global_id); ?>"
-                                value="year"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'year'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_global_id); ?>">
-                                <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
+                        <div class="guarantee-admin-summary__filters" data-admin-summary-filters>
+                            <label class="guarantee-admin-summary__filter">
+                                <span class="guarantee-admin-summary__filter-label"><?php esc_html_e('Periodo', 'garantias-online-360vo'); ?></span>
+                                <select class="guarantee-admin-summary__select" data-admin-summary-context-select>
+                                    <option value="global"><?php esc_html_e('Global', 'garantias-online-360vo'); ?></option>
+                                    <option value="year"><?php esc_html_e('Anual', 'garantias-online-360vo'); ?></option>
+                                    <option value="month" selected><?php esc_html_e('Mensual', 'garantias-online-360vo'); ?></option>
+                                </select>
                             </label>
-                            <input
-                                class="guarantee-admin-summary__context-input"
-                                type="radio"
-                                name="<?php echo esc_attr($summary_context_base); ?>"
-                                id="<?php echo esc_attr($summary_context_month_id); ?>"
-                                value="month"
-                                data-admin-summary-context-toggle
-                                <?php checked($admin_summary_context_key, 'month'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_month_id); ?>">
-                                <?php esc_html_e('Mensual', 'garantias-online-360vo'); ?>
+                            <label class="guarantee-admin-summary__filter" data-admin-summary-year hidden>
+                                <span class="guarantee-admin-summary__filter-label"><?php esc_html_e('Año', 'garantias-online-360vo'); ?></span>
+                                <select class="guarantee-admin-summary__select" data-admin-summary-year-select>
+                                    <?php if (! empty($summary_years)) : ?>
+                                        <?php foreach ($summary_years as $year_value) : ?>
+                                            <option value="<?php echo esc_attr($year_value); ?>" <?php selected($summary_selected_year, $year_value); ?>>
+                                                <?php echo esc_html($year_value); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php else : ?>
+                                        <option value="<?php echo esc_attr($summary_selected_year); ?>" selected>
+                                            <?php echo esc_html($summary_selected_year); ?>
+                                        </option>
+                                    <?php endif; ?>
+                                </select>
                             </label>
-                        </fieldset>
+                            <label class="guarantee-admin-summary__filter" data-admin-summary-month>
+                                <span class="guarantee-admin-summary__filter-label"><?php esc_html_e('Mes', 'garantias-online-360vo'); ?></span>
+                                <select class="guarantee-admin-summary__select" data-admin-summary-month-select>
+                                    <?php if (! empty($summary_months)) : ?>
+                                        <?php foreach ($summary_months as $month_entry) : ?>
+                                            <?php
+                                            $month_value = isset($month_entry['value']) ? (int) $month_entry['value'] : 0;
+                                            $month_label = isset($month_entry['label']) ? (string) $month_entry['label'] : '';
+                                            if ($month_value <= 0 || $month_label === '') {
+                                                continue;
+                                            }
+                                            ?>
+                                            <option value="<?php echo esc_attr($month_value); ?>" <?php selected($summary_selected_month, $month_value); ?>>
+                                                <?php echo esc_html($month_label); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php else : ?>
+                                        <option value="<?php echo esc_attr($summary_selected_month); ?>" selected>
+                                            <?php echo esc_html(ucfirst(wp_date('F'))); ?>
+                                        </option>
+                                    <?php endif; ?>
+                                </select>
+                            </label>
+                        </div>
                     <?php endif; ?>
                 </header>
                 <div class="guarantee-admin-summary__body">
