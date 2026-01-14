@@ -348,6 +348,7 @@ const ADD_DOC_KEY = "add-document";
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
+                const ADMIN_SUMMARY_CONTEXTS = ["global", "year", "month"];
                 const ADMIN_SUMMARY_STATE_VALUES = [
                         "activada",
                         "pendiente_pago",
@@ -431,8 +432,8 @@ const ADD_DOC_KEY = "add-document";
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                 });
-                let adminSummaryCache = null;
-                let adminSummaryPromise = null;
+                const adminSummaryCache = new Map();
+                const adminSummaryPromises = new Map();
                 const numberAnimations = new WeakMap();
                 const copyIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M360-240q-33 0-56.5-23.5T280-320v-480q0-33 23.5-56.5T360-880h360q33 0 56.5 23.5T800-800v480q0 33-23.5 56.5T720-240H360Zm0-80h360v-480H360v480ZM200-80q-33 0-56.5-23.5T120-160v-560h80v560h440v80H200Zm160-240v-480 480Z"/></svg>';
                 const phoneIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M798-120q-125 0-247-54.5T329-329Q229-429 174.5-551T120-798q0-18 12-30t30-12h162q14 0 25 9.5t13 22.5l26 140q2 16-1 27t-11 19l-97 98q20 37 47.5 71.5T387-386q31 31 65 57.5t72 48.5l94-94q9-9 23.5-13.5T670-390l138 28q14 4 23 14.5t9 23.5v162q0 18-12 30t-30 12ZM241-600l66-66-17-94h-89q5 41 14 81t26 79Zm358 358q39 17 79.5 27t81.5 13v-88l-94-19-67 67ZM241-600Zm358 358Z"/></svg>';
@@ -8157,7 +8158,11 @@ const ADD_DOC_KEY = "add-document";
                                         ? context.trends
                                         : {};
                         const fallbackTrendLabel =
-                                contextKey === "year" ? "vs año ant." : "vs mes ant.";
+                                contextKey === "year"
+                                        ? "vs año ant."
+                                        : contextKey === "global"
+                                        ? ""
+                                        : "vs mes ant.";
 
                         const amountCard = container.querySelector(
                                 '[data-admin-summary-kpi="amount"]'
@@ -8167,9 +8172,14 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-label]"
                                 );
                                 if (labelEl) {
+                                        const yearLabel = contextKey === "year" ? contextLabel : "";
                                         labelEl.textContent =
-                                                contextKey === "year"
+                                                contextKey === "global"
                                                         ? "Valor acumulado"
+                                                        : contextKey === "year"
+                                                        ? yearLabel
+                                                                ? `Acumulado ${yearLabel}`
+                                                                : "Valor acumulado"
                                                         : monthName
                                                         ? `Acumulado ${monthName}`
                                                         : "Acumulado";
@@ -8200,9 +8210,14 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-label]"
                                 );
                                 if (labelEl) {
+                                        const yearLabel = contextKey === "year" ? contextLabel : "";
                                         labelEl.textContent =
-                                                contextKey === "year"
+                                                contextKey === "global"
                                                         ? "Total garantías"
+                                                        : contextKey === "year"
+                                                        ? yearLabel
+                                                                ? `Garantías ${yearLabel}`
+                                                                : "Total garantías"
                                                         : monthName
                                                         ? `Garantías ${monthName}`
                                                         : "Garantías este mes";
@@ -8482,20 +8497,181 @@ const ADD_DOC_KEY = "add-document";
                         };
                 }
 
+                function normalizeSummaryContextKey(value) {
+                        const key = typeof value === "string" ? value.trim() : "";
+                        return ADMIN_SUMMARY_CONTEXTS.includes(key)
+                                ? key
+                                : ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                }
+
+                function buildSummaryCacheKey(context, year, month) {
+                        const safeContext = typeof context === "string" ? context : "";
+                        const safeYear = typeof year === "string" ? year : "";
+                        const safeMonth = typeof month === "string" ? month : "";
+                        return `${safeContext}|${safeYear}|${safeMonth}`;
+                }
+
+                function getSummaryPeriods(data) {
+                        return data && typeof data.periods === "object" && data.periods
+                                ? data.periods
+                                : {};
+                }
+
+                function applySummaryPeriodOptions(root, data) {
+                        if (!root) {
+                                return;
+                        }
+                        const yearSelect = root.querySelector("[data-admin-summary-year-select]");
+                        const monthSelect = root.querySelector("[data-admin-summary-month-select]");
+                        if (!yearSelect && !monthSelect) {
+                                return;
+                        }
+
+                        const periods = getSummaryPeriods(data);
+                        const yearsRaw = Array.isArray(periods.years) ? periods.years : [];
+                        const years = yearsRaw
+                                .map((year) => String(year))
+                                .filter((year) => year);
+                        const monthsByYear =
+                                periods.months && typeof periods.months === "object"
+                                        ? periods.months
+                                        : {};
+                        const current = periods.current && typeof periods.current === "object" ? periods.current : {};
+                        const currentYear =
+                                Number.isFinite(Number.parseInt(current.year, 10))
+                                        ? String(current.year)
+                                        : "";
+                        const currentMonth =
+                                Number.isFinite(Number.parseInt(current.month, 10))
+                                        ? String(current.month)
+                                        : "";
+                        if (currentYear) {
+                                root.dataset.summaryCurrentYear = currentYear;
+                        }
+                        if (currentMonth) {
+                                root.dataset.summaryCurrentMonth = currentMonth;
+                        }
+
+                        let selectedYear =
+                                root.dataset.summaryYear ||
+                                currentYear ||
+                                (years.length ? years[0] : "");
+                        if (years.length && !years.includes(selectedYear)) {
+                                selectedYear = years[0];
+                        }
+
+                        if (yearSelect) {
+                                yearSelect.innerHTML = "";
+                                if (years.length) {
+                                        years.forEach((year) => {
+                                                const option = document.createElement("option");
+                                                option.value = year;
+                                                option.textContent = year;
+                                                yearSelect.appendChild(option);
+                                        });
+                                } else if (selectedYear) {
+                                        const option = document.createElement("option");
+                                        option.value = selectedYear;
+                                        option.textContent = selectedYear;
+                                        yearSelect.appendChild(option);
+                                }
+                                if (selectedYear) {
+                                        yearSelect.value = selectedYear;
+                                }
+                        }
+
+                        root.dataset.summaryYear = selectedYear;
+
+                        const monthsForYear = Array.isArray(monthsByYear[selectedYear])
+                                ? monthsByYear[selectedYear]
+                                : [];
+                        let selectedMonth =
+                                root.dataset.summaryMonth || currentMonth || "";
+                        const monthValues = monthsForYear
+                                .map((entry) =>
+                                        entry && typeof entry.value !== "undefined"
+                                                ? String(entry.value)
+                                                : ""
+                                )
+                                .filter((value) => value);
+                        if (monthValues.length && !monthValues.includes(selectedMonth)) {
+                                selectedMonth = monthValues[0];
+                        }
+
+                        if (monthSelect) {
+                                monthSelect.innerHTML = "";
+                                if (monthsForYear.length) {
+                                        monthsForYear.forEach((entry) => {
+                                                const value =
+                                                        entry && typeof entry.value !== "undefined"
+                                                                ? String(entry.value)
+                                                                : "";
+                                                const label =
+                                                        entry && typeof entry.label === "string"
+                                                                ? entry.label
+                                                                : "";
+                                                if (!value || !label) {
+                                                        return;
+                                                }
+                                                const option = document.createElement("option");
+                                                option.value = value;
+                                                option.textContent = label;
+                                                monthSelect.appendChild(option);
+                                        });
+                                } else if (selectedMonth) {
+                                        const option = document.createElement("option");
+                                        option.value = selectedMonth;
+                                        option.textContent = selectedMonth;
+                                        monthSelect.appendChild(option);
+                                }
+                                if (selectedMonth) {
+                                        monthSelect.value = selectedMonth;
+                                }
+                        }
+
+                        root.dataset.summaryMonth = selectedMonth;
+                }
+
+                function updateSummaryFilterVisibility(root) {
+                        if (!root) {
+                                return;
+                        }
+                        const contextKey = normalizeSummaryContextKey(root.dataset.context);
+                        const yearWrap = root.querySelector("[data-admin-summary-year]");
+                        const monthWrap = root.querySelector("[data-admin-summary-month]");
+                        if (yearWrap) {
+                                if (contextKey === "year") {
+                                        yearWrap.removeAttribute("hidden");
+                                } else {
+                                        yearWrap.setAttribute("hidden", "");
+                                }
+                        }
+                        if (monthWrap) {
+                                if (contextKey === "month") {
+                                        monthWrap.removeAttribute("hidden");
+                                } else {
+                                        monthWrap.setAttribute("hidden", "");
+                                }
+                        }
+                }
+
                 function updateAdminSummaryContext(root, contextKey) {
                         if (!root) {
                                 return;
                         }
                         const data = root._adminSummaryData || {};
                         const contextData = getSummaryContextData(data, contextKey);
-                        const effectiveKey = contextKey && contextData ? contextKey : ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const effectiveKey = normalizeSummaryContextKey(
+                                contextKey && contextData ? contextKey : ADMIN_SUMMARY_DEFAULT_CONTEXT
+                        );
                         root.dataset.context = effectiveKey;
-
-                        const toggles = root.querySelectorAll("[data-admin-summary-context-toggle]");
-                        toggles.forEach((toggle) => {
-                                const value = toggle.value || toggle.getAttribute("value");
-                                toggle.checked = value === effectiveKey;
-                        });
+                        const contextSelect = root.querySelector(
+                                "[data-admin-summary-context-select]"
+                        );
+                        if (contextSelect) {
+                                contextSelect.value = effectiveKey;
+                        }
+                        updateSummaryFilterVisibility(root);
 
                         renderAdminSummaryStates(root, contextData || {});
                 }
@@ -8576,7 +8752,17 @@ const ADD_DOC_KEY = "add-document";
                         root.dataset.loaded = "1";
                         root._adminSummaryData = data || {};
 
-                        const currentContext = root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const currentContext = normalizeSummaryContextKey(
+                                root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT
+                        );
+                        const contextData = getSummaryContextData(data, currentContext);
+                        if (contextData && typeof contextData.year !== "undefined") {
+                                root.dataset.summaryYear = String(contextData.year);
+                        }
+                        if (contextData && typeof contextData.month !== "undefined") {
+                                root.dataset.summaryMonth = String(contextData.month);
+                        }
+                        applySummaryPeriodOptions(root, data);
                         updateAdminSummaryContext(root, currentContext);
                         renderAdminSummaryActions(root, data.pending || {});
 
@@ -8586,18 +8772,23 @@ const ADD_DOC_KEY = "add-document";
                         }
                 }
 
-                function fetchAdminSummary(force = false) {
+                function fetchAdminSummary(options = {}) {
                         if (!canViewAdminSummary) {
                                 return Promise.resolve({});
                         }
+                        const contextKey = normalizeSummaryContextKey(options.context);
+                        const year = options.year ? String(options.year) : "";
+                        const month = options.month ? String(options.month) : "";
+                        const cacheKey = buildSummaryCacheKey(contextKey, year, month);
+                        const force = Boolean(options.force);
                         if (force) {
-                                adminSummaryCache = null;
+                                adminSummaryCache.delete(cacheKey);
                         } else {
-                                if (adminSummaryCache) {
-                                        return Promise.resolve(adminSummaryCache);
+                                if (adminSummaryCache.has(cacheKey)) {
+                                        return Promise.resolve(adminSummaryCache.get(cacheKey));
                                 }
-                                if (adminSummaryPromise) {
-                                        return adminSummaryPromise;
+                                if (adminSummaryPromises.has(cacheKey)) {
+                                        return adminSummaryPromises.get(cacheKey);
                                 }
                         }
 
@@ -8606,7 +8797,21 @@ const ADD_DOC_KEY = "add-document";
                                 headers["X-WP-Nonce"] = restNonce;
                         }
 
-                        const request = fetch(`${restRoot}go/v1/guarantees/summary`, { headers })
+                        const params = new URLSearchParams();
+                        if (contextKey) {
+                                params.set("context", contextKey);
+                        }
+                        if (year) {
+                                params.set("year", year);
+                        }
+                        if (month) {
+                                params.set("month", month);
+                        }
+                        const url = params.toString()
+                                ? `${restRoot}go/v1/guarantees/summary?${params.toString()}`
+                                : `${restRoot}go/v1/guarantees/summary`;
+
+                        const request = fetch(url, { headers })
                                 .then((response) => {
                                         if (!response.ok) {
                                                 throw new Error(
@@ -8616,15 +8821,15 @@ const ADD_DOC_KEY = "add-document";
                                         return response.json();
                                 })
                                 .then((payload) => {
-                                        adminSummaryCache = payload;
+                                        adminSummaryCache.set(cacheKey, payload);
                                         return payload;
                                 })
                                 .finally(() => {
-                                        adminSummaryPromise = null;
+                                        adminSummaryPromises.delete(cacheKey);
                                 });
 
                         if (!force) {
-                                adminSummaryPromise = request;
+                                adminSummaryPromises.set(cacheKey, request);
                         }
 
                         return request;
@@ -8634,13 +8839,19 @@ const ADD_DOC_KEY = "add-document";
                         if (!root) {
                                 return;
                         }
+                        const contextKey = normalizeSummaryContextKey(
+                                options.context || root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT
+                        );
+                        const year = options.year ? String(options.year) : root.dataset.summaryYear || "";
+                        const month = options.month ? String(options.month) : root.dataset.summaryMonth || "";
+                        const cacheKey = buildSummaryCacheKey(contextKey, year, month);
                         const force = Boolean(options.force);
-                        if (!force && root.dataset.loaded === "1" && adminSummaryCache) {
-                                renderAdminSummary(root, adminSummaryCache);
+                        if (!force && root.dataset.loaded === "1" && adminSummaryCache.has(cacheKey)) {
+                                renderAdminSummary(root, adminSummaryCache.get(cacheKey));
                                 return;
                         }
                         setAdminSummaryLoading(root, true);
-                        fetchAdminSummary(force)
+                        fetchAdminSummary({ context: contextKey, year, month, force })
                                 .then((payload) => {
                                         renderAdminSummary(root, payload || {});
                                 })
@@ -8661,19 +8872,74 @@ const ADD_DOC_KEY = "add-document";
                         if (!root) {
                                 return;
                         }
-                        if (root.dataset.initialized === "1" && root.dataset.loaded === "1" && adminSummaryCache) {
-                                renderAdminSummary(root, adminSummaryCache);
-                                return;
+                        const contextSelect = root.querySelector(
+                                "[data-admin-summary-context-select]"
+                        );
+                        const yearSelect = root.querySelector("[data-admin-summary-year-select]");
+                        const monthSelect = root.querySelector("[data-admin-summary-month-select]");
+                        if (root.dataset.initialized === "1" && root.dataset.loaded === "1") {
+                                const cacheKey = buildSummaryCacheKey(
+                                        root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT,
+                                        root.dataset.summaryYear || "",
+                                        root.dataset.summaryMonth || ""
+                                );
+                                if (adminSummaryCache.has(cacheKey)) {
+                                        renderAdminSummary(root, adminSummaryCache.get(cacheKey));
+                                        return;
+                                }
                         }
-                        const toggles = root.querySelectorAll("[data-admin-summary-context-toggle]");
-                        toggles.forEach((toggle) => {
-                                toggle.addEventListener("change", () => {
-                                        if (!toggle.checked) {
+
+                        const applySelection = () => {
+                                const contextKey = normalizeSummaryContextKey(
+                                        contextSelect ? contextSelect.value : root.dataset.context
+                                );
+                                root.dataset.context = contextKey;
+                                const currentYear = root.dataset.summaryCurrentYear || "";
+                                const yearValue =
+                                        contextKey === "year" && yearSelect
+                                                ? yearSelect.value || ""
+                                                : contextKey === "month"
+                                                ? currentYear || root.dataset.summaryYear || ""
+                                                : root.dataset.summaryYear || "";
+                                const monthValue =
+                                        contextKey === "month" && monthSelect
+                                                ? monthSelect.value || ""
+                                                : root.dataset.summaryMonth || "";
+                                if (yearValue) {
+                                        root.dataset.summaryYear = yearValue;
+                                }
+                                if (monthValue) {
+                                        root.dataset.summaryMonth = monthValue;
+                                }
+                                updateSummaryFilterVisibility(root);
+                                loadAdminSummary(root, {
+                                        context: contextKey,
+                                        year: contextKey === "year" || contextKey === "month" ? yearValue : "",
+                                        month: contextKey === "month" ? monthValue : "",
+                                });
+                        };
+
+                        if (contextSelect) {
+                                contextSelect.addEventListener("change", () => {
+                                        applySelection();
+                                });
+                        }
+                        if (yearSelect) {
+                                yearSelect.addEventListener("change", () => {
+                                        if ((root.dataset.context || "") !== "year") {
                                                 return;
                                         }
-                                        updateAdminSummaryContext(root, toggle.value || toggle.getAttribute("value"));
+                                        applySelection();
                                 });
-                        });
+                        }
+                        if (monthSelect) {
+                                monthSelect.addEventListener("change", () => {
+                                        if ((root.dataset.context || "") !== "month") {
+                                                return;
+                                        }
+                                        applySelection();
+                                });
+                        }
                         const helpButton = root.querySelector("[data-admin-summary-help]");
                         if (helpButton) {
                                 helpButton.addEventListener("click", () => {
@@ -8699,10 +8965,16 @@ const ADD_DOC_KEY = "add-document";
                                 root.dataset.context = ADMIN_SUMMARY_DEFAULT_CONTEXT;
                         }
                         if (preloadedData) {
-                                adminSummaryCache = preloadedData;
                                 renderAdminSummary(root, preloadedData || {});
+                                const cacheKey = buildSummaryCacheKey(
+                                        root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT,
+                                        root.dataset.summaryYear || "",
+                                        root.dataset.summaryMonth || ""
+                                );
+                                adminSummaryCache.set(cacheKey, preloadedData);
+                                updateSummaryFilterVisibility(root);
                         } else {
-                                loadAdminSummary(root);
+                                applySelection();
                         }
                 }
 
