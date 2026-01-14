@@ -45,10 +45,12 @@
         const iconSave = icons.save || '';
         const iconPdf = icons.pdf || '';
         const iconDelete = icons.delete || '';
+        const iconCheck = icons.check || '';
         const permissions = config.permissions || {};
         const canAssignCommercials = Boolean(permissions.canAssignCommercials);
         const canManageOffers = Boolean(permissions.canManageOffers);
         const canManageSepa = Boolean(permissions.canManageSepa);
+        const canManageVerification = Boolean(permissions.canManageVerification);
         const canViewAdminLink = Boolean(permissions.canViewAdminLink);
         const canDeleteUser = Boolean(permissions.canDeleteUser);
         const router = config.router || {};
@@ -462,6 +464,30 @@
 
             const rawValue = typeof value.raw === 'string' ? value.raw.trim() : '';
             return rawValue;
+        };
+
+        const setVerificationMessage = (container, message, status) => {
+            if (!container) {
+                return;
+            }
+
+            const statusMessage = container.querySelector('[data-verification-message]');
+            if (!statusMessage) {
+                return;
+            }
+
+            const normalized = typeof message === 'string' ? message.trim() : '';
+            if (normalized === '') {
+                statusMessage.textContent = '';
+                statusMessage.classList.remove('is-success', 'is-error');
+                statusMessage.hidden = true;
+                return;
+            }
+
+            statusMessage.textContent = normalized;
+            statusMessage.classList.toggle('is-success', status === 'success');
+            statusMessage.classList.toggle('is-error', status === 'error');
+            statusMessage.hidden = false;
         };
 
         if (detail) {
@@ -3407,6 +3433,10 @@
             const paymentLabel = typeof payment.label === 'string' ? payment.label.trim() : '';
             const paymentDisplay = paymentLabel !== '' ? escapeHtml(paymentLabel) : '—';
             const paymentTagClass = paymentLabel !== '' ? '' : ' client-detail__stat-tag--muted';
+            const verification = item.verification && typeof item.verification === 'object' ? item.verification : {};
+            const verificationPending = Boolean(verification.pending);
+            const verificationLastSent = verification.last_sent || {};
+            const verificationSentLabel = formatRegisteredWithTime(verificationLastSent) || '—';
             const registrationBadge = `
                 <span class="client-detail__registration">
                     ${escapeHtml(registeredLabel)}
@@ -3475,6 +3505,38 @@
             const sepaActionsHtml = manageSepaButtonHtml !== ''
                 ? `<div class="client-detail__actions client-detail__actions--inline">${manageSepaButtonHtml}</div>`
                 : '';
+            const verificationSectionHtml = canManageVerification && verificationPending
+                ? `
+                    <section class="client-detail__section client-detail__section--verification">
+                        <div class="client-detail__section-header client-detail__section-header--has-meta">
+                            <div class="client-detail__section-heading">
+                                <h4 class="client-detail__section-title">${escapeHtml(strings.verificationStatus || 'Estado de verificación')}</h4>
+                            </div>
+                        </div>
+                        <dl class="client-detail__verification-list">
+                            <div class="client-detail__verification-item">
+                                <dt>${escapeHtml(strings.verificationSentAt || 'Solicitud enviada')}</dt>
+                                <dd>${escapeHtml(verificationSentLabel)}</dd>
+                            </div>
+                            <div class="client-detail__verification-item">
+                                <dt>${escapeHtml(strings.verificationState || 'Estado')}</dt>
+                                <dd>${escapeHtml(strings.verificationPending || 'Sin verificar')}</dd>
+                            </div>
+                        </dl>
+                        <div class="client-detail__verification-actions">
+                            <button type="button" class="client-detail__action" data-resend-verification>
+                                ${iconEmail}
+                                <span>${escapeHtml(strings.verificationResend || 'Reenviar código de verificación')}</span>
+                            </button>
+                            <button type="button" class="client-detail__action" data-validate-verification>
+                                ${iconCheck}
+                                <span>${escapeHtml(strings.verificationValidate || 'Validar manualmente')}</span>
+                            </button>
+                        </div>
+                        <p class="client-detail__verification-message" data-verification-message hidden></p>
+                    </section>
+                `
+                : '';
 
             return `
                 <div class="client-detail">
@@ -3501,6 +3563,7 @@
                             <span class="client-detail__stat-tag${paymentTagClass}">${paymentDisplay}</span>
                         </div>
                     </div>
+                    ${verificationSectionHtml}
                     <section class="client-detail__section">
                         <h4 class="client-detail__section-title">${escapeHtml(strings.contact || 'Contacto')}</h4>
                         ${contactActions}
@@ -7322,6 +7385,94 @@
                         item,
                     });
                 });
+            }
+
+            const resendVerificationButton = container.querySelector('[data-resend-verification]');
+            const validateVerificationButton = container.querySelector('[data-validate-verification]');
+            if (canManageVerification && (resendVerificationButton || validateVerificationButton)) {
+                const setVerificationButtonsState = (disabled) => {
+                    if (resendVerificationButton) {
+                        resendVerificationButton.disabled = disabled;
+                    }
+                    if (validateVerificationButton) {
+                        validateVerificationButton.disabled = disabled;
+                    }
+                };
+
+                const sendVerificationRequest = async (endpoint) => {
+                    if (!item) {
+                        throw new Error(strings.error || 'No se ha podido completar la operación.');
+                    }
+
+                    const response = await fetch(`${restRoot}go/v1/clientes/${item.id}/verification/${endpoint}`, {
+                        method: 'POST',
+                        headers: restNonce ? { 'X-WP-Nonce': restNonce } : {},
+                    });
+
+                    let payload = {};
+                    try {
+                        payload = await response.json();
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    if (!response.ok) {
+                        const message = payload && typeof payload.message === 'string'
+                            ? payload.message
+                            : (strings.error || 'No se ha podido completar la operación.');
+                        throw new Error(message);
+                    }
+
+                    return payload;
+                };
+
+                if (resendVerificationButton) {
+                    resendVerificationButton.addEventListener('click', async () => {
+                        setVerificationButtonsState(true);
+                        setVerificationMessage(container, '', '');
+                        try {
+                            const payload = await sendVerificationRequest('resend');
+                            if (item && payload && payload.verification) {
+                                item.verification = payload.verification;
+                                cache.set(String(item.id), item);
+                                refreshActiveDetail(item);
+                            }
+                        } catch (error) {
+                            const message = error && typeof error.message === 'string'
+                                ? error.message
+                                : (strings.verificationResendError || 'No se ha podido reenviar el código.');
+                            setVerificationMessage(container, message, 'error');
+                        } finally {
+                            setVerificationButtonsState(false);
+                        }
+                    });
+                }
+
+                if (validateVerificationButton) {
+                    validateVerificationButton.addEventListener('click', async () => {
+                        const confirmMessage = strings.verificationValidateConfirm || '¿Quieres validar manualmente este usuario?';
+                        if (!window.confirm(confirmMessage)) {
+                            return;
+                        }
+                        setVerificationButtonsState(true);
+                        setVerificationMessage(container, '', '');
+                        try {
+                            const payload = await sendVerificationRequest('validate');
+                            if (item && payload && payload.verification) {
+                                item.verification = payload.verification;
+                                cache.set(String(item.id), item);
+                                refreshActiveDetail(item);
+                            }
+                        } catch (error) {
+                            const message = error && typeof error.message === 'string'
+                                ? error.message
+                                : (strings.verificationValidateError || 'No se ha podido validar el usuario.');
+                            setVerificationMessage(container, message, 'error');
+                        } finally {
+                            setVerificationButtonsState(false);
+                        }
+                    });
+                }
             }
 
             const deleteUserButton = container.querySelector('[data-delete-user]');

@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 6.3.0 - 2026-09-26
+- Añadido el estado de verificación en la ficha de clientes con opciones para reenviar el código o validar manualmente.
+
 ## 6.2.6 - 2026-09-26
 - Para admin, selector de profesional ahora no limitado a 25
 
