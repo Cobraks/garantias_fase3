@@ -29,7 +29,7 @@ export function logDebug(...args) {
 export const numericLimits = {
         kilometros: { min: 0, max: Infinity },
         precio_venta: { min: 0, max: 999999 },
-        cilindrada: { min: 0, max: 99999 },
+        cilindrada: { min: 0, max: 9000 },
         potencia: { min: 0, max: 3000 },
 };
 

@@ -2116,12 +2116,13 @@ function setDynamicLimits(modalidades, valoresForm) {
                 }
         }
 
+        const defaultCilMax = valoresForm.tipo_vehiculo === "camion" ? 99999 : 9000;
         if (!found) {
-                cilLimits = { min: 0, max: 99999 };
+                cilLimits = { min: 0, max: defaultCilMax };
                 potLimits = { min: 0, max: 3000 };
         }
         const limits = getLimitesDinamicos();
-        limits.cilindrada = cilLimits || { min: 0, max: 99999 };
+        limits.cilindrada = cilLimits || { min: 0, max: defaultCilMax };
         limits.potencia = potLimits || { min: 0, max: 3000 };
         limits.kilometros = kmRequiresAntiguedad
                 ? { min: 0, max: Infinity }
