@@ -2068,7 +2068,7 @@ function getDynamicRangeFromTarifas(modalidad) {
 		const rawMax = tarifa.valor_max ?? tarifa.valor_maximo;
 		const vMin = parseNumericFormValue(rawMin);
 		let vMax;
-		if (rawMax === "" || rawMax == null) vMax = 9999;
+		if (rawMax === "" || rawMax == null) vMax = 99999;
 		else vMax = parseNumericFormValue(rawMax);
 		if (min === null || vMin < min) min = vMin;
 		if (max === null || vMax > max) max = vMax;
