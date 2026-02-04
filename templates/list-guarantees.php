@@ -612,6 +612,7 @@ if (($is_admin_user || $is_director || $is_professional)
         <?php if ($can_view_summary) : ?>
             <?php
             $summary_context_base = uniqid('summary-context-');
+            $summary_amount_toggle_name = $summary_context_base . '-amount';
             $has_admin_summary    = $admin_summary_json !== '' && ! empty($admin_summary_states);
 
             $state_color_vars = [
@@ -712,21 +713,57 @@ if (($is_admin_user || $is_director || $is_professional)
                 }
             }
 
-            $summary_amount_label = $admin_summary_context_key === 'year'
-                ? __('Valor acumulado', 'garantias-online-360vo')
-                : ($summary_month_name !== ''
-                    ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_month_name)
-                    : __('Acumulado mensual', 'garantias-online-360vo'));
+            $summary_current_day_label = isset($admin_summary_default['current_day_label'])
+                ? trim((string) $admin_summary_default['current_day_label'])
+                : '';
 
-            $summary_count_label = $admin_summary_context_key === 'year'
-                ? __('Total garantías', 'garantias-online-360vo')
-                : ($summary_month_name !== ''
-                    ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_month_name)
-                    : __('Garantías este mes', 'garantias-online-360vo'));
+            if ($admin_summary_context_key === 'global') {
+                $summary_amount_label = __('Valor total', 'garantias-online-360vo');
+                $summary_count_label = __('Garantías totales', 'garantias-online-360vo');
+            } elseif ($admin_summary_context_key === 'year') {
+                $summary_amount_label = $summary_current_day_label !== ''
+                    ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_current_day_label)
+                    : __('Valor anual', 'garantias-online-360vo');
+                $summary_count_label = $summary_current_day_label !== ''
+                    ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_current_day_label)
+                    : __('Garantías del año', 'garantias-online-360vo');
+            } else {
+                $summary_amount_label = $summary_month_name !== ''
+                    ? ($summary_current_day_label !== ''
+                        ? sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_current_day_label)
+                        : sprintf('%s %s', __('Acumulado', 'garantias-online-360vo'), $summary_month_name))
+                    : __('Acumulado mensual', 'garantias-online-360vo');
+                $summary_count_label = $summary_month_name !== ''
+                    ? ($summary_current_day_label !== ''
+                        ? sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_current_day_label)
+                        : sprintf('%s %s', __('Garantías', 'garantias-online-360vo'), $summary_month_name))
+                    : __('Garantías este mes', 'garantias-online-360vo');
+            }
 
             $summary_trends = isset($admin_summary_default['trends']) && is_array($admin_summary_default['trends'])
                 ? $admin_summary_default['trends']
                 : [];
+            $summary_comparison_note = isset($admin_summary_default['comparison_note'])
+                ? trim((string) $admin_summary_default['comparison_note'])
+                : '';
+            $summary_previous_values = isset($admin_summary_default['previous_values']) && is_array($admin_summary_default['previous_values'])
+                ? $admin_summary_default['previous_values']
+                : [];
+            $summary_previous_label = isset($summary_previous_values['label'])
+                ? trim((string) $summary_previous_values['label'])
+                : '';
+            $summary_previous_amount = isset($summary_previous_values['amount'])
+                ? (float) $summary_previous_values['amount']
+                : 0.0;
+            $summary_previous_amount_total = isset($summary_previous_values['amount_total'])
+                ? (float) $summary_previous_values['amount_total']
+                : 0.0;
+            $summary_previous_count = isset($summary_previous_values['count'])
+                ? (int) $summary_previous_values['count']
+                : 0;
+            $summary_previous_count_paid = isset($summary_previous_values['count_paid'])
+                ? (int) $summary_previous_values['count_paid']
+                : 0;
 
             $amount_trend = isset($summary_trends['amount']) && is_array($summary_trends['amount'])
                 ? $summary_trends['amount']
@@ -740,9 +777,15 @@ if (($is_admin_user || $is_director || $is_professional)
 
             $amount_trend_direction = isset($amount_trend['direction']) ? (string) $amount_trend['direction'] : 'neutral';
             $amount_trend_value = isset($amount_trend['formatted']) ? (string) $amount_trend['formatted'] : '0%';
-            $amount_trend_suffix = isset($amount_trend['label']) ? (string) $amount_trend['label'] : ($admin_summary_context_key === 'year'
-                ? __('vs año ant.', 'garantias-online-360vo')
-                : __('vs mes ant.', 'garantias-online-360vo'));
+            if (isset($amount_trend['label'])) {
+                $amount_trend_suffix = (string) $amount_trend['label'];
+            } elseif ($admin_summary_context_key === 'year') {
+                $amount_trend_suffix = __('vs año ant.', 'garantias-online-360vo');
+            } elseif ($admin_summary_context_key === 'month') {
+                $amount_trend_suffix = __('vs mes ant.', 'garantias-online-360vo');
+            } else {
+                $amount_trend_suffix = '';
+            }
             $amount_trend_text = trim($amount_trend_value . ' ' . $amount_trend_suffix);
             if ($amount_trend_text === '') {
                 $amount_trend_text = '—';
@@ -759,9 +802,15 @@ if (($is_admin_user || $is_director || $is_professional)
 
             $count_trend_direction = isset($count_trend['direction']) ? (string) $count_trend['direction'] : 'neutral';
             $count_trend_value = isset($count_trend['formatted']) ? (string) $count_trend['formatted'] : '0%';
-            $count_trend_suffix = isset($count_trend['label']) ? (string) $count_trend['label'] : ($admin_summary_context_key === 'year'
-                ? __('vs año ant.', 'garantias-online-360vo')
-                : __('vs mes ant.', 'garantias-online-360vo'));
+            if (isset($count_trend['label'])) {
+                $count_trend_suffix = (string) $count_trend['label'];
+            } elseif ($admin_summary_context_key === 'year') {
+                $count_trend_suffix = __('vs año ant.', 'garantias-online-360vo');
+            } elseif ($admin_summary_context_key === 'month') {
+                $count_trend_suffix = __('vs mes ant.', 'garantias-online-360vo');
+            } else {
+                $count_trend_suffix = '';
+            }
             $count_trend_text = trim($count_trend_value . ' ' . $count_trend_suffix);
             if ($count_trend_text === '') {
                 $count_trend_text = '—';
@@ -782,6 +831,15 @@ if (($is_admin_user || $is_director || $is_professional)
             $summary_total_label = $has_admin_summary
                 ? $format_summary_number($admin_summary_total)
                 : '—';
+            $summary_previous_amount_text = $summary_previous_label !== ''
+                ? sprintf('%s: %s', $summary_previous_label, $format_summary_currency($summary_previous_amount))
+                : '';
+            $summary_previous_count_text = $summary_previous_label !== ''
+                ? sprintf('%s: %s', $summary_previous_label, $format_summary_number($summary_previous_count_paid))
+                : '';
+            $summary_previous_count_paid_text = $summary_previous_label !== ''
+                ? sprintf('%s: %s', $summary_previous_label, $format_summary_number($summary_previous_count_paid))
+                : '';
 
             $action_arrow_icon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/></svg>';
             ?>
@@ -789,6 +847,7 @@ if (($is_admin_user || $is_director || $is_professional)
                 class="guarantee-admin-summary<?php echo $has_admin_summary ? '' : ' is-loading'; ?>"
                 data-admin-summary
                 data-context="<?php echo esc_attr($admin_summary_context_key); ?>"
+                data-amount-mode="paid"
                 data-loaded="<?php echo $has_admin_summary ? '1' : '0'; ?>"
                 data-loading="<?php echo $has_admin_summary ? '0' : '1'; ?>">
                 <header class="guarantee-admin-summary__header">
@@ -796,6 +855,7 @@ if (($is_admin_user || $is_director || $is_professional)
                     <?php if (! $is_professional) : ?>
                         <?php
                         $summary_context_global_id = $summary_context_base . '-global';
+                        $summary_context_year_id   = $summary_context_base . '-year';
                         $summary_context_month_id  = $summary_context_base . '-month';
                         ?>
                         <fieldset class="guarantee-admin-summary__context" data-admin-summary-context role="radiogroup" aria-label="<?php esc_attr_e('Cambiar periodo', 'garantias-online-360vo'); ?>">
@@ -804,11 +864,22 @@ if (($is_admin_user || $is_director || $is_professional)
                                 type="radio"
                                 name="<?php echo esc_attr($summary_context_base); ?>"
                                 id="<?php echo esc_attr($summary_context_global_id); ?>"
+                                value="global"
+                                data-admin-summary-context-toggle
+                                <?php checked($admin_summary_context_key, 'global'); ?>>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_global_id); ?>">
+                                <?php esc_html_e('Total', 'garantias-online-360vo'); ?>
+                            </label>
+                            <input
+                                class="guarantee-admin-summary__context-input"
+                                type="radio"
+                                name="<?php echo esc_attr($summary_context_base); ?>"
+                                id="<?php echo esc_attr($summary_context_year_id); ?>"
                                 value="year"
                                 data-admin-summary-context-toggle
                                 <?php checked($admin_summary_context_key, 'year'); ?>>
-                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_global_id); ?>">
-                                <?php esc_html_e('Global', 'garantias-online-360vo'); ?>
+                            <label class="guarantee-admin-summary__context-label" for="<?php echo esc_attr($summary_context_year_id); ?>">
+                                <?php esc_html_e('Anual', 'garantias-online-360vo'); ?>
                             </label>
                             <input
                                 class="guarantee-admin-summary__context-input"
@@ -827,6 +898,29 @@ if (($is_admin_user || $is_director || $is_professional)
                 <div class="guarantee-admin-summary__body">
                     <?php if ($show_kpi_grid) : ?>
                         <section class="kpi-grid" data-admin-summary-kpis>
+                            <fieldset class="kpi-toggle" data-admin-summary-amount-toggle role="radiogroup" aria-label="<?php esc_attr_e('Mostrar importe', 'garantias-online-360vo'); ?>">
+                                <input
+                                    class="kpi-toggle__input"
+                                    type="radio"
+                                    name="<?php echo esc_attr($summary_amount_toggle_name); ?>"
+                                    id="<?php echo esc_attr($summary_amount_toggle_name . '-paid'); ?>"
+                                    value="paid"
+                                    checked
+                                    data-admin-summary-amount-input>
+                                <label class="kpi-toggle__label" for="<?php echo esc_attr($summary_amount_toggle_name . '-paid'); ?>">
+                                    <?php esc_html_e('Cobrado', 'garantias-online-360vo'); ?>
+                                </label>
+                                <input
+                                    class="kpi-toggle__input"
+                                    type="radio"
+                                    name="<?php echo esc_attr($summary_amount_toggle_name); ?>"
+                                    id="<?php echo esc_attr($summary_amount_toggle_name . '-total'); ?>"
+                                    value="total"
+                                    data-admin-summary-amount-input>
+                                <label class="kpi-toggle__label" for="<?php echo esc_attr($summary_amount_toggle_name . '-total'); ?>">
+                                    <?php esc_html_e('Con pendientes', 'garantias-online-360vo'); ?>
+                                </label>
+                            </fieldset>
                             <article class="kpi-card" data-admin-summary-kpi="amount">
                                 <div class="kpi-label">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 -960 960 960" fill="var(--summary-accent)">
@@ -851,6 +945,19 @@ if (($is_admin_user || $is_director || $is_professional)
                                         ?>
                                     </span>
                                     <span data-admin-summary-trend-label><?php echo esc_html($amount_trend_text); ?></span>
+                                </div>
+                                <div
+                                    class="kpi-previous-note"
+                                    data-admin-summary-prev-note
+                                    data-prev-type="amount"
+                                    data-prev-paid="<?php echo esc_attr($summary_previous_amount); ?>"
+                                    data-prev-total="<?php echo esc_attr($summary_previous_amount_total); ?>"
+                                    data-prev-label="<?php echo esc_attr($summary_previous_label); ?>"<?php echo $summary_previous_amount_text !== '' ? '' : ' hidden'; ?>>
+                                    <?php
+                                    if ($summary_previous_amount_text !== '') {
+                                        echo esc_html($summary_previous_amount_text);
+                                    }
+                                    ?>
                                 </div>
                             </article>
                             <article class="kpi-card" data-admin-summary-kpi="count">
@@ -878,7 +985,29 @@ if (($is_admin_user || $is_director || $is_professional)
                                     </span>
                                     <span data-admin-summary-trend-label><?php echo esc_html($count_trend_text); ?></span>
                                 </div>
+                                <div
+                                    class="kpi-previous-note"
+                                    data-admin-summary-prev-note
+                                    data-prev-type="count"
+                                    data-prev-paid="<?php echo esc_attr($summary_previous_count_paid); ?>"
+                                    data-prev-total="<?php echo esc_attr($summary_previous_count); ?>"
+                                    data-prev-label="<?php echo esc_attr($summary_previous_label); ?>"<?php echo $summary_previous_count_text !== '' ? '' : ' hidden'; ?>>
+                                    <?php
+                                    if ($summary_previous_count_text !== '') {
+                                        echo esc_html($summary_previous_count_text);
+                                    }
+                                    ?>
+                                </div>
                             </article>
+                            <div
+                                class="kpi-comparison-note"
+                                data-admin-summary-comparison-note<?php echo $summary_comparison_note !== '' ? '' : ' hidden'; ?>>
+                                <?php
+                                if ($summary_comparison_note !== '') {
+                                    echo esc_html(sprintf('*%s', $summary_comparison_note));
+                                }
+                                ?>
+                            </div>
                         </section>
                     <?php endif; ?>
                     <?php if (! $is_professional) : ?>
