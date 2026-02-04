@@ -123,7 +123,9 @@ function getDynamicLimit(field) {
         ) {
                 return limits;
         }
-        if (field === "cilindrada") return { min: 0, max: 9000 };
+        if (field === "cilindrada") {
+                return { min: 0, max: isTipoCamion() ? 99999 : 9000 };
+        }
         if (field === "potencia") return { min: 0, max: 3000 };
         if (field === "kilometros") return { min: 0, max: Infinity };
         return { min: 0, max: 999999 };
@@ -243,7 +245,8 @@ const inputLimitsApplier = {
                 input.value = decPart !== null ? `${intPart},${decPart}` : intPart;
         },
 	cilindrada: (input) => {
-		input.value = input.value.replace(/\D/g, "").slice(0, 4);
+		const maxDigits = isTipoCamion() ? 5 : 4;
+		input.value = input.value.replace(/\D/g, "").slice(0, maxDigits);
 	},
 	potencia: (input) => {
 		input.value = input.value.replace(/\D/g, "").slice(0, 4);
