@@ -2117,11 +2117,11 @@ function setDynamicLimits(modalidades, valoresForm) {
         }
 
         if (!found) {
-                cilLimits = { min: 0, max: 9000 };
+                cilLimits = { min: 0, max: 99999 };
                 potLimits = { min: 0, max: 3000 };
         }
         const limits = getLimitesDinamicos();
-        limits.cilindrada = cilLimits || { min: 0, max: 9000 };
+        limits.cilindrada = cilLimits || { min: 0, max: 99999 };
         limits.potencia = potLimits || { min: 0, max: 3000 };
         limits.kilometros = kmRequiresAntiguedad
                 ? { min: 0, max: Infinity }
