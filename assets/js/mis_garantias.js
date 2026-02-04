@@ -348,6 +348,8 @@ const ADD_DOC_KEY = "add-document";
                 const ADMIN_SUMMARY_ERROR_MESSAGE =
                         "No hemos podido cargar los datos. Vuelve a intentarlo en unos segundos.";
                 const ADMIN_SUMMARY_DEFAULT_CONTEXT = "month";
+                const ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE = "paid";
+                const ADMIN_SUMMARY_AMOUNT_MODES = ["paid", "total"];
                 const ADMIN_SUMMARY_STATE_VALUES = [
                         "activada",
                         "pendiente_pago",
@@ -7736,6 +7738,8 @@ const ADD_DOC_KEY = "add-document";
                                 root._adminSummaryHighlight = null;
                                 root._adminSummaryLockedHighlight = null;
                                 root.classList.remove("is-dimmed");
+                                root.dataset.amountMode = ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
+                                syncAdminSummaryAmountToggle(root);
                         }
                         const error = root.querySelector("[data-admin-summary-error]");
                         if (error) {
@@ -7889,6 +7893,20 @@ const ADD_DOC_KEY = "add-document";
                                 map.set(value, amount);
                         });
                         return map;
+                }
+
+                function getSummaryAmountForMode(amountMap, mode) {
+                        if (!(amountMap instanceof Map)) {
+                                return 0;
+                        }
+                        if (mode === "total") {
+                                return (
+                                        (amountMap.get("activada") || 0) +
+                                        (amountMap.get("pendiente_pago") || 0) +
+                                        (amountMap.get("pendiente_revision") || 0)
+                                );
+                        }
+                        return amountMap.get("activada") || 0;
                 }
 
                 function getDonutBaseColor(donut) {
@@ -8135,6 +8153,10 @@ const ADD_DOC_KEY = "add-document";
                         }
                         const contextKey =
                                 context.key || root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT;
+                        const amountModeRaw = root.dataset.amountMode || ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
+                        const amountMode = ADMIN_SUMMARY_AMOUNT_MODES.includes(amountModeRaw)
+                                ? amountModeRaw
+                                : ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
                         const amountMap =
                                 context.amountMap instanceof Map
                                         ? context.amountMap
@@ -8157,7 +8179,15 @@ const ADD_DOC_KEY = "add-document";
                                         ? context.trends
                                         : {};
                         const fallbackTrendLabel =
-                                contextKey === "year" ? "vs año ant." : "vs mes ant.";
+                                contextKey === "year"
+                                        ? "vs año ant."
+                                        : contextKey === "month"
+                                        ? "vs mes ant."
+                                        : "";
+                        const amountToggle = root.querySelector("[data-admin-summary-amount-toggle]");
+                        if (amountToggle) {
+                                amountToggle.hidden = contextKey !== "month";
+                        }
 
                         const amountCard = container.querySelector(
                                 '[data-admin-summary-kpi="amount"]'
@@ -8168,8 +8198,10 @@ const ADD_DOC_KEY = "add-document";
                                 );
                                 if (labelEl) {
                                         labelEl.textContent =
-                                                contextKey === "year"
-                                                        ? "Valor acumulado"
+                                                contextKey === "global"
+                                                        ? "Valor total"
+                                                        : contextKey === "year"
+                                                        ? "Valor anual"
                                                         : monthName
                                                         ? `Acumulado ${monthName}`
                                                         : "Acumulado";
@@ -8180,7 +8212,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (valueEl) {
                                         animateSummaryCurrency(
                                                 valueEl,
-                                                amountMap.get("activada") || 0,
+                                                getSummaryAmountForMode(amountMap, amountMode),
                                                 { duration: 420 }
                                         );
                                 }
@@ -8188,7 +8220,11 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        applySummaryTrend(trendEl, trends.amount || null, fallbackTrendLabel);
+                                        const amountTrend =
+                                                amountMode === "total"
+                                                        ? trends.amount_total || trends.amount
+                                                        : trends.amount;
+                                        applySummaryTrend(trendEl, amountTrend || null, fallbackTrendLabel);
                                 }
                         }
 
@@ -8201,8 +8237,10 @@ const ADD_DOC_KEY = "add-document";
                                 );
                                 if (labelEl) {
                                         labelEl.textContent =
-                                                contextKey === "year"
-                                                        ? "Total garantías"
+                                                contextKey === "global"
+                                                        ? "Garantías totales"
+                                                        : contextKey === "year"
+                                                        ? "Garantías del año"
                                                         : monthName
                                                         ? `Garantías ${monthName}`
                                                         : "Garantías este mes";
@@ -8220,6 +8258,37 @@ const ADD_DOC_KEY = "add-document";
                                         applySummaryTrend(trendEl, trends.count || null, fallbackTrendLabel);
                                 }
                         }
+
+                        const comparisonNoteEl = root.querySelector(
+                                "[data-admin-summary-comparison-note]"
+                        );
+                        if (comparisonNoteEl) {
+                                const rawNote =
+                                        context && typeof context.comparison_note === "string"
+                                                ? context.comparison_note.trim()
+                                                : "";
+                                if (rawNote) {
+                                        comparisonNoteEl.textContent = `*${rawNote}`;
+                                        comparisonNoteEl.hidden = false;
+                                } else {
+                                        comparisonNoteEl.textContent = "";
+                                        comparisonNoteEl.hidden = true;
+                                }
+                        }
+                }
+
+                function syncAdminSummaryAmountToggle(root) {
+                        if (!root) {
+                                return;
+                        }
+                        const amountModeRaw = root.dataset.amountMode || ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
+                        const amountMode = ADMIN_SUMMARY_AMOUNT_MODES.includes(amountModeRaw)
+                                ? amountModeRaw
+                                : ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
+                        const inputs = root.querySelectorAll("[data-admin-summary-amount-input]");
+                        inputs.forEach((input) => {
+                                input.checked = input.value === amountMode;
+                        });
                 }
 
                 function renderAdminSummaryStates(root, context = {}) {
@@ -8278,6 +8347,10 @@ const ADD_DOC_KEY = "add-document";
                                 amountMap,
                                 month_name: monthName,
                                 trends: trendsData,
+                                comparison_note:
+                                        context && typeof context.comparison_note === "string"
+                                                ? context.comparison_note
+                                                : "",
                         });
 
                         if (!legend) {
@@ -8497,6 +8570,7 @@ const ADD_DOC_KEY = "add-document";
                                 toggle.checked = value === effectiveKey;
                         });
 
+                        syncAdminSummaryAmountToggle(root);
                         renderAdminSummaryStates(root, contextData || {});
                 }
 
@@ -8672,6 +8746,19 @@ const ADD_DOC_KEY = "add-document";
                                                 return;
                                         }
                                         updateAdminSummaryContext(root, toggle.value || toggle.getAttribute("value"));
+                                });
+                        });
+                        const amountToggles = root.querySelectorAll("[data-admin-summary-amount-input]");
+                        amountToggles.forEach((toggle) => {
+                                toggle.addEventListener("change", () => {
+                                        if (!toggle.checked) {
+                                                return;
+                                        }
+                                        const nextMode =
+                                                toggle.value || toggle.getAttribute("value") || ADMIN_SUMMARY_DEFAULT_AMOUNT_MODE;
+                                        root.dataset.amountMode = nextMode;
+                                        syncAdminSummaryAmountToggle(root);
+                                        updateAdminSummaryContext(root, root.dataset.context || ADMIN_SUMMARY_DEFAULT_CONTEXT);
                                 });
                         });
                         const helpButton = root.querySelector("[data-admin-summary-help]");
