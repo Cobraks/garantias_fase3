@@ -12,7 +12,7 @@ const formCache = {
 	selectedModalidadId: null,
 };
 let limitesDinamicos = {
-	cilindrada: { min: 0, max: 9000 },
+	cilindrada: { min: 0, max: 99999 },
 	potencia: { min: 0, max: 3000 },
 };
 

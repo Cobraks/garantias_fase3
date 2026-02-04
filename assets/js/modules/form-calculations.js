@@ -564,7 +564,7 @@ function getDynamicRangeFromTarifas(modalidad) {
 		const rawMax = tarifa.valor_max ?? tarifa.valor_maximo;
 		const vMin = parseNumericFormValue(rawMin);
 		let vMax;
-		if (rawMax === "" || rawMax == null) vMax = 9999;
+		if (rawMax === "" || rawMax == null) vMax = 99999;
 		else vMax = parseNumericFormValue(rawMax);
 		if (min === null || vMin < min) min = vMin;
 		if (max === null || vMax > max) max = vMax;
@@ -590,11 +590,11 @@ function setDynamicLimits(modalidades, valoresForm) {
         }
 
         if (!found) {
-                cilLimits = { min: 0, max: 9000 };
+                cilLimits = { min: 0, max: 99999 };
                 potLimits = { min: 0, max: 3000 };
         }
         const limits = getLimitesDinamicos();
-        limits.cilindrada = cilLimits || { min: 0, max: 9000 };
+        limits.cilindrada = cilLimits || { min: 0, max: 99999 };
         limits.potencia = potLimits || { min: 0, max: 3000 };
         setLimitesDinamicos(limits);
 }
