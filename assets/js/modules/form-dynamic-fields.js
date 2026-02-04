@@ -3,7 +3,7 @@
 
 /*
     - Lógica de visibilidad y dependencias entre campos del formulario.
-    - Ahora gestiona el caso especial de "camion" mostrando traccion_camion y mma, ocultando traccion.
+    - Gestiona el caso especial de "camion" mostrando traccion_camion y ocultando traccion.
     - También muestra/oculta el select de doble motor en función del combustible seleccionado.
 */
 
@@ -27,70 +27,171 @@ function updateSelectFloatingLabels() {
 
 function toggleVehiculoFields() {
 	const tipoVehiculo = document.getElementById("tipo_vehiculo");
-	const traccionContainer = document.querySelector(
-		".form__input-container--traccion"
-	);
-	const traccionCamionContainer = document.querySelector(
-		".form__input-container--traccion-camion"
-	);
-	const mmaContainer = document.querySelector(".form__input-container--mma");
+        const traccionContainer = document.querySelector(
+                ".form__input-container--traccion"
+        );
+        const traccionCamionContainer = document.querySelector(
+                ".form__input-container--traccion-camion"
+        );
 
 	if (!tipoVehiculo) return;
 
-	const isCamion = tipoVehiculo.value === "camion";
+        const isCamion = tipoVehiculo.value === "camion";
+        const isMoto = tipoVehiculo.value === "moto";
+        const isTodoterreno = tipoVehiculo.value === "todoterreno";
 
-	// Tracción normal
-	if (traccionContainer) {
-		traccionContainer.style.display = isCamion ? "none" : "";
-		if (isCamion) {
-			const traccion = traccionContainer.querySelector("#traccion");
-			if (traccion) traccion.value = "";
-		}
-	}
-	// Tracción camión y MMA
-	if (traccionCamionContainer) {
-		traccionCamionContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const traccionCamion =
-				traccionCamionContainer.querySelector("#traccion_camion");
-			if (traccionCamion) traccionCamion.value = "";
-		}
-	}
-	if (mmaContainer) {
-		mmaContainer.style.display = isCamion ? "" : "none";
-		if (!isCamion) {
-			const mma = mmaContainer.querySelector("#mma");
-			if (mma) mma.value = "";
-		}
-	}
-
-	// Actualiza el estado de validación y resumen
+        // Tracción normal
+        if (traccionContainer) {
+                const traccion = traccionContainer.querySelector("#traccion");
+                const ocultarTraccion = isCamion || isMoto;
+                traccionContainer.style.display = ocultarTraccion ? "none" : "";
+                if (traccion) {
+                        if (traccion.dataset.originalRequired == null) {
+                                traccion.dataset.originalRequired = traccion.required
+                                        ? "true"
+                                        : "false";
+                        }
+                        if (ocultarTraccion) {
+                                traccion.value = "";
+                                traccion.required = false;
+                        } else {
+                                if (traccion.dataset.originalRequired !== "false") {
+                                        traccion.required = true;
+                                }
+                                if (isTodoterreno) {
+                                        const opcion4x4 = Array.from(traccion.options || []).find(
+                                                (option) => option.value === "4x4"
+                                        );
+                                        if (opcion4x4) {
+                                                const valorAnterior = traccion.value;
+                                                traccion.value = "4x4";
+                                                if (valorAnterior !== "4x4") {
+                                                        traccion.dispatchEvent(
+                                                                new Event("change", { bubbles: true })
+                                                        );
+                                                }
+                                        }
+                                }
+                        }
+                }
+        }
+        // Tracción camión y MMA
+        if (traccionCamionContainer) {
+                const traccionCamion = traccionCamionContainer.querySelector("#traccion_camion");
+                traccionCamionContainer.style.display = isCamion ? "" : "none";
+                if (traccionCamion) {
+                        if (traccionCamion.dataset.originalRequired == null) {
+                                traccionCamion.dataset.originalRequired =
+                                        traccionCamion.required ? "true" : "false";
+                        }
+                        if (!isCamion) {
+                                traccionCamion.value = "";
+                                traccionCamion.required = false;
+                        } else if (traccionCamion.dataset.originalRequired !== "false") {
+                                traccionCamion.required = true;
+                        }
+                }
+        }
+        // Actualiza el estado de validación y resumen
         updateNextButtonState();
         debouncedUpdateSummary();
 	// <- AQUÍ ESTÁ LA CLAVE: actualiza labels flotantes tras cambios
 	updateSelectFloatingLabels();
 }
 
+function updatePotenciaUnits() {
+        const combustible = document.getElementById("combustible")?.value;
+        const potenciaLabel = document.querySelector("label[for='potencia']");
+        const potenciaSuffix = document
+                .getElementById("potencia")
+                ?.closest(".form__input-container")
+                ?.querySelector(".form__suffix");
+        const summaryUnit = document.getElementById("summary-potencia-unit");
+        const isElectrico = combustible === "electrico";
+        if (potenciaLabel)
+                potenciaLabel.textContent = isElectrico
+                        ? "Potencia (kW)"
+                        : "Potencia (CV)";
+        if (potenciaSuffix)
+                potenciaSuffix.textContent = isElectrico ? "kW" : "CV";
+        if (summaryUnit)
+                summaryUnit.textContent = isElectrico ? "kW" : "CV";
+}
+
 function toggleCombustibleDependientes() {
-	const combustible = document.getElementById("combustible");
-	const dobleMotorContainer = document.querySelector(
-		".form__input-container--doble_motor"
-	);
+        const combustible = document.getElementById("combustible");
+        const dobleMotorContainer = document.querySelector(
+                ".form__input-container--doble_motor"
+        );
 	if (!combustible || !dobleMotorContainer) return;
 
-	const val = combustible.value;
-	const debeMostrar = ["electrico", "hibrido", "gpl_gnc"].includes(val);
-	dobleMotorContainer.style.display = debeMostrar ? "" : "none";
-	if (!debeMostrar) {
-		const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
-		if (dobleMotor) dobleMotor.value = "";
-	}
+        const val = combustible.value;
+        const isElectrico = val === "electrico";
+        const isHibrido = val === "hibrido";
+        const dobleMotor = dobleMotorContainer.querySelector("#doble_motor");
+        const cambio = document.getElementById("cambio");
+        const opcionesCambio = cambio ? Array.from(cambio.options || []) : [];
+        const opcionAutomatico = opcionesCambio.find(
+                (option) => option.value === "automatico"
+        );
+        const shouldRestrictCambio = isElectrico || isHibrido;
+        const forzarAutomatico = shouldRestrictCambio && opcionAutomatico;
 
-	// Actualiza floating label tras cambio
-	updateSelectFloatingLabels();
+        dobleMotorContainer.style.display = isElectrico ? "" : "none";
 
-	// Refresca validación/resumen
+        if (dobleMotor) {
+                if (dobleMotor.dataset.originalRequired == null) {
+                        dobleMotor.dataset.originalRequired = dobleMotor.required
+                                ? "true"
+                                : "false";
+                }
+
+                if (!isElectrico) {
+                        dobleMotor.value = "";
+                        dobleMotor.required = false;
+                } else if (dobleMotor.dataset.originalRequired !== "false") {
+                        dobleMotor.required = true;
+                }
+        }
+
+        if (cambio && opcionesCambio.length > 0) {
+                opcionesCambio.forEach((option) => {
+                        if (option.dataset.originalDisabled == null) {
+                                option.dataset.originalDisabled = option.disabled
+                                        ? "true"
+                                        : "false";
+                        }
+
+                        if (!option.value) return;
+
+                        const esAutomatico = option.value === "automatico";
+                        if (shouldRestrictCambio && !esAutomatico) {
+                                option.disabled = true;
+                                option.hidden = true;
+                                option.dataset.hiddenByCombustible = "true";
+                                option.style.display = "none";
+                        } else {
+                                if (option.dataset.hiddenByCombustible) {
+                                        option.hidden = false;
+                                        option.style.display = "";
+                                        delete option.dataset.hiddenByCombustible;
+                                }
+                                option.disabled = option.dataset.originalDisabled === "true";
+                        }
+                });
+
+                if (forzarAutomatico && cambio.value !== "automatico") {
+                        cambio.value = "automatico";
+                        cambio.dispatchEvent(new Event("change", { bubbles: true }));
+                }
+        }
+
+        // Actualiza floating label tras cambio
+        updateSelectFloatingLabels();
+
+        // Refresca validación/resumen
         updateNextButtonState();
+        updatePotenciaUnits();
         debouncedUpdateSummary();
 }
 
@@ -102,12 +203,13 @@ function initDynamicFields() {
 		toggleVehiculoFields();
 	}
 
-	const combustible = document.getElementById("combustible");
-	if (combustible) {
-		combustible.addEventListener("change", toggleCombustibleDependientes);
-		// Estado inicial:
-		toggleCombustibleDependientes();
-	}
+        const combustible = document.getElementById("combustible");
+        if (combustible) {
+                combustible.addEventListener("change", toggleCombustibleDependientes);
+                // Estado inicial:
+                toggleCombustibleDependientes();
+                updatePotenciaUnits();
+        }
 
 	// También flota labels de selects al cargar (en caso de edición)
 	updateSelectFloatingLabels();

@@ -1,6 +1,32 @@
+Consulta `CHANGELOG.md` para la cronología de mejoras.
+
 1.0.0
 - Añadida imagen de perfil
 
+0.1.9
+- Evita la creación de borradores duplicados al modificar la matrícula durante una nueva garantía.
+
+0.1.8
+- Bloqueo inmediato del botón “Siguiente” mientras se comprueban matrículas duplicadas.
+
+0.1.7
+- Validación en tiempo real de matrículas duplicadas en la creación de garantías.
+
+0.1.6
+- Evita el aviso de matrícula duplicada al crear una garantía nueva.
+
+0.1.5
+- Fechas en formato español y precios con separador de miles.
+
+0.1.4
+- Se muestran las etiquetas de estado correctas en listados y detalle, manteniendo el valor para clases CSS.
+
+
+## Preparación del PDF de la modalidad
+1. Diseña en InDesign el formulario con los campos de texto `pdf_combustible`, `pdf_cp` y `pdf_nombre_apellidos`.
+2. Exporta mediante **Archivo → Exportar → Adobe PDF (Interactivo)** e incluye "Formularios y medios".
+3. Sube el PDF a la biblioteca de WordPress y selecciónalo en la modalidad.
+4. El navegador rellenará los campos mediante **pdf-lib** y enviará el resultado al servidor.
 
 ##Estructura de archivos
 garantias-online-360vo/

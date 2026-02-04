@@ -19,31 +19,61 @@ import {
         getAntiguedadFromDate,
         parseNumericFormValue,
         filtrarModalidades,
+        getOfertaSinSuplementosAplicable,
+        getIvaPercentageForModalidad,
 } from "./form-calculations.js";
-import { eurosString, IVA_PORCENTAJE } from "./form-utils.js";
+import { eurosString } from "./form-utils.js";
+
+let lastSummaryBreakdown = [];
+
+export async function getEconomicBreakdownSnapshot() {
+        return lastSummaryBreakdown;
+}
+
+// Garantiza que haya un desglose disponible reconstruyendo el resumen si es necesario
+export async function ensureEconomicBreakdownReady() {
+        const needsSnapshot =
+                !Array.isArray(lastSummaryBreakdown) || lastSummaryBreakdown.length === 0;
+        if (needsSnapshot) {
+                await buildSummaryHTML();
+        }
+
+        if (!Array.isArray(lastSummaryBreakdown) || lastSummaryBreakdown.length === 0) {
+                await new Promise((resolve) => setTimeout(resolve, 120));
+                await buildSummaryHTML();
+        }
+
+        return lastSummaryBreakdown || [];
+}
 
 function getValoresForm() {
-	return {
-		cilindrada: document.getElementById("cilindrada")?.value || 0,
-		potencia: document.getElementById("potencia")?.value || 0,
-		duracion: Number(document.getElementById("duracion")?.value) || 0,
-		traccion_camion: document.getElementById("traccion_camion")?.value || null,
-		mma: document.getElementById("mma")?.value || null,
-		combustible: document.getElementById("combustible")?.value || null,
-		cambio: document.getElementById("cambio")?.value || null,
-		// mantener el mismo formato que en renderPlans / filtrarModalidades
-		doble_motor: document.getElementById("doble_motor")?.value || null,
-		fecha_primera_matriculacion:
-			document.getElementById("fecha_primera_matriculacion")?.value || "",
-	};
+        return {
+                cilindrada: document.getElementById("cilindrada")?.value || 0,
+                potencia: document.getElementById("potencia")?.value || 0,
+                duracion: Number(document.getElementById("duracion")?.value) || 0,
+                traccion_camion: document.getElementById("traccion_camion")?.value || null,
+                combustible: document.getElementById("combustible")?.value || null,
+                cambio: document.getElementById("cambio")?.value || null,
+                // mantener el mismo formato que en renderPlans / filtrarModalidades
+                doble_motor: document.getElementById("doble_motor")?.value || null,
+                fecha_primera_matriculacion:
+                        document.getElementById("fecha_primera_matriculacion")?.value || "",
+                tipo_vehiculo: document.getElementById("tipo_vehiculo")?.value || "",
+        };
 }
 
 function getSelectedPlanElement() {
-	// Fallback: si no hay seleccionado explícito, toma el primero visible
-	return (
-		document.querySelector(".form__plan.selected") ||
-		document.querySelector(".form__plan:not(.form__plan--no-selected)")
-	);
+	return document.querySelector(".form__plan.selected");
+}
+
+function escapeHtml(value) {
+        if (value == null) return "";
+        return String(value)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
 }
 
 function describeTramo(modalidad, valoresForm) {
@@ -106,32 +136,37 @@ function describeTramo(modalidad, valoresForm) {
 	const overallMax =
 		maximosReales.length > 0 ? Math.max(...maximosReales) : matched.max;
 
-	if (tipo === "cilindrada") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()}cc`;
-		}
-		// Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()}cc`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()}cc a ${matched.max.toLocaleString()}cc`;
-	} else if (tipo === "potencia") {
-		if (matched.min === 0) {
-			return `Precio base hasta ${matched.max.toLocaleString()} CV`;
-		}
-		if (matched.max === overallMax || matched.max === Infinity) {
-			return `Precio base más de ${matched.min.toLocaleString()} CV`;
-		}
-		return `Precio base de ${matched.min.toLocaleString()} CV a ${matched.max.toLocaleString()} CV`;
-	}
-	return "Precio base";
+        if (tipo === "cilindrada") {
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} CC`;
+                }
+                // Si el matched.max es el tope real (igual a overallMax), lo tratamos como infinito
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} CC`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} CC a ${matched.max.toLocaleString()} CC`;
+        } else if (tipo === "potencia") {
+                const unit =
+                        document.getElementById("combustible")?.value === "electrico"
+                                ? "kW"
+                                : "CV";
+                if (matched.min === 0) {
+                        return `Precio base hasta ${matched.max.toLocaleString()} ${unit}`;
+                }
+                if (matched.max === overallMax || matched.max === Infinity) {
+                        return `Precio base más de ${matched.min.toLocaleString()} ${unit}`;
+                }
+                return `Precio base de ${matched.min.toLocaleString()} ${unit} a ${matched.max.toLocaleString()} ${unit}`;
+        }
+        return "Precio base";
 }
 
 async function buildSummaryHTML() {
-	const container = document.getElementById("final-summary");
-	if (!container) {
-		console.warn(
-			"[contratacion-summary] #final-summary no está presente, reintentando."
+        const container = document.getElementById("final-summary");
+        lastSummaryBreakdown = [];
+        if (!container) {
+                console.warn(
+                        "[contratacion-summary] #final-summary no está presente, reintentando."
 		);
 		setTimeout(buildSummaryHTML, 100);
 		return;
@@ -152,22 +187,40 @@ async function buildSummaryHTML() {
 	const duracionVal = document.getElementById("duracion")?.value || "";
 	const duracionLabel = duracionVal ? `${duracionVal} meses` : "";
 
-	const modalidadId = planEl.getAttribute("data-modalidad-id");
-	let modalidad = null;
-	const valoresFormBase = getValoresForm();
+        const modalidadId = planEl.getAttribute("data-modalidad-id");
+        let modalidad = null;
+        const planPriceWithIvaText =
+                planEl.querySelector(".plan-price-value")?.textContent?.trim() || "";
+        const planPriceNoIvaText =
+                planEl.querySelector(".plan-price-value-noiva")?.textContent?.trim() || "";
+        const planPriceWithIva =
+                planPriceWithIvaText && planPriceWithIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceWithIvaText)
+                        : null;
+        const planPriceSinIva =
+                planPriceNoIvaText && planPriceNoIvaText !== "Consultar"
+                        ? parseNumericFormValue(planPriceNoIvaText)
+                        : null;
+        const valoresFormBase = getValoresForm();
 
 	// extender igual que en renderPlans para que se apliquen todos los recargos
-	const valoresForm = {
-		...valoresFormBase,
-		fecha_primera_matriculacion:
-			document.getElementById("fecha_primera_matriculacion")?.value || "",
-		kilometros: document.getElementById("kilometros")?.value || 0,
-		traccion: document.getElementById("traccion")?.value || "",
-		cambio: document.getElementById("cambio")?.value || "",
-		// mantener consistencia: no forzamos booleano para doble_motor aquí,
-		// porque en calcularRecargos se trata como string normalmente
-		doble_motor: document.getElementById("doble_motor")?.value || null,
-	};
+        const valoresForm = {
+                ...valoresFormBase,
+                fecha_primera_matriculacion:
+                        document.getElementById("fecha_primera_matriculacion")?.value || "",
+                kilometros: document.getElementById("kilometros")?.value || 0,
+                traccion: document.getElementById("traccion")?.value || "",
+                cambio: document.getElementById("cambio")?.value || "",
+                // mantener consistencia: no forzamos booleano para doble_motor aquí,
+                // porque en calcularRecargos se trata como string normalmente
+                doble_motor: document.getElementById("doble_motor")?.value || null,
+        };
+
+        const antiguedadValor = getAntiguedadFromDate(valoresForm.fecha_primera_matriculacion);
+        valoresForm.antiguedad =
+                typeof antiguedadValor === "number" && !Number.isNaN(antiguedadValor)
+                        ? antiguedadValor
+                        : null;
 
         container.innerHTML = `<div class="form__contrato-prices--loading">Calculando...</div>`;
 
@@ -183,35 +236,79 @@ async function buildSummaryHTML() {
                         return;
                 }
 
-                const precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                const ivaAplicado = getIvaPercentageForModalidad(modalidad);
+
+                let precioBase = calcularPrecioBase(modalidad, valoresFormBase);
+                if (precioBase === null) {
+                        if (typeof planPriceSinIva === "number" && !Number.isNaN(planPriceSinIva)) {
+                                precioBase = planPriceSinIva;
+                        } else if (
+                                typeof planPriceWithIva === "number" &&
+                                !Number.isNaN(planPriceWithIva)
+                        ) {
+                                const divisor = 1 + ivaAplicado / 100;
+                                precioBase =
+                                        divisor > 0
+                                                ? Math.round((planPriceWithIva / divisor) * 100) / 100
+                                                : planPriceWithIva;
+                        }
+                }
                 const breakdown = calcularRecargos(modalidad, valoresForm);
 
                 const descuentos = await getDescuentosAplicables(modalidad);
-                let multiplicador = 1;
-                descuentos.forEach((d) => {
-                        multiplicador *= 1 - d.porcentaje;
-                });
+                const descuentosPorcentaje = descuentos.filter(
+                        (d) => d?.tipo !== "iva_incluido"
+                );
+                const multiplicador = descuentosPorcentaje.reduce(
+                        (acc, d) => acc * (1 - d.porcentaje),
+                        1
+                );
                 const descuentoTotal = 1 - multiplicador;
+                const aplicaIvaIncluido = descuentos.some(
+                        (d) => d?.tipo === "iva_incluido"
+                );
+
+                const ofertaSinSuplementos = await getOfertaSinSuplementosAplicable(modalidad);
+                const sinSuplementos =
+                        !!ofertaSinSuplementos && breakdown.recargoTotal > 0;
+
+                const factorRecargos = 1 + breakdown.recargoTotal;
+                const factorAplicado = sinSuplementos ? 1 : factorRecargos;
 
                 const precioConRecargos =
                         precioBase !== null
-                                ? Math.round(precioBase * (1 + breakdown.recargoTotal) * 100) / 100
+                                ? Math.round(precioBase * factorRecargos * 100) / 100
+                                : null;
+
+                const precioAntesDescuento =
+                        precioBase !== null
+                                ? Math.round(precioBase * factorAplicado * 100) / 100
                                 : null;
 
                 const precioFinal =
-                        precioConRecargos !== null
-                                ? Math.round(precioConRecargos * (1 - descuentoTotal) * 100) / 100
+                        precioAntesDescuento !== null
+                                ? Math.round(precioAntesDescuento * (1 - descuentoTotal) * 100) / 100
                                 : null;
 
+                const precioConIvaAntesDescuento =
+                        precioFinal !== null
+                                ? Math.round(precioFinal * (1 + ivaAplicado / 100) * 100) / 100
+                                : null;
                 const iva =
                         precioFinal !== null
-                                ? Math.round(precioFinal * (IVA_PORCENTAJE / 100) * 100) / 100
+                                ? Math.round(precioFinal * (ivaAplicado / 100) * 100) / 100
+                                : null;
+                const descuentoIvaIncluido =
+                        aplicaIvaIncluido && iva !== null ? iva : 0;
+                const totalConIva =
+                        precioConIvaAntesDescuento !== null
+                                ? Math.round(
+                                          (precioConIvaAntesDescuento - descuentoIvaIncluido) * 100
+                                  ) / 100
                                 : null;
 
-                const totalConIva =
-                        precioFinal !== null && iva !== null
-                                ? Math.round((precioFinal + iva) * 100) / 100
-                                : null;
+                const summaryItems = [];
+                let orden = 1;
 
                 let html = `<div class="contratacion-summary">
     <h2>Certificado de Garantía</h2>
@@ -227,53 +324,149 @@ async function buildSummaryHTML() {
                         html += `<li class="item"><span class="concepto">${tramoTexto}</span><span class="valor">--</span></li>`;
                 }
 
-         if (breakdown.detalles && breakdown.detalles.length) {
-						breakdown.detalles.forEach((sup) => {
-							const recargoEuros =
-								precioBase !== null
-									? Math.round(precioBase * sup.porcentajeAplicado * 100) / 100
-									: null;
-							let label = sup.descripcion
-								? `Recargo: ${sup.descripcion}`
-								: "Recargo";
-							if (sup.porcentajeAplicado < sup.porcentajeOriginal) label += "*";
-							html += `<li class="item"><span class="concepto">${label}</span><span class="valor">${
-								recargoEuros !== null ? `${eurosString(recargoEuros)}€` : "--"
-							}</span></li>`;
-						});
-					}
+                summaryItems.push({
+                        concepto: tramoTexto,
+                        tipo: "base",
+                        importe: precioBase !== null ? precioBase : "",
+                        porcentaje: "",
+                        razon: "",
+                        orden: orden++,
+                        destacado: false,
+                        base_calculo: precioBase !== null ? precioBase : "",
+                });
+
+                if (breakdown.detalles && breakdown.detalles.length) {
+                        breakdown.detalles.forEach((sup) => {
+                                const recargoEuros =
+                                        precioBase !== null
+                                                ? Math.round(precioBase * sup.porcentajeAplicado * 100) / 100
+                                                : null;
+                                let label = sup.descripcion
+                                        ? `Recargo: ${sup.descripcion}`
+                                        : "Recargo";
+                                if (sup.porcentajeAplicado < sup.porcentajeOriginal) label += "*";
+                                const itemClasses = ["item"];
+                                if (sinSuplementos) itemClasses.push("item--sin-suplementos");
+                                html += `<li class="${itemClasses.join(" ")}"><span class="concepto">${label}</span><span class="valor">${
+                                        recargoEuros !== null ? `${eurosString(recargoEuros)}€` : "--"
+                                }</span></li>`;
+
+                                summaryItems.push({
+                                        concepto: label,
+                                        tipo: "recargo",
+                                        importe: recargoEuros !== null ? recargoEuros : "",
+                                        porcentaje:
+                                                typeof sup.porcentajeAplicado === "number"
+                                                        ? Math.round(sup.porcentajeAplicado * 10000) / 100
+                                                        : "",
+                                        razon: sup.descripcion || "",
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: precioBase !== null ? precioBase : "",
+                                        sin_suplementos: sinSuplementos,
+                                });
+                        });
+                        if (sinSuplementos) {
+                                const etiquetaOferta =
+                                        ofertaSinSuplementos?.nombre ||
+                                        ofertaSinSuplementos?.etiqueta ||
+                                        "Sin suplementos";
+                                html += `<li class="item item--nota"><span class="concepto concepto--nota">Suplementos no aplicados por la oferta “${escapeHtml(
+                                        etiquetaOferta
+                                )}”.</span><span class="valor"></span></li>`;
+
+                                summaryItems.push({
+                                        concepto: `Suplementos no aplicados por la oferta “${etiquetaOferta}”.`,
+                                        tipo: "oferta",
+                                        importe: "",
+                                        porcentaje: "",
+                                        razon: etiquetaOferta,
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: "",
+                                });
+                        }
+                }
 
                 if (descuentos.length) {
                         for (const desc of descuentos) {
-                                const descuentoEuros =
-                                        precioConRecargos !== null
-                                                ? Math.round(precioConRecargos * desc.porcentaje * 100) / 100
+                                const esIvaIncluido = desc?.tipo === "iva_incluido";
+                                const descuentoEuros = esIvaIncluido
+                                        ? descuentoIvaIncluido
+                                        : precioAntesDescuento !== null
+                                                ? Math.round(precioAntesDescuento * desc.porcentaje * 100) / 100
                                                 : null;
                                 const nombre = desc.nombre || "";
-                                const label = `Descuento${nombre ? " " + nombre : ""}`;
+                                const label = nombre.toLowerCase().startsWith("descuento")
+                                        ? nombre
+                                        : `Descuento${nombre ? " " + nombre : ""}`;
                                 html += `<li class="item"><span class="concepto">${label}</span><span class="valor">-${
                                         descuentoEuros !== null ? eurosString(descuentoEuros) + "€" : "--"
                                 }</span></li>`;
+
+                                summaryItems.push({
+                                        concepto: label,
+                                        tipo: "descuento",
+                                        importe: descuentoEuros !== null ? descuentoEuros : "",
+                                        porcentaje:
+                                                esIvaIncluido || typeof desc.porcentaje !== "number"
+                                                        ? ""
+                                                        : Math.round(desc.porcentaje * 10000) / 100,
+                                        razon: nombre,
+                                        orden: orden++,
+                                        destacado: false,
+                                        base_calculo: esIvaIncluido
+                                                ? precioConIvaAntesDescuento !== null
+                                                        ? precioConIvaAntesDescuento
+                                                        : ""
+                                                : precioAntesDescuento !== null
+                                                        ? precioAntesDescuento
+                                                        : "",
+                                });
                         }
                 }
 
                 if (iva !== null) {
-                        html += `<li class="item"><span class="concepto">IVA (${IVA_PORCENTAJE}%)</span><span class="valor">${eurosString(
+                        html += `<li class="item"><span class="concepto">IVA (${ivaAplicado}%)</span><span class="valor">${eurosString(
                                 iva
                         )}€</span></li>`;
+
+                        summaryItems.push({
+                                concepto: `IVA (${ivaAplicado}%)`,
+                                tipo: "iva",
+                                importe: iva,
+                                porcentaje: ivaAplicado,
+                                razon: "IVA",
+                                orden: orden++,
+                                destacado: false,
+                                base_calculo: precioFinal !== null ? precioFinal : "",
+                        });
                 }
 
                 if (totalConIva !== null) {
                         html += `<li class="item item--destacado"><span class="concepto">Precio total</span><span class="valor">${eurosString(
                                 totalConIva
                         )}€</span></li>`;
+
+                        summaryItems.push({
+                                concepto: "Precio total",
+                                tipo: "total",
+                                importe: totalConIva,
+                                porcentaje: "",
+                                razon: "",
+                                orden: orden++,
+                                destacado: true,
+                                base_calculo: "",
+                        });
                 }
 
                   html += `</ul>`;
-									if (breakdown.limiteTotalAlcanzado) {
-										html += `<p class="contratacion-summary__limite">*Límite máximo recargos ${breakdown.maximoAcumulableTotal}%</p>`;
-									}
-									html += `</div>`;
+                                                                        if (breakdown.limiteTotalAlcanzado) {
+                                                                                html += `<p class="contratacion-summary__limite">*Límite máximo recargos ${breakdown.maximoAcumulableTotal}%</p>`;
+                                                                        }
+                                                                        html += `</div>`;
+
+                lastSummaryBreakdown = summaryItems;
 
                 container.innerHTML = html;
         } catch (err) {
@@ -285,16 +478,15 @@ async function buildSummaryHTML() {
 let scheduled = null;
 function scheduleUpdate() {
 	if (scheduled) clearTimeout(scheduled);
-	scheduled = setTimeout(() => {
+        scheduled = setTimeout(() => {
                 if (typeof filtrarModalidades === "function") {
                         // actualizar modalidades antes de reconstruir resumen para que recargos reflejen el estado
-                        filtrarModalidades().finally(() => {
-                                buildSummaryHTML();
-                        });
+                        filtrarModalidades();
+                        setTimeout(buildSummaryHTML, 150);
                 } else {
                         buildSummaryHTML();
                 }
-	}, 100);
+        }, 100);
 }
 
 function setupListeners() {
@@ -305,13 +497,12 @@ function setupListeners() {
 		"canal-venta",
 		"cilindrada",
 		"potencia",
-		"combustible",
-		"cambio",
-		"traccion_camion",
-		"doble_motor",
-		"traccion",
-		"mma",
-		"fecha_primera_matriculacion",
+                "combustible",
+                "cambio",
+                "traccion_camion",
+                "doble_motor",
+                "traccion",
+                "fecha_primera_matriculacion",
 	].forEach((id) => {
 		const el = document.getElementById(id);
 		if (!el) return;

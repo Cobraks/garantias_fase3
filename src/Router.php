@@ -2,6 +2,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Account\AccountViewModel;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -31,8 +33,52 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
 */
 
         // si no está logueado y no viene a home o register, fuerza raíz:
-        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register'], true)) {
+        if (! is_user_logged_in() && ! in_array($endpoint, ['home', 'register', 'login', 'lostpassword', 'resetpassword', 'verify'], true)) {
             wp_safe_redirect(home_url('/garantias-online/'));
+            exit;
+        }
+
+        $is_admin_user = current_user_can('manage_options');
+        $current_user  = wp_get_current_user();
+        $current_roles = $current_user instanceof \WP_User ? (array) $current_user->roles : [];
+        $can_access_clients = $is_admin_user
+            || in_array('go_director_comercial', $current_roles, true)
+            || in_array('go_garantias', $current_roles, true);
+
+        if (is_user_logged_in() && in_array($endpoint, ['login', 'lostpassword', 'resetpassword'], true)) {
+            $should_redirect = true;
+
+            if ($endpoint === 'resetpassword') {
+                $state_token = self::get_request_param('state');
+                $login_param = self::get_request_param('login');
+                $key_param   = self::get_request_param('key');
+
+                if ($state_token !== '' || ($login_param !== '' && $key_param !== '')) {
+                    $should_redirect = false;
+                }
+            }
+
+            if ($should_redirect) {
+                $destination = $is_admin_user
+                    ? home_url('/garantias-online/')
+                    : home_url('/garantias-online/mis-garantias/');
+                wp_safe_redirect($destination);
+                exit;
+            }
+        }
+
+        if (is_user_logged_in() && ! $is_admin_user && in_array($endpoint, ['dashboard', 'home'], true)) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
+            exit;
+        }
+
+        if (in_array($endpoint, ['averias', 'averia'], true) && ! $is_admin_user) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
+            exit;
+        }
+
+        if ($endpoint === 'clientes' && ! $can_access_clients) {
+            wp_safe_redirect(home_url('/garantias-online/mis-garantias/'));
             exit;
         }
 
@@ -48,11 +94,40 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
             case 'averias':
                 TemplateLoader::load('averias');
                 break;
+            case 'averia':
+                $license_plate = get_query_var('license_plate');
+                $license_plate = is_string($license_plate)
+                    ? sanitize_text_field(wp_unslash($license_plate))
+                    : '';
+
+                TemplateLoader::load('averia', [
+                    'license_plate' => $license_plate,
+                ]);
+                break;
+            case 'clientes':
+                TemplateLoader::load('clientes');
+                break;
             case 'login':
                 TemplateLoader::load('login');
                 break;
+            case 'lostpassword':
+                TemplateLoader::load('lost-password');
+                break;
+            case 'resetpassword':
+                TemplateLoader::load('reset-password');
+                break;
             case 'register':
                 TemplateLoader::load('register');
+                break;
+            case 'verify':
+                TemplateLoader::load('verify');
+                break;
+            case 'account':
+                $account_view = AccountViewModel::for_current_user();
+                TemplateLoader::load('account', [
+                    'account'          => $account_view,
+                    'is_account_page'  => true,
+                ]);
                 break;
             case 'dashboard':
             default:
@@ -62,6 +137,18 @@ ARREGLAR. NO TIENE SENTIDO EL 'HOME' EN ESE ARRAY
         exit;
     }
 
+    private static function get_request_param(string $key): string
+    {
+        $value = get_query_var($key);
 
-    
+        if ($value === '') {
+            $value = isset($_GET[$key]) ? wp_unslash($_GET[$key]) : '';
+        }
+
+        if (! is_scalar($value)) {
+            return '';
+        }
+
+        return (string) $value;
+    }
 }

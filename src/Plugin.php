@@ -3,6 +3,15 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\ActivityLog\ActivityLogger;
+use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
+use GarantiasOnline360VO\Clients\ClientSummary;
+use GarantiasOnline360VO\Auth\AuthController;
+use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Notifications\Push\PushNotificationService;
+use GarantiasOnline360VO\Register\RegisterManager;
+
 if (! defined('ABSPATH')) {
     exit;
 }
@@ -23,9 +32,13 @@ class Plugin
     /** Registra todos los hooks globales */
     private function init_hooks(): void
     {
+        // 0) Traducciones
+        self::load_textdomain();
+
         // 1) Reglas y endpoints
         Rewrite::init();
         Router::init();
+        AuthController::init();
 
         // 2) CPTs y taxonomías (necesario antes de sembrar)
         ModalidadesGarantiasCPT::init();
@@ -37,13 +50,26 @@ class Plugin
 
         // 4) Assets (minificado), REST, Admin, etc.
         add_action('init', [AssetCompiler::class, 'ensure_minified'], 1);
+        add_action('init', [ActivityLogger::class, 'ensure_table']);
+        add_action('init', [ActivitySubscribers::class, 'init'], 5);
+        add_action('login_init', [ActivitySubscribers::class, 'init']);
+        add_action('init', [PrivateDocsManager::class, 'ensure_directory']);
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\GuaranteeRestController::class, 'register_routes']);
+        \GarantiasOnline360VO\Rest\GuaranteeRestController::register_cache_hooks();
+
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\AccountRestController::class, 'register_routes']);
 
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\UserRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\RegisterRestController::class, 'register_routes']);
+
         add_action('rest_api_init', [\GarantiasOnline360VO\Rest\OfertasRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ActivityLogRestController::class, 'register_routes']);
 
+        add_action('rest_api_init', [\GarantiasOnline360VO\Rest\ClientRestController::class, 'register_routes']);
+
+        ClientSummary::register_hooks();
 
         add_action('rest_api_init', function () {
             $controller = new \GarantiasOnline360VO\Rest\ModalidadesRestController();
@@ -57,10 +83,13 @@ class Plugin
         AdminBar::init();
         if (is_admin()) {
             AdminMenu::init();
+            Admin\GuaranteeColumns::init();
         }
         ProfileAvatar::init();
-        SampleData::init();
-        AssetLoader::init();
+        SettingsPage::init();
+        EmailNotificationService::init();
+        PushNotificationService::init();
+        RegisterManager::init();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {
@@ -69,6 +98,15 @@ class Plugin
                 require_once $acf_file;
             }
         });
+    }
+
+    public static function load_textdomain(): void
+    {
+        load_plugin_textdomain(
+            'garantias-online-360vo',
+            false,
+            dirname(plugin_basename(GARANTIAS360VO__FILE__)) . '/languages'
+        );
     }
 
     /**
@@ -82,6 +120,10 @@ class Plugin
         AssetCompiler::ensure_minified();
         Roles::add_roles();
         update_option(Seeder::OPTION_STATUS, 'pending');
+        ActivityLogger::create_table();
+        \GarantiasOnline360VO\Notifications\Push\PushTables::ensure_tables();
+        PrivateDocsManager::ensure_directory();
+        Rewrite::mark_rules_current();
     }
 
     /**
@@ -92,12 +134,10 @@ class Plugin
     {
         Seeder::clean();
         delete_option(Seeder::OPTION_STATUS);
+        RegisterManager::clear_schedule();
     }
 }
 
 // --- Hooks de activación / desactivación ---
 register_activation_hook(GARANTIAS360VO__FILE__,   [Plugin::class, 'activate']);
 register_deactivation_hook(GARANTIAS360VO__FILE__, [Plugin::class, 'deactivate']);
-
-// Arrancamos el plugin
-Plugin::run();

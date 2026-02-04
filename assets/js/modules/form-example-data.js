@@ -3,6 +3,17 @@
 
 import { updateNextButtonState } from "./form-navigation.js";
 import { debouncedUpdateSummary } from "./form-summary.js";
+import { filtrarModalidades } from "./form-calculations.js";
+
+function generarMatriculaAleatoria() {
+        const letras = "BCDFGHJKLMNPRSTVWXYZ";
+        const numeros = Math.floor(1000 + Math.random() * 9000);
+        let sufijo = "";
+        for (let i = 0; i < 3; i++) {
+                sufijo += letras.charAt(Math.floor(Math.random() * letras.length));
+        }
+        return `${numeros}${sufijo}`;
+}
 
 /*
     - Rellena todos los campos del formulario con datos de ejemplo realistas.
@@ -11,20 +22,20 @@ import { debouncedUpdateSummary } from "./form-summary.js";
 */
 
 function rellenarDatosEjemplo() {
-	const datos = {
-		tipo_vehiculo: "turismo", // value exacto del option
-		marca: "BMW", // value exacto del option
-		modelo: "Serie 1", // value exacto del option
-		traccion: "delantera", // value exacto del option
-		combustible: "gasolina", // value exacto del option
-		cambio: "manual", // value exacto del option
-		kilometros: "50000",
-		fecha_primera_matriculacion: "2018-05-10",
-		matricula: "1234JKL",
-		numero_bastidor: "WBA8D61070A123456",
-		precio_venta: "17500",
-		potencia: "150",
-		cilindrada: "3003",
+        const datos = {
+                tipo_vehiculo: "turismo", // value exacto del option
+                marca: "BMW", // value exacto del option
+                modelo: "Serie 1", // value exacto del option
+                traccion: "delantera", // value exacto del option
+                combustible: "gasolina", // value exacto del option
+                cambio: "manual", // value exacto del option
+                kilometros: "50000",
+                fecha_primera_matriculacion: "2018-05-10",
+                matricula: generarMatriculaAleatoria(),
+                numero_bastidor: "WBA8D61070A123456",
+                precio_venta: "17500,50",
+                potencia: "150",
+                cilindrada: "3003",
 		dni: "12345678Z",
 		nombre_apellidos: "Juan Pérez García",
 		telefono: "600123456",
@@ -53,6 +64,7 @@ function rellenarDatosEjemplo() {
         // --- Refresca botón Siguiente y resumen ---
         updateNextButtonState();
         debouncedUpdateSummary();
+        filtrarModalidades();
 }
 
 function initExampleData() {

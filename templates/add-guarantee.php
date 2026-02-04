@@ -10,12 +10,19 @@ use GarantiasOnline360VO\Svg;
 
 
 
-// -> REVISAR
-// Solo muestra a admin/comercial, el resto se maneja por backend o autoselección en JS
+// Roles y banderas de permisos
 $current_user = wp_get_current_user();
+$user_roles = $current_user instanceof WP_User ? (array) $current_user->roles : [];
 $is_admin = user_can($current_user, 'manage_options');
-$is_comercial = in_array('go_comercial', $current_user->roles, true);
-// <- REVISAR
+$is_comercial = in_array('go_comercial', $user_roles, true);
+$is_director = in_array('go_director_comercial', $user_roles, true);
+$is_garantias = in_array('go_garantias', $user_roles, true);
+$is_admin_like = $is_admin || $is_director || $is_garantias;
+
+// Flag temporal: poner a true para recuperar el autocompletado automático de la fecha de inicio
+$fecha_automatica = false; // Mantener en false mientras la fecha de inicio debe introducirse manualmente
+
+error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
 
 
 
@@ -52,14 +59,13 @@ $combustible_choices = get_acf_group_subfield_choices('datos_vehiculo', 'combust
 $cambio_choices      = get_acf_group_subfield_choices('datos_vehiculo', 'cambio');
 $traccion_choices    = get_acf_group_subfield_choices('datos_vehiculo', 'traccion');
 $traccion_camion_choices = get_acf_group_subfield_choices('datos_vehiculo', 'traccion_camion');
-$mma_choices             = get_acf_group_subfield_choices('datos_vehiculo', 'mma');
 
 
 
 $is_add_guarantee = true;
 TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
 <!-- FORMULARIO -->
-<div class="form-container" style="view-transition-name: garantias-table">
+<div class="form-container">
     <div class="tabs">
         <div class="tabs__connector">
             <div class="connector connector-1"></div>
@@ -84,7 +90,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
         </div>
     </div>
     <!-- Contenido del Formulario -->
-    <form id="form-garantia" class="form">
+    <form id="form-garantia" class="form" autocomplete="off">
         <fieldset id="datos-vehiculo" class="form__tab-content form__tab-content--active">
             <legend style="display:none" class="form__legend">Datos del Vehículo</legend>
             <fieldset class="form__sub-fieldset">
@@ -192,20 +198,10 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         </select>
                         <label for="traccion_camion" class="form__placeholder form__placeholder--select">Tracción (ejes)</label>
                     </div>
-                    <div class="form__input-container form__input-container--mma" style="display:none;">
-                        <select id="mma" class="form__select" aria-label="MMA" required>
-                            <option value="" disabled selected>MMA</option>
-                            <?php foreach ($mma_choices as $key => $label): ?>
-                                <option value="<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                        <label for="mma" class="form__placeholder form__placeholder--select">MMA</label>
-                    </div>
-
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="potencia" class="form__input" type="text" placeholder=" " required />
-                        <label for="potencia" class="form__placeholder">Potencia</label>
-                        <span class="form__suffix">cv</span>
+                        <label for="potencia" class="form__placeholder">Potencia (CV)</label>
+                        <span class="form__suffix">CV</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -213,7 +209,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <div class="form__input-container form__input-container--corto form__input-container--suffix">
                         <input id="cilindrada" class="form__input" type="text" placeholder=" " required />
                         <label for="cilindrada" class="form__placeholder">Cilindrada</label>
-                        <span class="form__suffix">cc</span>
+                        <span class="form__suffix">CC</span>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
@@ -242,49 +238,49 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                 <legend class="form__nested-legend">Datos del cliente</legend>
                 <div class="form__wrapper-inputs form__wrapper-inputs--large">
                     <div class="form__input-container">
-                        <input id="nombre_apellidos" class="form__input" type="text" placeholder=" " required />
+                        <input id="nombre_apellidos" class="form__input" type="text" placeholder=" " required autocomplete="name" />
                         <label for="nombre_apellidos" class="form__placeholder">Nombre y apellidos</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="dni" class="form__input" type="text" placeholder=" " required />
-                        <label for="dni" class="form__placeholder">DNI / NIE</label>
+                        <input id="dni" class="form__input" type="text" placeholder=" " required autocomplete="off" />
+                        <label for="dni" class="form__placeholder">DNI / NIE o NIF</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="telefono" class="form__input" type="text" placeholder=" " required />
+                        <input id="telefono" class="form__input" type="text" placeholder=" " required autocomplete="tel" />
                         <label for="telefono" class="form__placeholder">Teléfono</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container">
-                        <input id="correo" class="form__input" type="text" placeholder=" " required />
+                        <input id="correo" class="form__input" type="text" placeholder=" " required autocomplete="email" />
                         <label for="correo" class="form__placeholder">Correo electrónico</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container ">
-                        <input id="direccion" class="form__input" type="text" placeholder=" " required />
+                        <input id="direccion" class="form__input" type="text" placeholder=" " required autocomplete="street-address" />
                         <label for="direccion" class="form__placeholder">Dirección</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="localidad" class="form__input" type="text" placeholder=" " required />
+                        <input id="localidad" class="form__input" type="text" placeholder=" " required autocomplete="address-level2" />
                         <label for="localidad" class="form__placeholder">Localidad</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
                         </span>
                     </div>
                     <div class="form__input-container">
-                        <select id="provincia" class="form__select" required>
+                        <select id="provincia" class="form__select" required autocomplete="address-level1">
                             <?php /* Hacer condicional por si es de otra ciudad, poner por defecto selected de esa ciudad*/ ?>
                             <option value="Álava">Álava</option>
                             <option value="Albacete">Albacete</option>
@@ -341,7 +337,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <label for="provincia" class="form__placeholder--select">Provincia*</label>
                     </div>
                     <div class="form__input-container form__input-container--corto">
-                        <input id="codigo_postal" class="form__input" type="text" placeholder=" " required />
+                        <input id="codigo_postal" class="form__input" type="text" placeholder=" " required autocomplete="postal-code" />
                         <label for="codigo_postal" class="form__placeholder">Código Postal</label>
                         <span class="form__clear-btn" role="button" aria-label="Clear input">
                             <?php echo Svg::icon('clear'); ?>
@@ -355,7 +351,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <legend style="display:none" class="form__legend">Seleccionar garantía</legend>
             <div class="form__wrapper-inputs">
                 <div class="form__input-container form__input-container--corto">
-                    <input id="fecha_inicio_garantia" class="form__input" type="date" placeholder=" " min="1980-01-01" required />
+                    <input id="fecha_inicio_garantia" class="form__input" type="date" placeholder=" " min="1980-01-01" required data-auto-fill="<?php echo esc_attr($fecha_automatica ? '1' : '0'); ?>" />
                     <label for="fecha_inicio_garantia" class="form__placeholder">Fecha inicio garantía</label>
                 </div>
                 <div class="form__input-container form__input-container--corto">
@@ -368,7 +364,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <label for="duracion" class="form__placeholder form__placeholder--select">Duración</label>
                 </div>
 
-                <?php if ($is_admin): ?>
+                <?php if ($is_admin_like): ?>
                     <div class="form__input-container form__input-container--corto">
                         <select id="canal-venta"
                             class="form__select"
@@ -395,6 +391,18 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         </label>
                     </div>
                 <?php elseif ($is_comercial): ?>
+                    <div class="form__input-container form__input-container--corto">
+                        <select id="canal-venta"
+                            class="form__select"
+                            name="canal_venta"
+                            aria-label="Selecciona canal de venta"
+                            required>
+                            <option value="go_profesional" selected>Profesional</option>
+                        </select>
+                        <label for="canal-venta" class="form__placeholder form__placeholder--select">
+                            Canal de venta
+                        </label>
+                    </div>
                     <div class="form__input-container form__input-container--corto" id="wrap-select-usuario">
                         <select id="usuario-rol"
                             class="form__select"
@@ -415,6 +423,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <input id="check-iva" type="checkbox" class="switch" checked>
                         <label for="check-iva">Precios con IVA</label>
                     </div>
+                    <?php if ($is_admin || $is_director) : ?>
+                    <div class="ofertas__desglose checkbox-wrapper-14">
+                        <input id="check-desglose" type="checkbox" class="switch">
+                        <label for="check-desglose">Desglose</label>
+                    </div>
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -457,11 +471,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
     <!-- Botones de Navegación -->
     <div class="nav-buttons">
         <button id="form_prev_btn" type="button" class="btn btn-secondary">Anterior</button>
-        <button id="form_next_btn" type="button" class="btn btn-primary">Siguiente</button>
+        <button id="form_next_btn" type="button" class="btn btn-primary"><span class="btn__text">Siguiente</span></button>
     </div>
+    <?php \GarantiasOnline360VO\TemplateLoader::load_part('form-success'); ?>
 </div> <!-- /.form-container -->
 <!-- SUMARIO -->
-<aside class="summary-container" style="view-transition-name: resume-derecha">
+<aside class="summary-container">
     <div class="summary-section summary-section--header">
         <h3>Resumen del Contrato</h3>
         <p id="summary-canal-venta" class="summary-header__canal">
@@ -514,17 +529,13 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
             <li class="summary__item" id="summary-item-traccion-camion" style="display:none;">
                 <span>Tracción camión: <span data-summary-field="traccion_camion"></span></span>
             </li>
-            <li class="summary__item" id="summary-item-mma" style="display:none;">
-                <span>MMA: <span data-summary-field="mma"></span></span>
-            </li>
-
             <li class="summary__item">
                 <span data-summary-field="potencia"></span>
-                <span class="summary__item-sufix">cv</span>
+                <span class="summary__item-sufix" id="summary-potencia-unit">CV</span>
             </li>
             <li class="summary__item">
                 <span data-summary-field="cilindrada"></span>
-                <span class="summary__item-sufix">cc</span>
+                <span class="summary__item-sufix">CC</span>
             </li>
             <li class="summary__item" id="summary-item-doble_motor" style="display:none;">
                 <span><span data-summary-field="doble_motor"></span></span>

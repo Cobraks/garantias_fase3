@@ -25,6 +25,8 @@ class AssetCompiler
         // globales
         'assets/css/global.css',
         'assets/js/global.js',
+        'assets/css/account.css',
+        'assets/js/account.js',
 
         // DASHBOARD
         'assets/css/dashboard.css',
@@ -39,6 +41,10 @@ class AssetCompiler
         // MIS GARANTÍAS
         'assets/css/mis_garantias.css',
         'assets/js/mis_garantias.js',
+
+        // CLIENTES (admin)
+        'assets/css/clientes.css',
+        'assets/js/clientes.js',
     ];
 
     /** Llama a esto en un hook (init o activación). */
@@ -74,8 +80,24 @@ class AssetCompiler
 
     private static function compile_js(string $src, string $dest): void
     {
-        $js  = file_get_contents($src);
-        $min = preg_replace(['!/\*.*?\*/!s', '/\/\/.*?\n/', '/\s+/'], ['', '', ' '], $js);
-        file_put_contents($dest, trim($min));
+        $js = file_get_contents($src);
+        if ($js === false) {
+            return;
+        }
+
+        $min = preg_replace('!/\*.*?\*/!s', '', $js);
+        if ($min === null) {
+            $min = $js;
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $min);
+        if (is_array($lines)) {
+            $lines = array_map('rtrim', $lines);
+            $min   = implode("\n", $lines);
+        }
+
+        $min = trim($min) . "\n";
+
+        file_put_contents($dest, $min);
     }
 }

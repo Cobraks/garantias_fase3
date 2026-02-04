@@ -63,6 +63,32 @@ class Roles
             'read_private_garantias'   => true,
         ];
 
+        // Director Comercial: gestión completa de garantías
+        $caps_director_comercial = [
+            'read'                     => true,
+            'edit_garantia'            => true,
+            'edit_garantias'           => true,
+            'publish_garantias'        => true,
+            'delete_garantia'          => true,
+            'delete_garantias'         => true,
+            'edit_others_garantias'    => true,
+            'delete_others_garantias'  => true,
+            'read_private_garantias'   => true,
+        ];
+
+        // Gestión de Garantías: soporte interno con permisos completos
+        $caps_garantias = [
+            'read'                     => true,
+            'edit_garantia'            => true,
+            'edit_garantias'           => true,
+            'publish_garantias'        => true,
+            'delete_garantia'          => true,
+            'delete_garantias'         => true,
+            'edit_others_garantias'    => true,
+            'delete_others_garantias'  => true,
+            'read_private_garantias'   => true,
+        ];
+
         add_role(
             'go_particular',
             __('Particular', 'garantias-online-360vo'),
@@ -86,6 +112,19 @@ class Roles
             __('Comercial', 'garantias-online-360vo'),
             $caps_comercial
         );
+
+
+        add_role(
+            'go_director_comercial',
+            __('Director Comercial', 'garantias-online-360vo'),
+            $caps_director_comercial
+        );
+
+        add_role(
+            'go_garantias',
+            __('Gestión Garantías', 'garantias-online-360vo'),
+            $caps_garantias
+        );
     }
 
     /**
@@ -97,5 +136,7 @@ class Roles
         remove_role('go_profesional');
         remove_role('go_gestoria');
         remove_role('go_comercial');
+        remove_role('go_director_comercial');
+        remove_role('go_garantias');
     }
 }

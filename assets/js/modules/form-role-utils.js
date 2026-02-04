@@ -20,11 +20,27 @@ function log(...args) {
  * Siempre en minúsculas.
  */
 export function getEffectiveUserRole() {
-	return String(getUserRole() || "").toLowerCase();
+        const rawRole = String(getUserRole() || "").toLowerCase();
+        switch (rawRole) {
+                case "go_comercial":
+                        return "comercial";
+                case "go_director_comercial":
+                case "go_garantias":
+                        return "admin";
+                case "profesional":
+                        return "go_profesional";
+                case "go_particular":
+                case "particular":
+                case "go_individual":
+                case "individual":
+                        return "go_particular";
+                default:
+                        return rawRole;
+        }
 }
 
 export function isAdmin() {
-	return getEffectiveUserRole() === "admin";
+        return getEffectiveUserRole() === "admin";
 }
 
 export function isComercial() {
@@ -35,8 +51,18 @@ export function isComercial() {
  * Acepta variantes: 'go_profesional' y 'profesional' por compatibilidad histórica.
  */
 export function isProfesional() {
-	const role = getEffectiveUserRole();
-	return role === "go_profesional" || role === "profesional";
+        const role = getEffectiveUserRole();
+        return role === "go_profesional" || role === "profesional";
+}
+
+export function isParticular() {
+        const role = getEffectiveUserRole();
+        return (
+                role === "go_particular" ||
+                role === "particular" ||
+                role === "go_individual" ||
+                role === "individual"
+        );
 }
 
 /**

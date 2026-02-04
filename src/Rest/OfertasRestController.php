@@ -2,6 +2,11 @@
 
 namespace GarantiasOnline360VO\Rest;
 
+use DateTimeImmutable;
+use DateTimeZone;
+use GarantiasOnline360VO\GuaranteeCPT;
+use WP_Query;
+
 if (!defined('ABSPATH')) {
     exit;
 }
@@ -10,6 +15,8 @@ class OfertasRestController
 {
     const NAMESPACE = 'go/v1';
     const REST_BASE = 'ofertas-usuario';
+    private const IVA_PERCENTAGE = 21.0;
+    private const IVA_INCLUDED_DISCOUNT = (self::IVA_PERCENTAGE / (100 + self::IVA_PERCENTAGE)) * 100;
 
     public static function register_routes()
     {
@@ -68,16 +75,51 @@ class OfertasRestController
             return new \WP_REST_Response([], 200);
         }
 
-        $ofertas = get_field('ofertas_y_descuentos', 'user_' . $user_id);
-        if (empty($ofertas) || !isset($ofertas['ofertas']) || !is_array($ofertas['ofertas'])) {
-            return new \WP_REST_Response([], 200);
+        $group = get_field('ofertas_y_descuentos', 'user_' . $user_id);
+
+        $especiales = self::extract_special_price_offers(is_array($group) ? $group : []);
+
+        $lista_ofertas = [];
+        if (is_array($group) && isset($group['ofertas']) && is_array($group['ofertas'])) {
+            $lista_ofertas = $group['ofertas'];
         }
 
         $now = time();
         $ofertas_clean = [];
 
-        foreach ($ofertas['ofertas'] as $oferta) {
-            if (empty($oferta['estado']) || empty($oferta['porcentaje_descuento'])) continue;
+        foreach ($lista_ofertas as $oferta) {
+            $estado_activo = isset($oferta['estado']) ? (bool) $oferta['estado'] : false;
+            if (!$estado_activo) {
+                continue;
+            }
+
+            $etiqueta = '';
+            $tipo_value = '';
+            if (is_array($oferta['tipo_oferta'])) {
+                $etiqueta = $oferta['tipo_oferta']['label'] ?? $oferta['tipo_oferta']['value'] ?? '';
+                $tipo_value = $oferta['tipo_oferta']['value'] ?? '';
+            } else {
+                $etiqueta = $oferta['tipo_oferta'] ?? '';
+                $tipo_value = $oferta['tipo_oferta'] ?? '';
+            }
+
+            $es_sin_suplementos = ($tipo_value === 'sin_suplementos');
+            $es_iva_incluido   = ($tipo_value === 'iva_incluido');
+            $porcentaje_raw = $oferta['porcentaje_descuento'] ?? 0;
+            $porcentaje_descuento = $porcentaje_raw === '' ? 0 : floatval($porcentaje_raw);
+
+            if (! $es_sin_suplementos && ! $es_iva_incluido && $porcentaje_descuento === 0.0) {
+                continue;
+            }
+
+            if ($es_iva_incluido) {
+                $porcentaje_descuento = self::IVA_INCLUDED_DISCOUNT;
+            }
+
+            $meses = self::sanitize_offer_months($oferta['meses'] ?? []);
+            if ($tipo_value === 'por_duracion' && empty($meses)) {
+                continue;
+            }
 
             $caducidad_ok = true;
             $fecha_cad = $oferta['caducidad_oferta'] ?? '';
@@ -91,15 +133,6 @@ class OfertasRestController
             }
             if (!$caducidad_ok) continue;
 
-            $etiqueta = '';
-            $tipo_value = '';
-            if (is_array($oferta['tipo_oferta'])) {
-                $etiqueta = $oferta['tipo_oferta']['label'] ?? $oferta['tipo_oferta']['value'] ?? '';
-                $tipo_value = $oferta['tipo_oferta']['value'] ?? '';
-            } else {
-                $etiqueta = $oferta['tipo_oferta'] ?? '';
-                $tipo_value = $oferta['tipo_oferta'] ?? '';
-            }
             $nombre_final = ($tipo_value === 'personalizar' && !empty($oferta['nombre_oferta']))
                 ? $oferta['nombre_oferta']
                 : $etiqueta;
@@ -115,19 +148,387 @@ class OfertasRestController
                 }
             }
 
+            $cantidad_garantias_mes = isset($oferta['cantidad_garantias_mes'])
+                ? intval($oferta['cantidad_garantias_mes'])
+                : null;
+            $numero_garantias_con_descuento = isset($oferta['numero_garantias_con_descuento'])
+                ? intval($oferta['numero_garantias_con_descuento'])
+                : null;
+
+            if ($es_iva_incluido) {
+                $nombre_final = __('IVA incluido', 'garantias-online-360vo');
+            } elseif ($tipo_value === 'descuento_cada' && $cantidad_garantias_mes) {
+                $nombre_final = sprintf('Por cada %d garantías', (int) $cantidad_garantias_mes);
+            } elseif ($tipo_value === 'descuento_a_partir' && $cantidad_garantias_mes) {
+                $nombre_final = sprintf('Descuento a partir de %d garantías', (int) $cantidad_garantias_mes);
+            } elseif ($tipo_value === 'por_duracion' && !empty($meses)) {
+                $nombre_final = sprintf('Por duración (%s meses)', implode(', ', $meses));
+            }
+
+            if ($es_iva_incluido && $etiqueta === '') {
+                $etiqueta = __('IVA incluido', 'garantias-online-360vo');
+            }
+
             $ofertas_clean[] = [
-                'tipo_oferta'          => $tipo_value,
-                'nombre'               => $nombre_final,
-                'etiqueta'             => $etiqueta,
-                'porcentaje_descuento' => floatval($oferta['porcentaje_descuento'] ?? 0),
-                'aplicacion'           => $oferta['aplicacion'] ?? [],
-                'seleccion_modalidad'  => $seleccion_modalidad_ids,
-                'estado'               => isset($oferta['estado']) ? (bool)$oferta['estado'] : true,
-                'caducidad_oferta'     => $fecha_cad,
-                'timestamp_caducidad'  => $timestamp_cad,
+                'tipo_oferta'                   => $tipo_value,
+                'nombre'                        => $nombre_final,
+                'etiqueta'                      => $etiqueta,
+                'porcentaje_descuento'          => $porcentaje_descuento,
+                'aplicacion'                    => $oferta['aplicacion'] ?? [],
+                'seleccion_modalidad'           => $seleccion_modalidad_ids,
+                'estado'                        => isset($oferta['estado']) ? (bool)$oferta['estado'] : true,
+                'caducidad_oferta'              => $fecha_cad,
+                'timestamp_caducidad'           => $timestamp_cad,
+                'cantidad_garantias_mes'        => $cantidad_garantias_mes,
+                'numero_garantias_con_descuento' => $numero_garantias_con_descuento,
+                'meses'                         => $meses,
             ];
         }
 
-        return new \WP_REST_Response($ofertas_clean, 200);
+        $meta = [
+            'garantias_activadas_mes'           => self::count_active_guarantees_current_month($user_id),
+            'garantias_no_activadas_mes'        => self::count_non_active_guarantees_current_month($user_id),
+            'tiene_oferta_especial_precio_fijo' => $especiales['enabled'],
+        ];
+
+        return new \WP_REST_Response([
+            'ofertas'                           => $ofertas_clean,
+            'tiene_oferta_especial_precio_fijo' => $especiales['enabled'],
+            'ofertas_precio_fijo'               => $especiales['offers'],
+            'meta'                              => $meta,
+        ], 200);
+    }
+
+    private static function sanitize_offer_months($raw_months): array
+    {
+        $allowed = [6, 12, 24, 36];
+        $months  = [];
+
+        if (is_array($raw_months)) {
+            foreach ($raw_months as $month) {
+                $month = (int) $month;
+                if (in_array($month, $allowed, true) && $month > 0) {
+                    $months[] = $month;
+                }
+            }
+        }
+
+        $months = array_values(array_unique($months));
+        sort($months, SORT_NUMERIC);
+
+        return $months;
+    }
+
+    private static function count_active_guarantees_current_month(int $user_id): int
+    {
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+        $now      = new DateTimeImmutable('now', $timezone);
+
+        $start = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $end   = $now->setTime(23, 59, 59);
+
+        $query = new WP_Query([
+            'post_type'      => GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['publish', 'pending', 'future', 'draft'],
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                    'type'    => 'NUMERIC',
+                ],
+                [
+                    'key'     => 'estado_garantia_estado_contratacion',
+                    'value'   => 'activada',
+                    'compare' => '=',
+                ],
+            ],
+            'date_query'     => [
+                [
+                    'after'     => $start->format('Y-m-d H:i:s'),
+                    'before'    => $end->format('Y-m-d H:i:s'),
+                    'inclusive' => true,
+                ],
+            ],
+        ]);
+
+        $count = isset($query->found_posts) ? (int) $query->found_posts : 0;
+        wp_reset_postdata();
+
+        return $count;
+    }
+
+    private static function count_non_active_guarantees_current_month(int $user_id): int
+    {
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : new DateTimeZone('UTC');
+        $now      = new DateTimeImmutable('now', $timezone);
+
+        $start = $now->modify('first day of this month')->setTime(0, 0, 0);
+        $end   = $now->setTime(23, 59, 59);
+
+        $query = new WP_Query([
+            'post_type'      => GuaranteeCPT::POST_TYPE,
+            'post_status'    => ['publish', 'pending', 'future', 'draft'],
+            'fields'         => 'ids',
+            'posts_per_page' => 1,
+            'meta_query'     => [
+                'relation' => 'AND',
+                [
+                    'key'     => 'garantia_contratada_concesionario_empresa_profesional',
+                    'value'   => $user_id,
+                    'compare' => '=',
+                    'type'    => 'NUMERIC',
+                ],
+                [
+                    'key'     => 'estado_garantia_estado_contratacion',
+                    'compare' => 'EXISTS',
+                ],
+                [
+                    'key'     => 'estado_garantia_estado_contratacion',
+                    'value'   => 'activada',
+                    'compare' => '!=',
+                ],
+            ],
+            'date_query'     => [
+                [
+                    'after'     => $start->format('Y-m-d H:i:s'),
+                    'before'    => $end->format('Y-m-d H:i:s'),
+                    'inclusive' => true,
+                ],
+            ],
+        ]);
+
+        $count = isset($query->found_posts) ? (int) $query->found_posts : 0;
+        wp_reset_postdata();
+
+        return $count;
+    }
+
+    public static function extract_special_price_offers(array $group): array
+    {
+        $result = [
+            'enabled' => false,
+            'offers'  => [],
+        ];
+
+        if (empty($group)) {
+            return $result;
+        }
+
+        $enabled_flag = !empty($group['tiene_oferta_especial_precio_fijo']);
+        $rows         = isset($group['oferta_especial_precio_fijo']) && is_array($group['oferta_especial_precio_fijo'])
+            ? $group['oferta_especial_precio_fijo']
+            : [];
+
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $normalized = self::normalize_special_price_row($row);
+            if ($normalized === null) {
+                continue;
+            }
+
+            if (isset($normalized['estado']) && $normalized['estado'] === false) {
+                continue;
+            }
+            $result['offers'][] = $normalized;
+        }
+
+        if (!empty($result['offers'])) {
+            $result['enabled'] = true;
+        } elseif ($enabled_flag) {
+            $result['enabled'] = true;
+        }
+
+        return $result;
+    }
+
+    private static function normalize_special_price_row(array $row): ?array
+    {
+        $tipo_info  = self::resolve_term_field($row['tipo_de_garantia'] ?? null, 'tipo_garantia');
+        $nivel_info = self::resolve_term_field($row['nivel_garantia'] ?? null, 'nivel_garantia');
+
+        if ($tipo_info['id'] === null && $tipo_info['slug'] === '') {
+            return null;
+        }
+        if ($nivel_info['id'] === null && $nivel_info['slug'] === '') {
+            return null;
+        }
+
+        $precio_raw = $row['precio_fijo'] ?? null;
+        $precio     = null;
+        if ($precio_raw !== null && $precio_raw !== '') {
+            if (is_numeric($precio_raw)) {
+                $precio = (float) $precio_raw;
+            } elseif (is_string($precio_raw)) {
+                $valor = str_replace(' ', '', $precio_raw);
+                if (strpos($valor, ',') !== false) {
+                    $valor = str_replace('.', '', $valor);
+                    $valor = str_replace(',', '.', $valor);
+                }
+                if (is_numeric($valor)) {
+                    $precio = (float) $valor;
+                }
+            }
+        }
+
+        if ($precio === null) {
+            return null;
+        }
+
+        $duracion_value = null;
+        $duracion_label = '';
+        if (isset($row['duracion_maxima'])) {
+            $duracion_raw = $row['duracion_maxima'];
+            if (is_array($duracion_raw)) {
+                if (!empty($duracion_raw['value'])) {
+                    $duracion_value = (int) $duracion_raw['value'];
+                }
+                if (!empty($duracion_raw['label'])) {
+                    $duracion_label = (string) $duracion_raw['label'];
+                }
+            } elseif ($duracion_raw !== null && $duracion_raw !== '') {
+                $duracion_value = (int) $duracion_raw;
+            }
+        }
+        if ($duracion_label === '' && $duracion_value) {
+            $duracion_label = sprintf('%d meses', $duracion_value);
+        }
+
+        return [
+            'tipo_garantia_id'      => $tipo_info['id'],
+            'tipo_garantia_slug'    => $tipo_info['slug'],
+            'tipo_garantia_label'   => $tipo_info['name'],
+            'nivel_garantia_id'     => $nivel_info['id'],
+            'nivel_garantia_slug'   => $nivel_info['slug'],
+            'nivel_garantia_label'  => $nivel_info['name'],
+            'precio_fijo'           => $precio,
+            'excluir_resto_niveles' => !empty($row['excluir_resto_de_niveles']),
+            'duracion_meses'        => $duracion_value ? (int) $duracion_value : null,
+            'duracion_label'        => $duracion_label,
+            'estado'                => isset($row['estado']) ? (bool) $row['estado'] : true,
+        ];
+    }
+
+    private static function resolve_term_field($field, string $taxonomy): array
+    {
+        $candidate = [
+            'id'   => null,
+            'slug' => '',
+            'name' => '',
+        ];
+
+        if ($field instanceof \WP_Term) {
+            return [
+                'id'   => (int) $field->term_id,
+                'slug' => (string) $field->slug,
+                'name' => (string) $field->name,
+            ];
+        }
+
+        if (is_object($field)) {
+            $field = get_object_vars($field);
+        }
+
+        if (is_array($field)) {
+            if (isset($field['term_id'])) {
+                $candidate['id'] = (int) $field['term_id'];
+            } elseif (isset($field['ID'])) {
+                $candidate['id'] = (int) $field['ID'];
+            } elseif (isset($field['id']) && is_numeric($field['id'])) {
+                $candidate['id'] = (int) $field['id'];
+            }
+
+            if (!empty($field['slug'])) {
+                $candidate['slug'] = (string) $field['slug'];
+            }
+
+            if ($candidate['id'] === null && array_key_exists('value', $field)) {
+                $value = $field['value'];
+                if (is_numeric($value)) {
+                    $candidate['id'] = (int) $value;
+                } elseif ($value instanceof \WP_Term || is_object($value) || is_array($value)) {
+                    $nested = self::resolve_term_field($value, $taxonomy);
+                    if ($candidate['id'] === null) {
+                        $candidate['id'] = $nested['id'];
+                    }
+                    if ($candidate['slug'] === '') {
+                        $candidate['slug'] = $nested['slug'];
+                    }
+                    if ($candidate['name'] === '') {
+                        $candidate['name'] = $nested['name'];
+                    }
+                } elseif (is_string($value) && $value !== '') {
+                    $candidate['slug'] = $value;
+                }
+            }
+
+        } elseif (is_numeric($field)) {
+            $candidate['id'] = (int) $field;
+        } elseif (is_string($field) && $field !== '') {
+            if (ctype_digit($field)) {
+                $candidate['id'] = (int) $field;
+            } else {
+                $candidate['slug'] = $field;
+            }
+        }
+
+        if ($candidate['id'] !== null && $candidate['id'] > 0) {
+            $resolved = self::resolve_term_info((int) $candidate['id'], $taxonomy);
+            if ($resolved['slug'] === '' && $candidate['slug'] !== '') {
+                $resolved['slug'] = (string) $candidate['slug'];
+            }
+            if ($resolved['name'] === '' && $candidate['name'] !== '') {
+                $resolved['name'] = (string) $candidate['name'];
+            }
+            return $resolved;
+        }
+
+        if ($candidate['slug'] !== '') {
+            $term = get_term_by('slug', $candidate['slug'], $taxonomy);
+            if ($term instanceof \WP_Term && ! is_wp_error($term)) {
+                return [
+                    'id'   => (int) $term->term_id,
+                    'slug' => (string) $term->slug,
+                    'name' => (string) $term->name,
+                ];
+            }
+            return [
+                'id'   => null,
+                'slug' => (string) $candidate['slug'],
+                'name' => (string) ($candidate['name'] ?? ''),
+            ];
+        }
+
+        return $candidate;
+    }
+
+    private static function resolve_term_info(int $term_id, string $taxonomy): array
+    {
+        $info = [
+            'id'   => null,
+            'slug' => '',
+            'name' => '',
+        ];
+
+        if ($term_id <= 0) {
+            return $info;
+        }
+
+        $term = get_term($term_id, $taxonomy);
+        if ($term instanceof \WP_Term && ! is_wp_error($term)) {
+            $info['id']   = (int) $term->term_id;
+            $info['slug'] = (string) $term->slug;
+            $info['name'] = (string) $term->name;
+            return $info;
+        }
+
+        $info['id'] = $term_id;
+        return $info;
     }
 }

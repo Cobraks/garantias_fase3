@@ -7,20 +7,51 @@
     - No realiza validaciones, solo lee valores y estado visual.
 */
 
-import { debounce } from "./form-utils.js";
-import { getUserRole } from "./config.js";
+import { debounce, getAntiguedadFromDate } from "./form-utils.js";
+import {
+        getUserRole,
+        getCurrentUserCompanyName,
+        getCurrentUserCompanyTypeLabel,
+} from "./config.js";
 import { showTab, isCurrentTabValid } from "./form-navigation.js";
 import FormCache from "./form-cache.js";
 
+const CHANNEL_NORMALIZATION = {
+        profesional: "profesional",
+        go_profesional: "profesional",
+        particular: "particular",
+        go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
+        gestoria: "gestoria",
+        go_gestoria: "gestoria",
+};
+
+function normalizeChannelValue(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return CHANNEL_NORMALIZATION[key] || "";
+}
+
 // Helper para saber si el tipo de vehículo es "camion"
 function isTipoCamion() {
-	const tipo = document.getElementById("tipo_vehiculo");
-	return tipo && tipo.value === "camion";
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "camion";
+}
+
+function isTipoMoto() {
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "moto";
+}
+
+function getProfesionalChannelLabel() {
+        const typeLabel = getCurrentUserCompanyTypeLabel();
+        return typeLabel ? `Profesional (${typeLabel})` : "Profesional";
 }
 
 // === Helpers de campos especiales ===
 function getSummaryText(fieldId) {
-	// Dirección
+        // Dirección
 	if (fieldId === "direccion") {
 		const direccion = document.getElementById("direccion");
 		const cp = document.getElementById("codigo_postal");
@@ -47,22 +78,43 @@ function getSummaryText(fieldId) {
 	// === MODALIDAD ahora muestra Canal de venta ===
         if (fieldId === "modalidad") {
                 const userRole = getUserRole() || "user";
-		let canalText = "";
-		if (userRole === "admin") {
-			const canalSelect = document.getElementById("canal-venta");
-			if (canalSelect && canalSelect.value) {
-				const option = canalSelect.options[canalSelect.selectedIndex];
-				canalText = option ? option.textContent : "";
-			} else {
-				canalText = "No seleccionado";
-			}
-		} else if (userRole === "comercial" || userRole === "profesional") {
-			canalText = "Profesional";
-		} else {
-			canalText = "-";
-		}
-		return { text: canalText, error: false };
-	}
+                const normalizedRole = String(userRole).toLowerCase();
+                let canalText = "";
+                if (
+                        normalizedRole === "admin" ||
+                        normalizedRole === "administrator" ||
+                        normalizedRole === "go_garantias" ||
+                        normalizedRole === "go_director_comercial"
+                ) {
+                        const canalSelect = document.getElementById("canal-venta");
+                        if (canalSelect && canalSelect.value) {
+                                const option = canalSelect.options[canalSelect.selectedIndex];
+                                canalText = option ? option.textContent : "";
+                        } else {
+                                canalText = "(no seleccionado)";
+                        }
+                } else if (
+                        normalizedRole === "go_profesional" ||
+                        normalizedRole === "profesional"
+                ) {
+                        canalText = getProfesionalChannelLabel();
+                } else if (
+                        normalizedRole === "go_particular" ||
+                        normalizedRole === "particular" ||
+                        normalizedRole === "go_individual" ||
+                        normalizedRole === "individual"
+                ) {
+                        canalText = "Particular";
+                } else if (
+                        normalizedRole === "comercial" ||
+                        normalizedRole === "go_comercial"
+                ) {
+                        canalText = "Profesional";
+                } else {
+                        canalText = "-";
+                }
+                return { text: canalText, error: false };
+        }
 
 	// Plan seleccionado
 	if (fieldId === "plan_seleccionado") {
@@ -86,22 +138,23 @@ function getSummaryText(fieldId) {
 
 	// Vencimiento contrato
 	if (fieldId === "vencimiento_contrato") {
-		const fecha = document.getElementById("fecha_inicio_garantia");
-		const duracion = document.getElementById("duracion");
-		if (!fecha.value.trim())
-			return { text: "Falta fecha inicio garantía", error: true };
-		if (!duracion.value.trim()) return { text: "Falta duración", error: true };
-		if (fecha.getAttribute("aria-invalid") === "true")
-			return { text: "Fecha inicio incorrecta", error: true };
-		let startDate = new Date(fecha.value);
-		let months = 0;
-		if (duracion.value === "6_meses") months = 6;
-		if (duracion.value === "12_meses") months = 12;
-		if (duracion.value === "24_meses") months = 24;
-		if (duracion.value === "36_meses") months = 36;
-		let expDate = new Date(startDate);
-		expDate.setMonth(expDate.getMonth() + months);
-		expDate.setDate(expDate.getDate() - 1);
+                const fecha = document.getElementById("fecha_inicio_garantia");
+                const duracion = document.getElementById("duracion");
+                if (!fecha.value.trim())
+                        return { text: "Falta fecha inicio garantía", error: true };
+                if (!duracion.value.trim())
+                        return { text: "Falta duración", error: true };
+                if (fecha.getAttribute("aria-invalid") === "true")
+                        return { text: "Fecha inicio incorrecta", error: true };
+
+                const startDate = new Date(fecha.value);
+                const months = parseInt(duracion.value, 10);
+                if (isNaN(months) || months <= 0)
+                        return { text: "Falta duración", error: true };
+
+                const expDate = new Date(startDate);
+                expDate.setMonth(expDate.getMonth() + months);
+                expDate.setDate(expDate.getDate() - 1);
 		const monthNames = [
 			"enero",
 			"febrero",
@@ -132,19 +185,66 @@ function getSummaryText(fieldId) {
 	}
 
 	// Modelo individual
-	if (fieldId === "modelo") {
-		const modelo = document.getElementById("modelo")?.value.trim() || "";
-		if (!modelo) return { text: "Falta Modelo", error: true };
-		return { text: modelo, error: false };
-	}
+        if (fieldId === "modelo") {
+                const modelo = document.getElementById("modelo")?.value.trim() || "";
+                if (!modelo) return { text: "Falta Modelo", error: true };
+                return { text: modelo, error: false };
+        }
 
-	// --- CAMBIOS CLAVE PARA CAMION ---
-	// Tracción (solo valor, sin prefijo)
-	if (fieldId === "traccion") {
-		if (isTipoCamion()) {
-			return { text: "No aplica", error: false };
-		}
-		const traccion = document.getElementById("traccion");
+        if (fieldId === "fecha_primera_matriculacion") {
+                const input = document.getElementById("fecha_primera_matriculacion");
+                if (!input) return { text: "", error: false };
+                const label = document.querySelector(
+                        "label[for='fecha_primera_matriculacion']"
+                );
+                const labelText = (label?.textContent || "Fecha 1ª matriculación").trim();
+                const value = input.value?.trim() || "";
+                if (!value) {
+                        return { text: `Falta ${labelText}`, error: true };
+                }
+                if (input.getAttribute("aria-invalid") === "true") {
+                        return { text: `${labelText} incorrecta`, error: true };
+                }
+                const fecha = new Date(value);
+                if (Number.isNaN(fecha.getTime())) {
+                        return { text: `${labelText} incorrecta`, error: true };
+                }
+                const monthNames = [
+                        "enero",
+                        "febrero",
+                        "marzo",
+                        "abril",
+                        "mayo",
+                        "junio",
+                        "julio",
+                        "agosto",
+                        "septiembre",
+                        "octubre",
+                        "noviembre",
+                        "diciembre",
+                ];
+                const fechaTexto = `${fecha.getDate()} de ${
+                        monthNames[fecha.getMonth()]
+                } de ${fecha.getFullYear()}`;
+                const antiguedad = getAntiguedadFromDate(value);
+                let texto = fechaTexto;
+                if (Number.isFinite(antiguedad)) {
+                        const antiguedadTexto = antiguedad.toLocaleString("es-ES", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                        });
+                        texto += ` (${antiguedadTexto} años de antigüedad)`;
+                }
+                return { text: texto, error: false };
+        }
+
+        // --- CAMBIOS CLAVE PARA CAMION ---
+        // Tracción (solo valor, sin prefijo)
+        if (fieldId === "traccion") {
+                if (isTipoCamion() || isTipoMoto()) {
+                        return { text: "No aplica", error: false };
+                }
+                const traccion = document.getElementById("traccion");
 		if (!traccion || !traccion.value)
 			return { text: "Falta Tracción", error: true };
 		const selectedText =
@@ -153,10 +253,10 @@ function getSummaryText(fieldId) {
 	}
 
 	// Tracción camión
-	if (fieldId === "traccion_camion") {
-		if (!isTipoCamion()) {
-			return { text: "No aplica", error: false };
-		}
+        if (fieldId === "traccion_camion") {
+                if (!isTipoCamion()) {
+                        return { text: "No aplica", error: false };
+                }
 		const traccionCamion = document.getElementById("traccion_camion");
 		if (!traccionCamion || !traccionCamion.value)
 			return { text: "Falta Tracción camión", error: true };
@@ -165,35 +265,43 @@ function getSummaryText(fieldId) {
 		return { text: selectedText, error: false };
 	}
 
-	// MMA
-	if (fieldId === "mma") {
-		if (!isTipoCamion()) {
-			return { text: "No aplica", error: false };
-		}
-		const mma = document.getElementById("mma");
-		if (!mma || !mma.value) return { text: "Falta MMA", error: true };
-		const selectedText = mma.options[mma.selectedIndex]?.text?.trim() || "";
-		return { text: selectedText, error: false };
-	}
+        // Doble motor (depende de combustible)
+        if (fieldId === "doble_motor") {
+                const combustible = document.getElementById("combustible")?.value;
+                const aplica = combustible === "electrico";
+                if (!aplica) {
+                        return { text: "No aplica", error: false };
+                }
+                const doble = document.getElementById("doble_motor");
+                if (!doble || !doble.value)
+                        return { text: "Falta Doble motor", error: true };
+                const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
+                return { text: selectedText, error: false };
+        }
 
-	// Doble motor (depende de combustible)
-	if (fieldId === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value;
-		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
-		if (!aplica) {
-			return { text: "No aplica", error: false };
-		}
-		const doble = document.getElementById("doble_motor");
-		if (!doble || !doble.value)
-			return { text: "Falta Doble motor", error: true };
-		const selectedText = doble.options[doble.selectedIndex]?.text?.trim() || "";
-		return { text: selectedText, error: false };
-	}
+        if (fieldId === "potencia") {
+                const potencia = document.getElementById("potencia");
+                const unit = document.getElementById("summary-potencia-unit");
+                if (!potencia || !potencia.value.trim()) {
+                        return { text: "Falta Potencia", error: true };
+                }
+                const combustible = document.getElementById("combustible")?.value;
+                if (combustible === "electrico") {
+                        const kw = parseFloat(
+                                potencia.value.replace(/\./g, "").replace(",", ".")
+                        );
+                        const cv = Math.round(kw * 1.3596);
+                        if (unit) unit.textContent = "CV";
+                        return { text: isNaN(cv) ? potencia.value : cv.toString(), error: false };
+                }
+                if (unit) unit.textContent = "CV";
+                return { text: potencia.value, error: false };
+        }
 
-	// Por defecto: campo simple
-	const input = document.getElementById(fieldId);
-	if (input) {
-		if (!input.value.trim()) {
+        // Por defecto: campo simple
+        const input = document.getElementById(fieldId);
+        if (input) {
+                if (!input.value.trim()) {
 			const label = document.querySelector(`label[for="${fieldId}"]`);
 			return { text: "Falta " + (label?.textContent || fieldId), error: true };
 		}
@@ -243,73 +351,108 @@ function getSummaryText(fieldId) {
 
 // === CABECERA DE RESUMEN: CANAL Y VENDEDOR (nuevo) ===
 function updateSummaryHeader() {
-	const canalSpan = document.querySelector("[data-summary-canal]");
-	const vendedorSpan = document.querySelector("[data-summary-vendedor]");
+        const canalSpan = document.querySelector("[data-summary-canal]");
+        const vendedorSpan = document.querySelector("[data-summary-vendedor]");
         const userRole = getUserRole() || "user";
+        const currentCompanyName = (getCurrentUserCompanyName() || "").trim();
 
-	// Por defecto, escondemos ambos
-	const canalP = document.getElementById("summary-canal-venta");
-	const vendedorP = document.getElementById("summary-vendedor");
-	if (canalP) canalP.style.display = "none";
-	if (vendedorP) vendedorP.style.display = "none";
+        // Por defecto, escondemos ambos
+        const canalP = document.getElementById("summary-canal-venta");
+        const vendedorP = document.getElementById("summary-vendedor");
+        if (canalP) canalP.style.display = "none";
+        if (vendedorP) vendedorP.style.display = "none";
 
-	if (userRole === "admin") {
-		if (canalP) canalP.style.display = "";
-		if (vendedorP) vendedorP.style.display = "";
+        const normalizedRole = String(userRole).toLowerCase();
 
-		// Canal de venta
-		const canalSelect = document.getElementById("canal-venta");
-		let canalText = "";
-		if (canalSelect && canalSelect.value) {
-			const option = canalSelect.options[canalSelect.selectedIndex];
-			canalText = option ? option.textContent : "";
-		} else {
-			canalText = "No seleccionado";
-		}
-		if (canalSpan) canalSpan.textContent = canalText;
+        if (
+                normalizedRole === "admin" ||
+                normalizedRole === "administrator" ||
+                normalizedRole === "go_garantias" ||
+                normalizedRole === "go_director_comercial"
+        ) {
+                if (canalP) canalP.style.display = "";
+                const canalSelect = document.getElementById("canal-venta");
+                let canalText = "";
+                let canalSlug = "";
+                if (canalSelect && canalSelect.value) {
+                        const option = canalSelect.options[canalSelect.selectedIndex];
+                        canalText = option ? option.textContent : "";
+                        canalSlug = normalizeChannelValue(canalSelect.value);
+                } else {
+                        canalText = "(no seleccionado)";
+                        canalSlug = "";
+                }
+                if (canalSpan) canalSpan.textContent = canalText;
 
-		// Vendedor
-		const vendedorSelect = document.getElementById("usuario-rol");
-		let vendedorText = "";
-		if (vendedorSelect && vendedorSelect.value) {
-			const option = vendedorSelect.options[vendedorSelect.selectedIndex];
-			vendedorText = option ? option.textContent : "";
-		} else {
-			vendedorText = "No seleccionado";
-		}
-		if (vendedorSpan) vendedorSpan.textContent = vendedorText;
-	} else if (userRole === "comercial" || userRole === "profesional") {
-		if (canalP) canalP.style.display = "";
-		if (vendedorP) vendedorP.style.display = "none";
-		if (canalSpan) canalSpan.textContent = "Profesional";
-		if (vendedorSpan) vendedorSpan.textContent = "";
-	} else {
-		// Usuario normal, no mostrar nada
-		if (canalSpan) canalSpan.textContent = "-";
-		if (vendedorSpan) vendedorSpan.textContent = "-";
-	}
+                const vendedorHidden = document.getElementById("usuario-rol");
+                const vendedorLabel = vendedorHidden?.dataset.displayLabel || "No seleccionado";
+                const mostrarVendedor = canalSlug !== "particular";
+                if (vendedorP) {
+                        vendedorP.style.display = mostrarVendedor ? "" : "none";
+                        vendedorP.classList.toggle(
+                                "summary-header__vendedor--hidden",
+                                !mostrarVendedor,
+                        );
+                        if (!mostrarVendedor) {
+                                vendedorP.setAttribute("aria-hidden", "true");
+                        } else {
+                                vendedorP.removeAttribute("aria-hidden");
+                        }
+                }
+                if (vendedorSpan) vendedorSpan.textContent = mostrarVendedor ? vendedorLabel : "";
+        } else if (
+                normalizedRole === "go_profesional" ||
+                normalizedRole === "profesional"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "";
+                if (canalSpan) canalSpan.textContent = getProfesionalChannelLabel();
+                if (vendedorSpan)
+                        vendedorSpan.textContent = currentCompanyName || "(no seleccionado)";
+        } else if (
+                normalizedRole === "go_particular" ||
+                normalizedRole === "particular" ||
+                normalizedRole === "go_individual" ||
+                normalizedRole === "individual"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "none";
+                if (canalSpan) canalSpan.textContent = "Particular";
+                if (vendedorSpan) vendedorSpan.textContent = "";
+        } else if (
+                normalizedRole === "comercial" ||
+                normalizedRole === "go_comercial"
+        ) {
+                if (canalP) canalP.style.display = "";
+                if (vendedorP) vendedorP.style.display = "none";
+                if (canalSpan) canalSpan.textContent = "Profesional";
+                if (vendedorSpan) vendedorSpan.textContent = "";
+        } else {
+                // Usuario normal, no mostrar nada
+                if (canalSpan) canalSpan.textContent = "-";
+                if (vendedorSpan) vendedorSpan.textContent = "-";
+        }
 }
 
 // Refresca el resumen
 function updateSummary() {
 	// Mostrar/ocultar items según tipo_vehiculo
-	const isCamion = isTipoCamion();
+        const isCamion = isTipoCamion();
+        const isMoto = isTipoMoto();
 	const liTraccion = document.getElementById("summary-item-traccion");
 	const liTraccionCamion = document.getElementById(
 		"summary-item-traccion-camion"
 	);
-	const liMma = document.getElementById("summary-item-mma");
-	const liDobleMotor = document.getElementById("summary-item-doble_motor");
+        const liDobleMotor = document.getElementById("summary-item-doble_motor");
 
-	if (liTraccion) liTraccion.style.display = isCamion ? "none" : "";
-	if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
-	if (liMma) liMma.style.display = isCamion ? "" : "none";
+        if (liTraccion) liTraccion.style.display = isCamion || isMoto ? "none" : "";
+        if (liTraccionCamion) liTraccionCamion.style.display = isCamion ? "" : "none";
 
-	if (liDobleMotor) {
-		const combustible = document.getElementById("combustible")?.value;
-		const aplica = ["electrico", "hibrido", "gpl_gnc"].includes(combustible);
-		liDobleMotor.style.display = aplica ? "" : "none";
-	}
+        if (liDobleMotor) {
+                const combustible = document.getElementById("combustible")?.value;
+                const aplica = combustible === "electrico";
+                liDobleMotor.style.display = aplica ? "" : "none";
+        }
 
 	document.querySelectorAll("[data-summary-field]").forEach((elem) => {
 		const container = elem.closest("li.summary__item") || elem.parentElement;
@@ -340,13 +483,14 @@ function setupSummaryRefresh() {
 	[
 		"marca",
 		"modelo",
-		"traccion",
-		"traccion_camion",
-		"mma",
-		"tipo_vehiculo",
-		"kilometros",
-		"fecha_primera_matriculacion",
-		"matricula",
+                "traccion",
+                "traccion_camion",
+                "tipo_vehiculo",
+                "kilometros",
+                "fecha_primera_matriculacion",
+                "fecha_inicio_garantia",
+                "duracion",
+                "matricula",
 		"numero_bastidor",
 		"precio_venta",
 		"combustible",
@@ -402,7 +546,7 @@ function setupSummaryButtons() {
                         if (
                                 typeof isCurrentTabValid === "function" &&
                                 targetTabIndex > FormCache.currentTab &&
-                                !isCurrentTabValid()
+                                !isCurrentTabValid({ focusInvalid: true })
                         ) {
                                 alert("Completa todos los campos antes de continuar.");
                                 return;

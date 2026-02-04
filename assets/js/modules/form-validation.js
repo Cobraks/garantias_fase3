@@ -2,85 +2,216 @@
 "use strict";
 
 import {
-	debounce,
-	setError,
-	clearError,
-	clearInfoMessage,
-	formatNumber,
-	numericLimits,
-	PROVINCIAS,
-	validateNumeric,
-	validateDNIField,
-	validateTelefonoField,
-	validateCodigoPostalField,
-	validateEmailField,
-	validateRequiredField,
-	validateNumeroBastidorField,
-	validateMatriculaField,
+        debounce,
+        setError,
+        clearError,
+        clearInfoMessage,
+        formatNumber,
+        formatCurrency,
+        numericLimits,
+        PROVINCIAS,
+        validateNumeric,
+        validateDNIField,
+        validateTelefonoField,
+        validateCodigoPostalField,
+        validateEmailField,
+        validateRequiredField,
+        validateNumeroBastidorField,
+        validateMatriculaField,
 } from "./form-utils.js";
 
 import FormCache from "./form-cache.js";
 import FormUI from "./form-ui.js";
 import { updateNextButtonState } from "./form-navigation.js";
 import { getLimitesDinamicos } from "./form-state.js";
-import { getUserRole } from "./config.js";
+import { getUserRole, getRestRoot, getRestNonce } from "./config.js";
+
+let lastCheckedPlate = "";
+let plateCheckAbort = null;
+
+async function checkDuplicateMatricula(input) {
+        const value = input.value.trim().toUpperCase();
+        if (!validateMatriculaField(input, false, false)) {
+                input.dataset.duplicate = "pending";
+                input.dataset.cancelled = "false";
+                delete input.dataset.cancelledId;
+                updateNextButtonState();
+                return;
+        }
+        if (value === lastCheckedPlate) return;
+        lastCheckedPlate = value;
+        if (plateCheckAbort) plateCheckAbort.abort();
+        const controller = new AbortController();
+        plateCheckAbort = controller;
+        input.dataset.duplicate = "pending";
+        input.dataset.cancelled = "false";
+        delete input.dataset.cancelledId;
+        updateNextButtonState();
+        const current = value;
+        try {
+                const params = new URLSearchParams({ matricula: value });
+                const uuid = localStorage.getItem("go_draft_uuid");
+                if (uuid) params.append("exclude", uuid);
+                const res = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/check-plate?${params.toString()}`,
+                        {
+                                headers: { "X-WP-Nonce": getRestNonce() },
+                                signal: controller.signal,
+                        }
+                );
+                if (controller.signal.aborted) return;
+                if (input.value.trim().toUpperCase() !== current) return;
+                let cancelledMatch = false;
+                let cancelledId = "";
+                if (res.ok) {
+                        try {
+                                const json = await res.json();
+                                cancelledMatch = Boolean(json?.cancelled_match);
+                                if (cancelledMatch && json?.cancelled_id) {
+                                        cancelledId = String(json.cancelled_id);
+                                }
+                        } catch (parseError) {
+                                console.debug("[checkDuplicateMatricula] parse response", parseError);
+                        }
+                }
+                if (res.status === 409) {
+                        setError(input, "Ya existe una garantía para este vehículo");
+                        input.dataset.duplicate = "true";
+                        input.dataset.cancelled = "false";
+                        delete input.dataset.cancelledId;
+                } else {
+                        input.dataset.duplicate = "false";
+                        input.dataset.cancelled = cancelledMatch ? "true" : "false";
+                        if (cancelledMatch && cancelledId) {
+                                input.dataset.cancelledId = cancelledId;
+                        } else {
+                                delete input.dataset.cancelledId;
+                        }
+                        clearError(input);
+                }
+        } catch (e) {
+                if (e.name !== "AbortError") {
+                        console.error("[checkDuplicateMatricula]", e);
+                        input.dataset.duplicate = "pending";
+                }
+        }
+        updateNextButtonState();
+}
 
 // === Helpers ===
 function isTipoCamion() {
-	const tipo = document.getElementById("tipo_vehiculo");
-	return tipo && tipo.value === "camion";
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "camion";
+}
+
+function isTipoMoto() {
+        const tipo = document.getElementById("tipo_vehiculo");
+        return tipo && tipo.value === "moto";
+}
+
+function getPotenciaUnit() {
+        const combustible = document.getElementById("combustible")?.value;
+        return combustible === "electrico" ? "kW" : "CV";
 }
 
 function getDynamicLimit(field) {
         const limits = getLimitesDinamicos()[field] || null;
-	if (
-		limits &&
-		typeof limits.min === "number" &&
-		typeof limits.max === "number"
-	) {
-		return limits;
-	}
-	if (field === "cilindrada") return { min: 0, max: 9000 };
-	if (field === "potencia") return { min: 0, max: 3000 };
-	return { min: 0, max: 999999 };
+        if (
+                limits &&
+                typeof limits.min === "number" &&
+                typeof limits.max === "number"
+        ) {
+                return limits;
+        }
+        if (field === "cilindrada") return { min: 0, max: 9000 };
+        if (field === "potencia") return { min: 0, max: 3000 };
+        if (field === "kilometros") return { min: 0, max: Infinity };
+        return { min: 0, max: 999999 };
 }
 
 function validateWithDynamicLimit(input, showError) {
-	const field = input.id;
-	const limits = getDynamicLimit(field);
-	const raw = input.value.replace(/\./g, "").trim();
-	const value = parseInt(raw, 10);
+        const field = input.id;
+        const raw = input.value.replace(/\./g, "").trim();
+        const value = parseInt(raw, 10);
 
-	if (raw === "") {
-		if (showError) setError(input, "Este campo es obligatorio.");
-		return false;
-	}
-	if (isNaN(value)) {
-		if (showError) setError(input, "Introduce un valor válido.");
-		return false;
-	}
-	if (value < limits.min) {
-		if (showError)
-			setError(
-				input,
-				field === "potencia"
-					? `Potencia mínima ${limits.min} CV`
-					: `Cilindrada mínima ${limits.min} CC`
-			);
-		return false;
-	}
-	if (value > limits.max) {
-		if (showError)
-			setError(
-				input,
-				field === "potencia"
-					? `Potencia máxima ${limits.max} CV`
-					: `Cilindrada máxima ${limits.max} CC`
-			);
-		return false;
-	}
-	clearError(input);
-	return true;
+        if (raw === "") {
+                if (showError) setError(input, "Este campo es obligatorio.");
+                return false;
+        }
+        if (isNaN(value)) {
+                if (showError) setError(input, "Introduce un valor válido.");
+                return false;
+        }
+        if (field === "potencia" && isTipoCamion()) {
+                if (value <= 0) {
+                        if (showError) setError(input, "Introduce un valor válido.");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
+        const limits = getDynamicLimit(field);
+        if (value < limits.min) {
+                if (showError) {
+                        let msg;
+                        if (field === "potencia")
+                                msg = `Potencia mínima ${limits.min} ${getPotenciaUnit()}`;
+                        else if (field === "cilindrada")
+                                msg = `Cilindrada mínima ${limits.min} CC`;
+                        else msg = `Kilometraje mínimo ${limits.min}`;
+                        setError(input, msg);
+                }
+                return false;
+        }
+        if (value > limits.max) {
+                if (showError) {
+                        let msg;
+                        if (field === "potencia")
+                                msg = `Potencia máxima ${limits.max} ${getPotenciaUnit()}`;
+                        else if (field === "cilindrada")
+                                msg = `Cilindrada máxima ${limits.max} CC`;
+                        else msg = `Kilometraje máximo ${limits.max}`;
+                        setError(input, msg);
+                }
+                return false;
+        }
+        clearError(input);
+        return true;
+}
+
+function validatePrecioVentaField(input, showError) {
+        const value = input.value.trim();
+        if (value === "") {
+                if (showError) setError(input, "Este campo es obligatorio.");
+                return false;
+        }
+        const parts = value.split(",");
+        const intPart = parts[0].replace(/\./g, "");
+        const decPart = parts[1] || "";
+        if (decPart.length !== 0 && decPart.length !== 2) {
+                if (showError) setError(input, "Número de decimales no válido.");
+                return false;
+        }
+        const num = parseFloat(intPart + (decPart ? "." + decPart : ""));
+        const limits = numericLimits.precio_venta;
+        if (isNaN(num)) {
+                if (showError) setError(input, "Debe ser un número.");
+                return false;
+        }
+        if (num < limits.min) {
+                if (showError) setError(input, `Debe ser mayor o igual a ${limits.min}.`);
+                return false;
+        }
+        if (num > limits.max) {
+                if (showError)
+                        setError(
+                                input,
+                                `El valor no puede exceder ${limits.max.toLocaleString()}.`
+                        );
+                return false;
+        }
+        clearError(input);
+        return true;
 }
 
 // === Sanitizadores / límites visuales por campo ===
@@ -97,15 +228,20 @@ const inputLimitsApplier = {
 	telefono: (input) => {
 		input.value = input.value.replace(/\D/g, "").slice(0, 9);
 	},
-	codigo_postal: (input) => {
-		input.value = input.value.replace(/\D/g, "").slice(0, 5);
-	},
-	kilometros: (input) => {
-		input.value = input.value.replace(/\D/g, "").slice(0, 6);
-	},
-	precio_venta: (input) => {
-		input.value = input.value.replace(/\D/g, "").slice(0, 6);
-	},
+        codigo_postal: (input) => {
+                input.value = input.value.replace(/\D/g, "").slice(0, 5);
+        },
+        kilometros: (input) => {
+                input.value = input.value.replace(/\D/g, "").slice(0, 7);
+        },
+        precio_venta: (input) => {
+                let value = input.value.replace(/\./g, "");
+                value = value.replace(/[^0-9,]/g, "");
+                const parts = value.split(",");
+                const intPart = parts[0].slice(0, 6);
+                const decPart = parts[1] !== undefined ? parts.slice(1).join("") : null;
+                input.value = decPart !== null ? `${intPart},${decPart}` : intPart;
+        },
 	cilindrada: (input) => {
 		input.value = input.value.replace(/\D/g, "").slice(0, 4);
 	},
@@ -128,39 +264,54 @@ const inputLimitsApplier = {
 
 // === Validadores especiales mapeados ===
 const specialValidators = {
-	numero_bastidor: (input, showError, isHardCheck) =>
-		validateNumeroBastidorField(input, showError, isHardCheck),
-	matricula: (input, showError, isHardCheck) =>
-		validateMatriculaField(input, showError, isHardCheck),
-	dni: (input, showError, isHardCheck) =>
-		validateDNIField(input, showError, isHardCheck),
-	telefono: (input, showError, isHardCheck) =>
-		validateTelefonoField(input, showError, isHardCheck),
-	codigo_postal: (input, showError, isHardCheck) =>
-		validateCodigoPostalField(input, showError, isHardCheck),
-	correo: (input, showError, isHardCheck) =>
-		validateEmailField(input, showError, isHardCheck),
+        numero_bastidor: (input, showError, isHardCheck) =>
+                validateNumeroBastidorField(input, showError, isHardCheck),
+        dni: (input, showError, isHardCheck) =>
+                validateDNIField(input, showError, isHardCheck),
+        telefono: (input, showError, isHardCheck) =>
+                validateTelefonoField(input, showError, isHardCheck),
+        codigo_postal: (input, showError, isHardCheck) =>
+                validateCodigoPostalField(input, showError, isHardCheck),
+        correo: (input, showError, isHardCheck) =>
+                validateEmailField(input, showError, isHardCheck),
+        precio_venta: (input, showError) =>
+                validatePrecioVentaField(input, showError),
 };
 
 // === Función principal de validación ===
 export function validateField(input, showError = false, isHardCheck = false) {
-	const id = input.id;
+        if (!input) return true;
+
+        if (showError && isHardCheck && input.dataset.touched !== "true") {
+                input.dataset.touched = "true";
+        }
+
+        const revealError = showError && (isHardCheck || input.dataset.touched === "true");
+        const id = input.id;
 
 	// Vendedor / profesional (usuario-rol) visible
 	if (id === "usuario-rol") {
 		const isVisible = input.offsetParent !== null;
-		if (isVisible && !input.value) {
-			if (showError) {
-				const userRole =
+                if (isVisible && !input.value) {
+                        if (revealError) {
+                                const rawRole =
                                         getUserRole() || document.body.dataset.userRole || "";
-				const msg =
-					userRole === "comercial" || userRole === "profesional"
-						? "Selecciona profesional"
-						: "Selecciona vendedor";
-				setError(input, msg);
-			}
-			return false;
-		}
+                                const normalizedRole = String(rawRole).toLowerCase();
+                                const shouldAskForProfessional =
+                                        normalizedRole === "comercial" ||
+                                        normalizedRole === "go_comercial" ||
+                                        normalizedRole === "profesional" ||
+                                        normalizedRole === "go_profesional";
+                                const canalSelect = document.getElementById("canal-venta");
+                                const canalValue = (canalSelect && canalSelect.value) || "";
+                                const isParticular = canalValue.toLowerCase().includes("particular");
+                                let msg = "Selecciona vendedor";
+                                if (isParticular) msg = "Selecciona cliente";
+                                else if (shouldAskForProfessional) msg = "Selecciona profesional";
+                                setError(input, msg);
+                        }
+                        return false;
+                }
 		clearError(input);
 		return true;
 	}
@@ -168,74 +319,80 @@ export function validateField(input, showError = false, isHardCheck = false) {
 	// Canal de venta (admin), si está visible y vacío
 	if (id === "canal-venta") {
 		const isVisible = input.offsetParent !== null;
-		if (isVisible && !input.value) {
-			if (showError) setError(input, "Selecciona canal de venta");
-			return false;
-		}
-		clearError(input);
-		return true;
-	}
+                if (isVisible && !input.value) {
+                        if (revealError) setError(input, "Selecciona canal de venta");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
 
-	// Tracción / camión / mma
-	if (id === "traccion" || id === "traccion_camion" || id === "mma") {
-		if (isTipoCamion()) {
-			if (id === "traccion_camion" || id === "mma") {
-				if (!input.value) {
-					if (showError) setError(input, "Este campo es obligatorio.");
-					return false;
-				}
-				clearError(input);
-				return true;
-			}
-			if (id === "traccion") {
-				clearError(input);
-				return true;
-			}
-		} else {
-			if (id === "traccion") {
-				if (!input.value) {
-					if (showError) setError(input, "Este campo es obligatorio.");
-					return false;
-				}
-				clearError(input);
-				return true;
-			}
-			if (id === "traccion_camion" || id === "mma") {
-				clearError(input);
-				return true;
-			}
-		}
-	}
+        // Tracción / camión
+        if (id === "traccion" || id === "traccion_camion") {
+                const esCamion = isTipoCamion();
+                const esMoto = isTipoMoto();
 
-	// Potencia / cilindrada con límites dinámicos
-	if (id === "potencia" || id === "cilindrada") {
-		return validateWithDynamicLimit(input, showError);
-	}
+                if (esCamion) {
+                        if (id === "traccion_camion") {
+                                if (!input.value) {
+                                        if (revealError) setError(input, "Este campo es obligatorio.");
+                                        return false;
+                                }
+                                clearError(input);
+                                return true;
+                        }
+                        if (id === "traccion") {
+                                clearError(input);
+                                return true;
+                        }
+                }
+
+                if (esMoto) {
+                        clearError(input);
+                        return true;
+                }
+
+                if (id === "traccion") {
+                        if (!input.value) {
+                                if (revealError) setError(input, "Este campo es obligatorio.");
+                                return false;
+                        }
+                        clearError(input);
+                        return true;
+                }
+                if (id === "traccion_camion") {
+                        clearError(input);
+                        return true;
+                }
+        }
+
+        // Potencia / cilindrada / kilometros con límites dinámicos
+        if (id === "potencia" || id === "cilindrada" || id === "kilometros") {
+                return validateWithDynamicLimit(input, revealError);
+        }
 
 	// Doble motor: solo obligatorio si el combustible lo requiere
-	if (id === "doble_motor") {
-		const combustible = document.getElementById("combustible")?.value || "";
-		const requiere = ["electrico", "hibrido", "gpl_gnc"].includes(
-			combustible.toLowerCase()
-		);
-		if (requiere) {
-			if (!input.value) {
-				if (showError) setError(input, "Este campo es obligatorio.");
-				return false;
-			}
-			clearError(input);
-			return true;
-		}
+        if (id === "doble_motor") {
+                const combustible = document.getElementById("combustible")?.value || "";
+                const requiere = combustible.toLowerCase() === "electrico";
+                if (requiere) {
+                        if (!input.value) {
+                                if (revealError) setError(input, "Este campo es obligatorio.");
+                                return false;
+                        }
+                        clearError(input);
+                        return true;
+                }
 		clearError(input);
 		return true;
 	}
 
 	// SELECT: placeholder flotado (solo visual)
-	if (input.tagName === "SELECT") {
-		const container = input.closest(".form__input-container");
-		const isDefaultOption = input.options[input.selectedIndex]?.disabled;
-		if (input.id === "provincia") {
-			container?.classList.add("has-value");
+        if (input.tagName === "SELECT") {
+                const container = input.closest(".form__input-container");
+                const isDefaultOption = input.options[input.selectedIndex]?.disabled;
+                if (input.id === "provincia") {
+                        container?.classList.add("has-value");
 		} else if (container) {
 			container.classList.toggle("has-value", !isDefaultOption);
 		}
@@ -243,91 +400,154 @@ export function validateField(input, showError = false, isHardCheck = false) {
 
 	// CHECKBOX
 	if (input.type === "checkbox") {
-		if (!input.checked) {
-			if (showError) setError(input, "Debes aceptar los términos.");
-			return false;
-		}
-		clearError(input);
-		return true;
-	}
+                if (!input.checked) {
+                        if (revealError) setError(input, "Debes aceptar los términos.");
+                        return false;
+                }
+                clearError(input);
+                return true;
+        }
 
-	// Validadores específicos
-	if (specialValidators[id]) {
-		return specialValidators[id](input, showError, isHardCheck);
-	}
+        // Matrícula: validar formato y duplicados
+        if (id === "matricula") {
+                const ok = validateMatriculaField(input, revealError, isHardCheck);
+                if (!ok) return false;
+                if (input.dataset.duplicate !== "false") {
+                        if (revealError && input.dataset.duplicate === "true")
+                                setError(
+                                        input,
+                                        "Ya existe una garantía para este vehículo"
+                                );
+                        return false;
+                }
+                return true;
+        }
 
-	// Numéricos con límites fijos
-	if (numericLimits[id]) {
-		return validateNumeric(input, showError);
-	}
+        // Validadores específicos
+        if (specialValidators[id]) {
+                return specialValidators[id](input, revealError, isHardCheck);
+        }
 
-	// Requerido genérico
-	if (input.hasAttribute("required")) {
-		return validateRequiredField(input, showError);
-	}
+        // Numéricos con límites fijos
+        if (numericLimits[id]) {
+                return validateNumeric(input, revealError);
+        }
 
-	return true;
+        // Requerido genérico
+        if (input.hasAttribute("required")) {
+                return validateRequiredField(input, revealError);
+        }
+
+        return true;
 }
 
 // === Exports auxiliares ===
 export function forceDynamicFieldsValidation() {
-	const cil = document.getElementById("cilindrada");
-	const pot = document.getElementById("potencia");
-	if (cil) validateWithDynamicLimit(cil, true);
-	if (pot) validateWithDynamicLimit(pot, true);
-	updateNextButtonState();
+        ["cilindrada", "potencia", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        const shouldReveal = input.dataset.touched === "true";
+                        validateWithDynamicLimit(input, shouldReveal);
+                        if (!shouldReveal) {
+                                clearError(input);
+                        }
+                }
+        });
+        ["combustible", "traccion", "traccion_camion"].forEach((id) => {
+                const select = document.getElementById(id);
+                if (select) {
+                        const shouldReveal = select.dataset.touched === "true";
+                        validateField(select, shouldReveal, true);
+                        if (!shouldReveal) {
+                                clearError(select);
+                        }
+                }
+        });
+        updateNextButtonState(false);
 }
 
 export function removeAllDynamicErrors() {
-	["cilindrada", "potencia"].forEach((id) => {
-		const input = document.getElementById(id);
-		if (input) {
-			clearError(input);
-			clearInfoMessage(input);
-		}
-	});
+        ["cilindrada", "potencia", "kilometros"].forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        clearError(input);
+                        clearInfoMessage(input);
+                }
+        });
 }
 
 // === Inicialización del comportamiento de inputs ===
 function setupInputValidationBehavior(input) {
-	const id = input.id;
+        const id = input.id;
 
-	const handler = debounce(() => {
-		// Aplicar sanitización si toca
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
-		// Formatear número cuando toca
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
-		// Validación ligera (sin hard check)
-		validateField(input, true, false);
-		// UI updates
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	}, 200);
+        const handler = debounce((e) => {
+                const triggeredByUser = e?.isTrusted === true;
+                if (triggeredByUser) {
+                        input.dataset.touched = "true";
+                }
+                if (id === "matricula") {
+                        lastCheckedPlate = "";
+                        input.dataset.duplicate = "pending";
+                        clearError(input);
+                }
+                // Aplicar sanitización si toca
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
+                // Formatear número cuando toca
+                if (numericLimits[id]) {
+                        if (id === "precio_venta") formatCurrency(input, true);
+                        else formatNumber(input);
+                }
+                // Validación ligera (sin hard check)
+                const showErr = triggeredByUser || typeof e === "undefined";
+                validateField(input, showErr, false);
+                // UI updates
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+                if (id === "matricula") {
+                        checkDuplicateMatricula(input);
+                }
+        }, 200);
 
-	input.addEventListener("input", handler);
+        input.addEventListener("input", handler);
 
-	input.addEventListener("blur", () => {
-		if (inputLimitsApplier[id]) {
-			inputLimitsApplier[id](input);
-		}
-		if (numericLimits[id]) {
-			formatNumber(input);
-		}
-		validateField(input, true, true);
-		FormUI.toggleClearButton(input);
-		updateNextButtonState();
-	});
+        input.addEventListener("blur", (e) => {
+                if (inputLimitsApplier[id]) {
+                        inputLimitsApplier[id](input);
+                }
+                if (numericLimits[id]) {
+                        if (id === "precio_venta") formatCurrency(input);
+                        else formatNumber(input);
+                }
+                const shouldReveal = e.isTrusted && input.dataset.touched === "true";
+                validateField(input, shouldReveal, true);
+                FormUI.toggleClearButton(input);
+                updateNextButtonState();
+                if (id === "matricula") {
+                        checkDuplicateMatricula(input);
+                }
+        });
 
-	if (input.tagName === "SELECT") {
-		input.addEventListener("change", () => {
-			validateField(input, true, true);
-			updateNextButtonState();
-		});
-	}
+        if (input.tagName === "SELECT") {
+                input.addEventListener("change", (e) => {
+                        if (e.isTrusted) {
+                                input.dataset.touched = "true";
+                        }
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
+
+        if (input.type === "checkbox" || input.type === "radio") {
+                input.addEventListener("change", (e) => {
+                        if (e.isTrusted) {
+                                input.dataset.touched = "true";
+                        }
+                        validateField(input, e.isTrusted, true);
+                        updateNextButtonState();
+                });
+        }
 }
 
 // Inicializador
@@ -342,12 +562,11 @@ function initValidation() {
 
 	// Revalidar dinámicos cuando cambian dependencias clave
 	[
-		"tipo_vehiculo",
-		"combustible",
-		"mma",
-		"traccion_camion",
-		"doble_motor",
-	].forEach((id) => {
+                "tipo_vehiculo",
+                "combustible",
+                "traccion_camion",
+                "doble_motor",
+        ].forEach((id) => {
 		const el = document.getElementById(id);
 		if (el) {
 			el.addEventListener("change", () => {

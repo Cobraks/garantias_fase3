@@ -1,0 +1,3277 @@
+// assets/js/modules/form-autosave.js
+"use strict";
+
+import FormCache from "./form-cache.js";
+import {
+        getRestRoot,
+        getRestNonce,
+        getIcon,
+        getUserRole,
+        getCurrentUserId,
+        getMisGarantiasUrl,
+        getNuevaGarantiaUrl,
+        getDocumentUrl,
+        getProformaFeatureSettings,
+} from "./config.js";
+import { AVAILABLE_DOCS } from "./docs-config.js";
+import {
+        getSelectedModalidadId,
+        getVisibleModalidades,
+        setSelectedModalidadId,
+} from "./form-state.js";
+import { debounce, setError } from "./form-utils.js";
+import { buildProformaPdf, loadPdfAsset as loadStaticPdf } from "./proforma-pdf.js";
+
+const CHANNEL_NORMALIZATION = {
+        profesional: "profesional",
+        go_profesional: "profesional",
+        particular: "particular",
+        go_particular: "particular",
+        individual: "particular",
+        go_individual: "particular",
+        gestoria: "gestoria",
+        go_gestoria: "gestoria",
+};
+
+const ROLE_NORMALIZATION = {
+        ...CHANNEL_NORMALIZATION,
+        profesionales: "profesional",
+        particulares: "particular",
+        gestorias: "gestoria",
+};
+
+const ADMIN_EQUIVALENT_ROLES = new Set([
+        "admin",
+        "go_garantias",
+        "go_director_comercial",
+]);
+
+const COMMERCIAL_ROLES = new Set(["go_comercial", "comercial"]);
+
+function buildEconomicBreakdownFromDom(normalizePriceFn) {
+        const container = document.querySelector("#final-summary .contratacion-summary__list");
+        if (!container) return [];
+
+        const rows = [];
+        let orden = 1;
+        container.querySelectorAll(".item").forEach((row) => {
+                const concepto = row.querySelector(".concepto")?.textContent?.trim() || "";
+                const valorText = row.querySelector(".valor")?.textContent || "";
+                const importe = normalizePriceFn(valorText);
+                const destacado = row.classList.contains("item--destacado");
+                const isRecargo = /recargo/i.test(concepto);
+                const isDescuento = /descuento/i.test(concepto);
+                const isIva = /iva/i.test(concepto);
+                const isBase = /precio base/i.test(concepto);
+
+                let tipo = "nota";
+                if (isBase) tipo = "base";
+                else if (isRecargo) tipo = "recargo";
+                else if (isDescuento) tipo = "descuento";
+                else if (isIva) tipo = "iva";
+                else if (destacado) tipo = "total";
+
+                rows.push({
+                        concepto,
+                        tipo,
+                        importe,
+                        porcentaje: "",
+                        razon: concepto,
+                        orden: orden++,
+                        destacado,
+                        base_calculo: "",
+                });
+        });
+
+        return rows;
+}
+
+function buildListadoDescuentosRecargos(normalizePriceFn) {
+        const container = document.querySelector("#final-summary .contratacion-summary__list");
+        if (!container) return [];
+
+        const rows = [];
+        container.querySelectorAll(".item").forEach((row) => {
+                const concepto = row.querySelector(".concepto")?.textContent?.trim() || "";
+                const valorText = row.querySelector(".valor")?.textContent || "";
+                const valor = normalizePriceFn(valorText);
+                const destacado = row.classList.contains("item--destacado");
+
+                if (concepto || valor !== "") {
+                        rows.push({ concepto, valor, destacado });
+                }
+        });
+
+        return rows;
+}
+
+function buildCoverageLabel(garantia = {}) {
+        const planName = garantia?.plan_display_name || garantia?.nivel_garantia || "";
+        const months = garantia?.meses_contratados;
+        const monthsLabel = months ? ` ${months} meses` : "";
+
+        return planName ? `Cobertura ${planName}${monthsLabel}` : "";
+}
+
+function normalizeChannel(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return CHANNEL_NORMALIZATION[key] || "";
+}
+
+function toIsoDateString(input) {
+        const date = input instanceof Date ? input : new Date(input);
+        if (Number.isNaN(date.getTime())) return "";
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+}
+
+function normalizeText(value) {
+        if (typeof value === "string") {
+                return value.trim();
+        }
+        if (value === null || value === undefined) return "";
+        return String(value).trim();
+}
+
+function normalizeVendorInfo(raw = {}) {
+        const normalized = {
+                role: normalizeText(raw.role || raw.channel || ""),
+                name: normalizeText(raw.name || ""),
+                companyName: normalizeText(raw.companyName || ""),
+                personalName: normalizeText(raw.personalName || ""),
+                cif: normalizeText(raw.cif || ""),
+                email: normalizeText(raw.email || ""),
+                phone: normalizeText(raw.phone || ""),
+                address: {
+                        street: normalizeText(raw.address?.street || ""),
+                        zip: normalizeText(raw.address?.zip || ""),
+                        city: normalizeText(raw.address?.city || ""),
+                        province: normalizeText(raw.address?.province || ""),
+                },
+        };
+
+        if (!normalized.role) {
+                normalized.role = "";
+        }
+
+        if (!normalized.name) {
+                normalized.name = normalized.companyName || normalized.personalName || "";
+        }
+
+        if (normalized.address.city && normalized.address.province) {
+                const samePlace =
+                        normalized.address.city.localeCompare(normalized.address.province, undefined, {
+                                sensitivity: "base",
+                        }) === 0;
+                if (samePlace) {
+                        normalized.address.province = normalized.address.city;
+                }
+        }
+
+        return normalized;
+}
+
+function pickFirstNonEmpty(candidates = []) {
+        for (const candidate of candidates) {
+                const text = normalizeText(candidate);
+                if (text) return text;
+        }
+        return "";
+}
+
+function buildVendorInfoFromResponse(raw = {}, fallbackChannel = "") {
+        const detail = raw.detail || raw || {};
+        const company = detail.vendor_company || raw.vendor_company || {};
+        const address = company.address || {};
+        const channelSlug = normalizeChannel(
+                fallbackChannel ||
+                        detail.canal_venta_value ||
+                        detail.canal_venta ||
+                        raw.canal_venta_value ||
+                        raw.canal_venta ||
+                        company?.type?.value ||
+                        company?.type?.label ||
+                        ""
+        );
+        const role = channelSlug === "particular" ? "particular" : "profesional";
+
+        const personalFirst = normalizeText(detail.concesionario_personal_first || "");
+        const personalLast = normalizeText(detail.concesionario_personal_last || "");
+        const personalFull = [personalFirst, personalLast].filter(Boolean).join(" ");
+
+        const vendorInfo = {
+                role,
+                name: role === "particular" ? pickFirstNonEmpty([detail.concesionario_personal, personalFull]) : "",
+                companyName: pickFirstNonEmpty([
+                        company.legal_name,
+                        company.trade_name,
+                        company.name,
+                        detail.concesionario,
+                        raw.concesionario,
+                ]),
+                personalName: pickFirstNonEmpty([
+                        detail.concesionario_personal,
+                        personalFull,
+                        raw.concesionario_personal,
+                ]),
+                cif: pickFirstNonEmpty([
+                        company.tax_id,
+                        detail.cif,
+                        raw.cif,
+                        detail.vendor_tax_id,
+                        raw.vendor_tax_id,
+                ]),
+                email: pickFirstNonEmpty([
+                        detail.email_vendedor,
+                        raw.email_vendedor,
+                        detail.email_vendedor_registro,
+                        raw.email_vendedor_registro,
+                ]),
+                phone: pickFirstNonEmpty([detail.telefono_vendedor, raw.telefono_vendedor]),
+                address: {
+                        street: pickFirstNonEmpty([address.street]),
+                        zip: pickFirstNonEmpty([address.zip]),
+                        city: pickFirstNonEmpty([address.city]),
+                        province: pickFirstNonEmpty([address.state]),
+                },
+        };
+
+        return normalizeVendorInfo(vendorInfo);
+}
+
+function addDays(baseDate, days) {
+        const date = baseDate instanceof Date ? new Date(baseDate.getTime()) : new Date(baseDate);
+        if (Number.isNaN(date.getTime())) return null;
+        date.setDate(date.getDate() + days);
+        return date;
+}
+
+function stableSerialize(value) {
+        if (value === null || value === undefined) return null;
+        if (typeof value !== "object") return value;
+        if (Array.isArray(value)) {
+                return value.map((item) => stableSerialize(item));
+        }
+        return Object.keys(value)
+                .sort()
+                .reduce((acc, key) => {
+                        acc[key] = stableSerialize(value[key]);
+                        return acc;
+                }, {});
+}
+
+function encodeSignaturePayload(payload) {
+        const normalized = JSON.stringify(stableSerialize(payload));
+        try {
+                return window.btoa(unescape(encodeURIComponent(normalized)));
+        } catch (err) {
+                console.warn("[AUTOSAVE] signature encode fallback", err);
+                return normalized;
+        }
+}
+
+function normalizeProfessionalRole(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        return ROLE_NORMALIZATION[key] || "";
+}
+
+function normalizeProformaPaymentMode(value) {
+        if (!value) return "";
+        const key = String(value).toLowerCase();
+        if (key === "domiciliación") return "domiciliacion";
+        if (key === "domiciliacion") return "domiciliacion";
+        if (key === "transferencia") return "transferencia";
+        return "";
+}
+
+function isAdminLikeRole(value) {
+        return ADMIN_EQUIVALENT_ROLES.has(String(value || "").toLowerCase());
+}
+
+function isCommercialRole(value) {
+        return COMMERCIAL_ROLES.has(String(value || "").toLowerCase());
+}
+
+export default function initAutosave() {
+        const form = document.getElementById("form-garantia");
+        if (!form) return;
+
+        console.log("[AUTOSAVE] init module");
+
+        const rawProformaSettings = getProformaFeatureSettings();
+        const proformaSettings = {
+                enabled: rawProformaSettings.enabled !== false,
+                allowedRoles: Array.isArray(rawProformaSettings.allowedRoles)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.allowedRoles
+                                                  .map((role) => normalizeProfessionalRole(role))
+                                                  .filter(Boolean),
+                                  ),
+                          )
+                        : [],
+                professionalPaymentModes: Array.isArray(rawProformaSettings.professionalPaymentModes)
+                        ? Array.from(
+                                  new Set(
+                                          rawProformaSettings.professionalPaymentModes
+                                                  .map((mode) => normalizeProformaPaymentMode(mode))
+                                                  .filter(Boolean),
+                                  ),
+                          )
+                        : [],
+                highlightTotal:
+                        rawProformaSettings.highlightTotal === undefined
+                                ? true
+                                : Boolean(rawProformaSettings.highlightTotal),
+                showOnSuccessScreen: Boolean(rawProformaSettings.showOnSuccessScreen),
+                sendByEmail: Boolean(
+                        rawProformaSettings.sendByEmail ||
+                                (rawProformaSettings.options &&
+                                        rawProformaSettings.options.enviar_por_correo === true)
+                ),
+        };
+
+        let proformaFlowEnabled = false;
+        let lastProformaLog = {
+                generalEnabled: null,
+                role: null,
+                active: null,
+                allowed: null,
+                paymentMethod: null,
+                paymentAllowed: null,
+        };
+
+        const vehiculoFields = [
+                "tipo_vehiculo",
+                "marca",
+                "modelo",
+                "kilometros",
+                "fecha_primera_matriculacion",
+                "matricula",
+                "numero_bastidor",
+                "precio_venta",
+                "combustible",
+                "cambio",
+                "traccion",
+                "traccion_camion",
+                "potencia",
+                "potencia_kw",
+                "cilindrada",
+                "mma",
+                "doble_motor",
+        ];
+
+        const clienteFieldMap = {
+                nombre_apellidos: "nombre_y_apellidos",
+                dni: "dni",
+                telefono: "telefono",
+                correo: "email",
+                direccion: "direccion",
+                localidad: "localidad",
+                provincia: "provincia",
+                codigo_postal: "codigo_postal",
+        };
+
+        const numericFields = [
+                "kilometros",
+                "precio_venta",
+                "potencia",
+                "potencia_kw",
+                "cilindrada",
+                "codigo_postal",
+        ];
+
+        function resolveProfessionalRoleFromContext() {
+                const rawRole = (getUserRole() || "").toLowerCase();
+                const normalizedBase = normalizeProfessionalRole(rawRole);
+
+                if (normalizedBase && !isAdminLikeRole(rawRole) && !isCommercialRole(rawRole)) {
+                        return normalizedBase;
+                }
+
+                const canalSelect = document.getElementById("canal-venta");
+                const channelRole = normalizeProfessionalRole(canalSelect ? canalSelect.value : "");
+                if (channelRole) {
+                        return channelRole;
+                }
+
+                return normalizedBase;
+        }
+
+        const PROFORMA_ROLE_LABELS = {
+                profesional: "Profesionales",
+                particular: "Particulares",
+                gestoria: "Gestorías",
+        };
+
+        const PROFORMA_PAYMENT_LABELS = {
+                transferencia: "Transferencia",
+                domiciliacion: "Domiciliación",
+        };
+
+        console.log("[Proforma] Ajustes iniciales", {
+                enabled: proformaSettings.enabled,
+                allowedRoles: proformaSettings.allowedRoles,
+                professionalPaymentModes: proformaSettings.professionalPaymentModes,
+                highlightTotal: proformaSettings.highlightTotal,
+                showOnSuccessScreen: proformaSettings.showOnSuccessScreen,
+                raw: rawProformaSettings,
+        });
+        console.log("[Proforma]", `Activada: ${proformaSettings.enabled ? "Sí" : "No"}`);
+        console.log("[Proforma]", `Activada para: ${formatProformaRolesLabel()}`);
+        console.log("[Proforma]", `Mostrar a profesionales con: ${formatProformaPaymentsLabel()}`);
+        console.log(
+                "[Proforma]",
+                `Subrayar total: ${proformaSettings.highlightTotal ? "Sí" : "No"}`
+        );
+        console.log(
+                "[Proforma]",
+                `Mostrar proforma en pantalla de éxito: ${
+                        proformaSettings.showOnSuccessScreen ? "Sí" : "No"
+                }`
+        );
+        console.log(
+                "[Proforma]",
+                `Enviar por correo: ${proformaSettings.sendByEmail ? "Sí" : "No"}`
+        );
+
+        function formatProformaRolesLabel() {
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return "Ninguno";
+                }
+
+                return proformaSettings.allowedRoles
+                        .map((role) => PROFORMA_ROLE_LABELS[role] || role)
+                        .join(", ");
+        }
+
+        function formatProformaPaymentsLabel() {
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return "Ninguno";
+                if (proformaSettings.professionalPaymentModes.length === 0) return "Ninguno";
+
+                return proformaSettings.professionalPaymentModes
+                        .map((mode) => PROFORMA_PAYMENT_LABELS[mode] || mode)
+                        .join(", ");
+        }
+
+        function getCurrentProformaPaymentMethod() {
+                const metodoPagoEl = document.getElementById("metodo_pago");
+                if (!metodoPagoEl) return "";
+                return normalizeProformaPaymentMode(metodoPagoEl.value || "");
+        }
+
+        function isProfessionalPaymentAllowed(paymentMethod) {
+                if (!paymentMethod) return true;
+                if (!Array.isArray(proformaSettings.professionalPaymentModes)) return true;
+                if (proformaSettings.professionalPaymentModes.length === 0) return true;
+
+                if (
+                        paymentMethod === "domiciliacion" &&
+                        !proformaSettings.professionalPaymentModes.includes("domiciliacion")
+                ) {
+                        return false;
+                }
+
+                return true;
+        }
+
+        function isRoleAllowedForProforma(role) {
+                if (!role) return false;
+                if (!Array.isArray(proformaSettings.allowedRoles) || proformaSettings.allowedRoles.length === 0) {
+                        return false;
+                }
+                return proformaSettings.allowedRoles.includes(role);
+        }
+
+        function evaluateProformaFlow(reason = "") {
+                const generalEnabled = Boolean(proformaSettings.enabled);
+                const targetRole = resolveProfessionalRoleFromContext();
+                const roleAllowed = isRoleAllowedForProforma(targetRole);
+                const paymentMethod = targetRole === "profesional" ? getCurrentProformaPaymentMethod() : "";
+                const paymentAllowed = targetRole === "profesional"
+                        ? isProfessionalPaymentAllowed(paymentMethod)
+                        : true;
+                const active = generalEnabled && roleAllowed && Boolean(targetRole) && paymentAllowed;
+
+                if (
+                        lastProformaLog.generalEnabled !== generalEnabled ||
+                        lastProformaLog.role !== targetRole ||
+                        lastProformaLog.active !== active ||
+                        lastProformaLog.allowed !== roleAllowed ||
+                        lastProformaLog.paymentMethod !== paymentMethod ||
+                        lastProformaLog.paymentAllowed !== paymentAllowed
+                ) {
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "";
+                        console.log("[PROFORMA] Evaluación proforma", {
+                                generalEnabled,
+                                targetRole: targetRole || "",
+                                roleAllowed,
+                                paymentMethod: paymentLabel,
+                                paymentAllowed,
+                                active,
+                                reason: reason || undefined,
+                        });
+                        lastProformaLog = {
+                                generalEnabled,
+                                role: targetRole,
+                                active,
+                                allowed: roleAllowed,
+                                paymentMethod,
+                                paymentAllowed,
+                        };
+                }
+
+                proformaFlowEnabled = active;
+                return active;
+        }
+
+        function shouldProcessProforma(reason = "") {
+                return evaluateProformaFlow(reason);
+        }
+
+        evaluateProformaFlow("init");
+
+        const canalVentaSelect = document.getElementById("canal-venta");
+        if (canalVentaSelect) {
+                canalVentaSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("canal_venta_change");
+                });
+        }
+
+        const usuarioSelect = document.getElementById("usuario-rol");
+        if (usuarioSelect) {
+                usuarioSelect.addEventListener("change", () => {
+                        const selectedOption = usuarioSelect.options[usuarioSelect.selectedIndex];
+                        const userLabel = selectedOption?.textContent?.trim() || "Usuario";
+                        const userRole = resolveProfessionalRoleFromContext() || "";
+                        const paymentMethod = getCurrentProformaPaymentMethod();
+                        const paymentLabel = paymentMethod
+                                ? PROFORMA_PAYMENT_LABELS[paymentMethod] || paymentMethod
+                                : "desconocido";
+
+                        console.log(
+                                `[Proforma] ${userLabel}: Rol ${userRole || "desconocido"}` +
+                                        (userRole === "profesional"
+                                                ? ` | Método de pago ${paymentLabel}`
+                                                : ""),
+                        );
+                        evaluateProformaFlow("usuario_change");
+                });
+        }
+
+        const metodoPagoSelect = document.getElementById("metodo_pago");
+        if (metodoPagoSelect) {
+                metodoPagoSelect.addEventListener("change", () => {
+                        evaluateProformaFlow("metodo_pago_change");
+                });
+        }
+
+        const normalizePrice = (str) => {
+                if (typeof str !== "string") return str;
+
+                const raw = str.trim();
+                if (!raw) return "";
+
+                let cleaned = raw.replace(/\s+/g, "").replace(/[^0-9.,-]/g, "");
+                if (!cleaned) return "";
+
+                const isNegative = cleaned.startsWith("-");
+                cleaned = cleaned.replace(/-/g, "");
+
+                if (cleaned.includes(",")) {
+                        cleaned = cleaned.replace(/\./g, "");
+                        cleaned = cleaned.replace(/,/g, ".");
+                } else if (cleaned.includes(".")) {
+                        const lastDot = cleaned.lastIndexOf(".");
+                        const intPart = cleaned.slice(0, lastDot).replace(/\./g, "");
+                        const decPart = cleaned.slice(lastDot + 1).replace(/\./g, "");
+                        if (decPart && decPart.length <= 2) {
+                                cleaned = `${intPart || "0"}.${decPart}`;
+                        } else {
+                                cleaned = `${intPart}${decPart}`;
+                        }
+                }
+
+                cleaned = cleaned.replace(/[^0-9.]/g, "");
+                if (!cleaned) return "";
+
+                const num = parseFloat(`${isNegative ? "-" : ""}${cleaned}`);
+                return Number.isNaN(num) ? "" : num;
+        };
+
+        const skipFields = new Set([
+                "duracion",
+                "metodo_pago",
+                "canal-venta",
+                "usuario-rol",
+                "fecha_inicio_garantia",
+        ]);
+
+        const container = document.querySelector(".form-container") || document.body;
+        const status = document.createElement("div");
+        status.className = "autosave-status autosave-status--hidden";
+        status.innerHTML = `
+                <span class="autosave-status__spinner"></span>
+                <span class="autosave-status__icon">${getIcon("save")}</span>
+                <span class="autosave-status__text">Guardando</span>`;
+        container.appendChild(status);
+
+        const spinner = status.querySelector(".autosave-status__spinner");
+        const icon = status.querySelector(".autosave-status__icon");
+        const text = status.querySelector(".autosave-status__text");
+        icon.style.display = "none";
+
+        let draftId = localStorage.getItem("go_draft_id");
+        let draftUuid = localStorage.getItem("go_draft_uuid");
+        const params = new URLSearchParams(window.location.search);
+        const urlId = params.get("id");
+        const urlUuid = params.get("uuid");
+        if (!draftId && urlId) {
+                draftId = urlId;
+                localStorage.setItem("go_draft_id", draftId);
+        }
+        if (!draftUuid && urlUuid) {
+                draftUuid = urlUuid;
+                localStorage.setItem("go_draft_uuid", draftUuid);
+        }
+        let cancelledPlateConfirmed = Boolean(draftId);
+        let saving = false;
+
+        const navButtons = document.querySelector(".nav-buttons");
+        const successBlock = document.getElementById("form-success");
+        const summaryContainer = document.querySelector(".summary-container");
+        const tabs = document.querySelector(".tabs");
+        const nextBtn = document.getElementById("form_next_btn");
+        let latestDocLinks = {};
+        let latestCertificateUrl = "";
+        let latestProformaUrl = "";
+        let postFinalizePromise = null;
+        let loadingTimeoutId = null;
+        let latestSignatureStatus = null;
+
+        const certificateState = {
+                currentSignature: null,
+                currentPromise: null,
+                pendingArgs: null,
+                lastResolvedSignature: null,
+                lastResolvedUrl: "",
+        };
+
+        const proformaState = {
+                currentSignature: null,
+                currentPromise: null,
+                pendingArgs: null,
+                lastResolvedSignature: null,
+                lastResolvedUrl: "",
+        };
+
+        function resolveSignatureStatus(rawStatus = null) {
+                const source = rawStatus && typeof rawStatus === "object" ? rawStatus : {};
+                const enabled = Boolean(source.add_firma_sello);
+                const signatureUrl = typeof source.firma === "string" ? source.firma.trim() : "";
+                const sealUrl = typeof source.sello === "string" ? source.sello.trim() : "";
+                return {
+                        enabled,
+                        hasSignature: enabled && signatureUrl !== "",
+                        hasSeal: enabled && sealUrl !== "",
+                };
+        }
+
+        function updateDocsMessage(signatureStatus) {
+                if (signatureStatus === undefined) {
+                        signatureStatus = latestSignatureStatus;
+                } else {
+                        latestSignatureStatus = signatureStatus;
+                }
+                if (!successBlock) return;
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
+                );
+                if (!docsContainer) return;
+                const messageEl = docsContainer.querySelector(
+                        ".form-success__docs-message"
+                );
+                if (!messageEl) return;
+                const status = signatureStatus || {};
+                const autoReady = Boolean(status.enabled && status.hasSignature && status.hasSeal);
+                const text = autoReady
+                        ? "Certificado listo para descargar y remitir a tu cliente para su firma."
+                        : "Certificado listo para descargar y firmar por el profesional y el comprador.";
+                messageEl.textContent = text;
+                messageEl.hidden = false;
+        }
+
+        function refreshDocumentLinks(docLinks = {}, { reset = false, error = false } = {}) {
+                if (!successBlock) return;
+                const docsContainer = successBlock.querySelector(
+                        ".form-success__docs"
+                );
+                const loading = successBlock.querySelector(
+                        ".form-success__loading"
+                );
+                console.log("[AUTOSAVE] refreshDocumentLinks", {
+                        docLinks,
+                        reset,
+                        error,
+                        latestDocKeys: Object.keys(latestDocLinks || {}),
+                });
+                if (!docsContainer) return;
+
+                if (reset) {
+                        latestDocLinks = {};
+                }
+
+                if (docLinks && typeof docLinks === "object") {
+                        latestDocLinks = Object.assign({}, latestDocLinks, docLinks);
+                }
+
+                const certificateLink = docsContainer.querySelector('[data-doc="certificate"]');
+                docsContainer.querySelectorAll("[data-doc]").forEach((link) => {
+                        link.hidden = true;
+                        link.removeAttribute("href");
+                        link.removeAttribute("target");
+                        link.removeAttribute("rel");
+                        link.textContent = "";
+                        link.removeAttribute("aria-disabled");
+                });
+
+                const availableDocs = [];
+                let certificateReady = false;
+                for (const doc of AVAILABLE_DOCS) {
+                        if (doc.key === "proforma" && !proformaSettings.showOnSuccessScreen) {
+                                continue;
+                        }
+                        const url = latestDocLinks?.[doc.key];
+                        if (!url) continue;
+                        const link = docsContainer.querySelector(
+                                `[data-doc="${doc.key}"]`
+                        );
+                        if (!link) continue;
+                        const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
+                                "pdf"
+                        )}</span>`;
+                        const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
+                        link.href = url;
+                        link.target = "_blank";
+                        link.rel = "noopener";
+                        link.innerHTML = `${iconHtml}${titleHtml}`;
+                        link.hidden = false;
+                        if (doc.key === "certificate") {
+                                certificateReady = true;
+                        }
+                        availableDocs.push(link);
+                }
+
+                if (!certificateReady && certificateLink) {
+                        const spinnerHtml =
+                                '<span class="document-card__icon" aria-hidden="true"><span class="form-success__loading-spinner" style="width:1.5rem;height:1.5rem;"></span></span>' +
+                                '<span class="document-card__title">Espera por favor...</span>';
+                        certificateLink.innerHTML = spinnerHtml;
+                        certificateLink.hidden = false;
+                        certificateLink.setAttribute("aria-disabled", "true");
+                }
+
+                if (availableDocs.length > 0) {
+                        docsContainer.hidden = false;
+                        if (loading) {
+                                loading.hidden = true;
+                                loading.style.display = "none";
+                                console.log("[AUTOSAVE] loading hidden (docs ready)");
+                                if (loadingTimeoutId) {
+                                        clearTimeout(loadingTimeoutId);
+                                        loadingTimeoutId = null;
+                                }
+                        }
+                } else {
+                        const hasPendingCertificate = Boolean(certificateLink) && !certificateReady;
+                        docsContainer.hidden = !hasPendingCertificate;
+                        if (loading) {
+                                loading.hidden = false;
+                                loading.style.display = "";
+                                const text = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (text) {
+                                        text.textContent = error
+                                                ? "No se pudieron generar los documentos"
+                                                : "Generando documentos...";
+                                }
+                        }
+                }
+
+                updateDocsMessage();
+        }
+
+        function updateSuccessDocuments(docLinks = {}) {
+                if (docLinks.certificate) {
+                        latestCertificateUrl = docLinks.certificate;
+                }
+                if (docLinks.proforma) {
+                        latestProformaUrl = docLinks.proforma;
+                }
+                refreshDocumentLinks(docLinks, { reset: false });
+                if (successBlock) {
+                        const loading = successBlock.querySelector(
+                                ".form-success__loading"
+                        );
+                        if (loading && docLinks.certificate) {
+                                loading.hidden = true;
+                                loading.style.display = "none";
+                                console.log("[AUTOSAVE] loading hidden (certificate)", docLinks.certificate);
+                                if (loadingTimeoutId) {
+                                        clearTimeout(loadingTimeoutId);
+                                        loadingTimeoutId = null;
+                                }
+                        }
+                }
+        }
+
+        async function fetchLatestDocumentLinks(id) {
+                if (!id) return;
+                try {
+                        const res = await fetch(
+                                `${getRestRoot()}go/v1/guarantees/${id}`,
+                                { headers: { "X-WP-Nonce": getRestNonce() } }
+                        );
+                        if (!res.ok) return;
+                        const detail = await res.json();
+                        const docs = Array.isArray(detail.documents)
+                                ? detail.documents
+                                : [];
+                        const docLinks = docs.reduce((acc, doc) => {
+                                const key =
+                                        typeof doc.key === "string" && doc.key
+                                                ? doc.key
+                                                : "";
+                                const url =
+                                        typeof doc.url === "string" && doc.url
+                                                ? doc.url
+                                                : "";
+                                if (key && url) {
+                                        acc[key] = url;
+                                }
+                                return acc;
+                        }, {});
+                        if (Object.keys(docLinks).length > 0) {
+                                updateSuccessDocuments(docLinks);
+                        }
+                } catch (err) {
+                        console.warn("[AUTOSAVE] fetchLatestDocumentLinks error", err);
+                }
+        }
+
+        function markDocumentError() {
+                console.warn("[AUTOSAVE] markDocumentError", latestDocLinks);
+                if (!latestDocLinks || Object.keys(latestDocLinks).length === 0) {
+                        refreshDocumentLinks({}, { reset: false, error: true });
+                        if (loadingTimeoutId) {
+                                clearTimeout(loadingTimeoutId);
+                                loadingTimeoutId = null;
+                        }
+                }
+        }
+
+        function triggerContractNotice(notifyUrl, uuid) {
+                if (!notifyUrl || !uuid) return;
+
+                const payload = JSON.stringify({ uuid });
+                const sendFallback = () =>
+                        fetch(notifyUrl, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                                body: payload,
+                        }).catch((err) => {
+                                console.error("[AUTOSAVE] notify fetch failed", err);
+                        });
+
+                if (navigator.sendBeacon) {
+                        try {
+                                const blob = new Blob([payload], {
+                                        type: "application/json",
+                                });
+                                const sent = navigator.sendBeacon(notifyUrl, blob);
+                                if (sent) {
+                                        console.log("[AUTOSAVE] notify beacon dispatched");
+                                        return;
+                                }
+                        } catch (beaconErr) {
+                                console.warn("[AUTOSAVE] notify beacon error", beaconErr);
+                        }
+                }
+
+                sendFallback();
+        }
+
+        function computeCertificateSignature(rawArgs = {}) {
+                const {
+                        templateUrl,
+                        coberturaUrl,
+                        condicionadoUrl,
+                        datosVehiculo,
+                        datosCliente,
+                        garantia,
+                        estadoGarantia,
+                        firmaSello,
+                } = normalizeCertificateArgs(rawArgs);
+
+                if (!templateUrl || !datosVehiculo || Object.keys(datosVehiculo).length === 0) {
+                        return "";
+                }
+
+                const payload = {
+                        templateUrl,
+                        coberturaUrl,
+                        condicionadoUrl,
+                        datosVehiculo,
+                        datosCliente,
+                        garantia,
+                        estadoGarantia,
+                        firmaSello,
+                };
+
+                return encodeSignaturePayload(payload);
+        }
+
+        function startCertificateGeneration(argsWithSignature) {
+                certificateState.currentSignature = argsWithSignature.signature;
+                console.log("[AUTOSAVE] certificate generation start", {
+                        draftId: argsWithSignature.draftId,
+                        signature: argsWithSignature.signature,
+                });
+
+                certificateState.currentPromise = generateCertificateAndUpload(argsWithSignature)
+                        .then((result) => {
+                                const nextArgs = certificateState.pendingArgs;
+                                certificateState.pendingArgs = null;
+                                if (result) {
+                                        certificateState.lastResolvedSignature = result.signature || argsWithSignature.signature;
+                                        certificateState.lastResolvedUrl = result.url || "";
+                                }
+                                if (result?.url) {
+                                        latestCertificateUrl = result.url;
+                                        updateSuccessDocuments({ certificate: result.url });
+                                }
+                                if (nextArgs && nextArgs.signature !== result?.signature) {
+                                        console.log("[AUTOSAVE] certificate regeneration queued", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startCertificateGeneration(nextArgs);
+                                }
+                                return result;
+                        })
+                        .catch((err) => {
+                                console.error("[AUTOSAVE] certificate generation error", err);
+                                const nextArgs = certificateState.pendingArgs;
+                                certificateState.pendingArgs = null;
+                                if (nextArgs) {
+                                        console.log("[AUTOSAVE] retrying certificate generation", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startCertificateGeneration(nextArgs);
+                                }
+                                markDocumentError();
+                                throw err;
+                        })
+                        .finally(() => {
+                                if (!certificateState.pendingArgs) {
+                                        certificateState.currentPromise = null;
+                                        certificateState.currentSignature = null;
+                                }
+                        });
+
+                return certificateState.currentPromise;
+        }
+
+        function queueCertificateGeneration(rawArgs) {
+                const signature = computeCertificateSignature(rawArgs);
+                if (!signature) {
+                    return Promise.resolve({ url: latestCertificateUrl || "", signature: "" });
+                }
+
+                if (
+                        certificateState.lastResolvedSignature === signature &&
+                        (certificateState.lastResolvedUrl || latestCertificateUrl)
+                ) {
+                        return Promise.resolve({
+                                url: certificateState.lastResolvedUrl || latestCertificateUrl || "",
+                                signature,
+                        });
+                }
+
+                const argsWithSignature = { ...rawArgs, signature };
+
+                if (!certificateState.currentPromise) {
+                        certificateState.pendingArgs = null;
+                        return startCertificateGeneration(argsWithSignature);
+                }
+
+                if (certificateState.currentSignature === signature) {
+                        return certificateState.currentPromise;
+                }
+
+                certificateState.pendingArgs = argsWithSignature;
+                return certificateState.currentPromise;
+        }
+
+        function normalizeCertificateArgs(rawArgs = {}) {
+                const normalized = { ...rawArgs };
+                if (normalized.estadoGarantia && typeof normalized.estadoGarantia === "object") {
+                        const estado = { ...normalized.estadoGarantia };
+                        delete estado.estado_contratacion;
+                        normalized.estadoGarantia = estado;
+                }
+                return normalized;
+        }
+
+        function scheduleCertificateGeneration(rawArgs, { immediate = false } = {}) {
+                const args = normalizeCertificateArgs(rawArgs);
+                const task = () => queueCertificateGeneration(args);
+                if (immediate) {
+                        return task();
+                }
+
+                return new Promise((resolve, reject) => {
+                        const runner = () => {
+                                task().then(resolve).catch(reject);
+                        };
+
+                        if (typeof window.requestIdleCallback === "function") {
+                                window.requestIdleCallback(
+                                        () => {
+                                                runner();
+                                        },
+                                        { timeout: 1000 }
+                                );
+                        } else {
+                                window.setTimeout(runner, 0);
+                        }
+                });
+        }
+
+        async function generateCertificateAndUpload({
+                draftId,
+                templateUrl,
+                coberturaUrl,
+                condicionadoUrl,
+                datosVehiculo,
+                datosCliente,
+                garantia,
+                estadoGarantia,
+                firmaSello,
+                signature,
+        }) {
+                if (!draftId || !templateUrl) {
+                        return { url: latestCertificateUrl || "", signature: signature || "" };
+                }
+
+                console.log("[AUTOSAVE] generateCertificateAndUpload:start", {
+                        draftId,
+                        templateUrl,
+                        signature,
+                });
+                console.time("certificate_fetch_template");
+                const pdfBytes = await fetch(templateUrl).then((r) => r.arrayBuffer());
+                console.timeEnd("certificate_fetch_template");
+                const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+                console.log("[AUTOSAVE] PDF template loaded", { draftId });
+                await import("../fontkit.umd.min.js");
+                pdfDoc.registerFontkit(globalThis.fontkit);
+                const form = pdfDoc.getForm();
+
+                const fontUrl = new URL("../../fonts/RobotoMono-Regular.ttf", import.meta.url);
+                console.time("certificate_fetch_font");
+                const robotoBytes = await fetch(fontUrl).then((r) => r.arrayBuffer());
+                console.timeEnd("certificate_fetch_font");
+                const robotoMono = await pdfDoc.embedFont(robotoBytes);
+                const robotoName = robotoMono.name;
+                console.log("[AUTOSAVE] Font embedded", { robotoName });
+
+                const formatDate = (iso) => {
+                        if (!iso) return "";
+                        const date = new Date(iso);
+                        if (Number.isNaN(date.getTime())) return "";
+                        return date.toLocaleDateString("es-ES", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                        });
+                };
+
+                const numberFormatter = new Intl.NumberFormat("es-ES", {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2,
+                });
+
+                const formatNumber = (num) => {
+                        if (num === undefined || num === null || num === "") return "";
+                        const n = Number(num);
+                        return Number.isNaN(n) ? "" : numberFormatter.format(n);
+                };
+
+                const getSelectText = (id) => {
+                        const el = document.getElementById(id);
+                        if (el && el.tagName === "SELECT") {
+                                return el.options[el.selectedIndex]?.text || "";
+                        }
+                        return "";
+                };
+
+                const getSelectValue = (id) => {
+                        const el = document.getElementById(id);
+                        if (el && el.tagName === "SELECT") {
+                                return el.value || "";
+                        }
+                        return "";
+                };
+
+                const tipoVehiculoValue = (
+                        getSelectValue("tipo_vehiculo") || datosVehiculo.tipo_vehiculo || ""
+                )
+                        .toString()
+                        .toLowerCase();
+
+                const getPdfTraccionValue = () => {
+                        if (tipoVehiculoValue === "camion") {
+                                return (
+                                        getSelectText("traccion_camion") ||
+                                        datosVehiculo.traccion_camion ||
+                                        datosVehiculo.traccion ||
+                                        ""
+                                );
+                        }
+                        return (
+                                getSelectText("traccion") ||
+                                datosVehiculo.traccion ||
+                                datosVehiculo.traccion_camion ||
+                                ""
+                        );
+                };
+
+                const pdfFieldMap = {
+                        pdf_id_matricula: datosVehiculo.matricula,
+                        pdf_nombre_apellidos: datosCliente.nombre_y_apellidos,
+                        pdf_nif: datosCliente.dni,
+                        pdf_direccion: datosCliente.direccion,
+                        pdf_cp: datosCliente.codigo_postal,
+                        pdf_localidad: datosCliente.localidad,
+                        pdf_provincia:
+                                getSelectText("provincia") || datosCliente.provincia,
+                        pdf_telefono: datosCliente.telefono,
+                        pdf_email: datosCliente.email,
+                        pdf_matricula: datosVehiculo.matricula,
+                        pdf_fecha_primera_mat: formatDate(
+                                datosVehiculo.primera_matriculacion
+                        ),
+                        pdf_marca: getSelectText("marca") || datosVehiculo.marca,
+                        pdf_modelo: getSelectText("modelo") || datosVehiculo.modelo,
+                        pdf_cc: formatNumber(datosVehiculo.cilindrada),
+                        pdf_bastidor: datosVehiculo.numero_bastidor,
+                        pdf_km: formatNumber(datosVehiculo.kilometros),
+                        pdf_cv: formatNumber(datosVehiculo.potencia),
+                        pdf_traccion: getPdfTraccionValue(),
+                        pdf_combustible:
+                                getSelectText("combustible") ||
+                                datosVehiculo.combustible,
+                        pdf_cambio: getSelectText("cambio") || datosVehiculo.cambio,
+                        pdf_tipo_vehiculo:
+                                getSelectText("tipo_vehiculo") ||
+                                datosVehiculo.tipo_vehiculo,
+                        pdf_periodo_cobertura: getSelectText("duracion"),
+                        pdf_fecha_inicio: formatDate(estadoGarantia?.inicio),
+                        pdf_fecha_finalizacion: formatDate(
+                                estadoGarantia?.finalizacion
+                        ),
+                };
+
+                console.time("certificate_fill_fields");
+                Object.entries(pdfFieldMap).forEach(([name, val]) => {
+                        if (val === undefined || val === null || val === "") return;
+                        try {
+                                const field = form.getTextField(name);
+                                field.setText(String(val));
+                                field.setFontSize(9);
+                                field.acroField.setDefaultAppearance(
+                                        `0.5 0.5 0.5 rg /${robotoName} 9 Tf`
+                                );
+                                field.updateAppearances(robotoMono);
+                        } catch (e) {
+                                // campo inexistente
+                                console.warn("[AUTOSAVE] Missing PDF field", name, e);
+                        }
+                });
+                console.timeEnd("certificate_fill_fields");
+
+                try {
+                        const dobleMotorFieldValue = datosVehiculo.doble_motor;
+                        const dobleMotorField = form.getCheckBox("pdf_doble_motor");
+                        if (dobleMotorFieldValue === "doble_motor_si") {
+                                dobleMotorField.check();
+                        } else {
+                                dobleMotorField.uncheck();
+                        }
+                } catch (e) {
+                        // campo inexistente
+                }
+
+                try {
+                        if (firmaSello.add_firma_sello) {
+                                let fsField;
+                                try {
+                                        fsField = form.getField("pdf_firma_vendedor");
+                                } catch (e) {
+                                        fsField = undefined;
+                                }
+                                const widgets = fsField?.acroField?.getWidgets?.() || [];
+                                if (widgets.length) {
+                                        const widget = widgets[0];
+                                        const { x, y, width, height } = widget.getRectangle();
+                                        const page = pdfDoc.getPages()[0];
+                                        if (firmaSello.sello) {
+                                                console.time("certificate_fetch_sello");
+                                                const selloBytes = await fetch(
+                                                        firmaSello.sello
+                                                ).then((r) => r.arrayBuffer());
+                                                console.timeEnd("certificate_fetch_sello");
+                                                const selloImg = firmaSello.sello.match(/\.png$/i)
+                                                        ? await pdfDoc.embedPng(selloBytes)
+                                                        : await pdfDoc.embedJpg(selloBytes);
+                                                let selloWidth = width * 0.6;
+                                                let selloHeight =
+                                                        (selloImg.height / selloImg.width) *
+                                                        selloWidth;
+                                                const selloX = x + (width - selloWidth) / 2;
+                                                const selloY =
+                                                        y + height - selloHeight * 0.7;
+                                                const angle = Math.random() * 10 - 5;
+                                                page.drawImage(selloImg, {
+                                                        x: selloX,
+                                                        y: selloY,
+                                                        width: selloWidth,
+                                                        height: selloHeight,
+                                                        rotate: PDFLib.degrees(angle),
+                                                });
+                                        }
+                                        if (firmaSello.firma) {
+                                                console.time("certificate_fetch_firma");
+                                                const firmaBytes = await fetch(
+                                                        firmaSello.firma
+                                                ).then((r) => r.arrayBuffer());
+                                                console.timeEnd("certificate_fetch_firma");
+                                                const firmaImg = firmaSello.firma.match(/\.png$/i)
+                                                        ? await pdfDoc.embedPng(firmaBytes)
+                                                        : await pdfDoc.embedJpg(firmaBytes);
+                                                let firmaWidth = width;
+                                                let firmaHeight =
+                                                        (firmaImg.height / firmaImg.width) *
+                                                        firmaWidth;
+                                                if (firmaHeight > height) {
+                                                        firmaHeight = height;
+                                                        firmaWidth =
+                                                                (firmaImg.width /
+                                                                        firmaImg.height) *
+                                                                firmaHeight;
+                                                }
+                                                const firmaX = x + (width - firmaWidth) / 2;
+                                                const firmaY = y;
+                                                page.drawImage(firmaImg, {
+                                                        x: firmaX,
+                                                        y: firmaY,
+                                                        width: firmaWidth,
+                                                        height: firmaHeight,
+                                                });
+                                        }
+                                }
+                        }
+                } catch (e) {
+                        console.error("[AUTOSAVE] firma/sello error", e);
+                }
+
+                form.flatten();
+
+                const appendUrls = [
+                        coberturaUrl,
+                        condicionadoUrl,
+                        getDocumentUrl("reclamacion"),
+                ].filter(Boolean);
+
+                for (const url of appendUrls) {
+                        try {
+                                const isDynamicDoc = /\/wp-json\/go\/v1\/guarantees\//.test(url);
+                                const bytes = await loadStaticPdf(url, {
+                                        cache: !isDynamicDoc,
+                                });
+                                if (!bytes) continue;
+                                const staticDoc = await PDFLib.PDFDocument.load(bytes);
+                                const pages = await pdfDoc.copyPages(
+                                        staticDoc,
+                                        staticDoc.getPageIndices()
+                                );
+                                pages.forEach((page) => pdfDoc.addPage(page));
+                        } catch (appendErr) {
+                                console.error(
+                                        "[AUTOSAVE] append static pdf error",
+                                        url,
+                                        appendErr
+                                );
+                        }
+                }
+
+                console.time("certificate_save_pdf");
+                const filled = await pdfDoc.save();
+                console.timeEnd("certificate_save_pdf");
+                console.log("[AUTOSAVE] PDF saved", { size: filled?.byteLength || 0 });
+                const uploadRes = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/${draftId}/certificate`,
+                        {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                        "X-Go360-Cert-Signature": signature || "",
+                                },
+                                body: filled,
+                        }
+                );
+                const uploadJson = await uploadRes.json();
+                console.log("[AUTOSAVE] Certificate upload response", {
+                        status: uploadRes.status,
+                        ok: uploadRes.ok,
+                        body: uploadJson,
+                });
+                if (!uploadRes.ok) {
+                        throw new Error(
+                                uploadJson?.message || "certificate_upload_failed"
+                        );
+                }
+
+                const url = uploadJson.certificate_url || "";
+                if (url) {
+                        console.log("[AUTOSAVE] certificate uploaded", {
+                                draftId,
+                                url,
+                        });
+                } else {
+                        console.warn("[AUTOSAVE] certificate upload missing URL", uploadJson);
+                }
+                return { url, signature: signature || "" };
+        }
+
+        function computeProformaSignature(rawArgs = {}) {
+                const {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                } = normalizeProformaArgs(rawArgs);
+
+                if (!templateUrl || !items || items.length === 0) {
+                        return "";
+                }
+
+                const payload = {
+                        templateUrl,
+                        items,
+                        coverageLabel,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                };
+
+                return encodeSignaturePayload(payload);
+        }
+
+        function startProformaGeneration(argsWithSignature) {
+                proformaState.currentSignature = argsWithSignature.signature;
+                console.log("[AUTOSAVE] proforma generation start", {
+                        draftId: argsWithSignature.draftId,
+                        signature: argsWithSignature.signature,
+                });
+
+                proformaState.currentPromise = generateProformaAndUpload(argsWithSignature)
+                        .then((result) => {
+                                const nextArgs = proformaState.pendingArgs;
+                                proformaState.pendingArgs = null;
+                                if (result) {
+                                        proformaState.lastResolvedSignature =
+                                                result.signature || argsWithSignature.signature;
+                                        proformaState.lastResolvedUrl = result.url || "";
+                                }
+                                if (result?.url) {
+                                        latestProformaUrl = result.url;
+                                        updateSuccessDocuments({ proforma: result.url });
+                                }
+                                if (nextArgs && nextArgs.signature !== result?.signature) {
+                                        console.log("[AUTOSAVE] proforma regeneration queued", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startProformaGeneration(nextArgs);
+                                }
+                                return result;
+                        })
+                        .catch((err) => {
+                                console.error("[AUTOSAVE] proforma generation error", err);
+                                const nextArgs = proformaState.pendingArgs;
+                                proformaState.pendingArgs = null;
+                                if (nextArgs) {
+                                        console.log("[AUTOSAVE] retrying proforma generation", {
+                                                draftId: nextArgs.draftId,
+                                        });
+                                        return startProformaGeneration(nextArgs);
+                                }
+                                return null;
+                        })
+                        .finally(() => {
+                                if (!proformaState.pendingArgs) {
+                                        proformaState.currentPromise = null;
+                                        proformaState.currentSignature = null;
+                                }
+                        });
+
+                return proformaState.currentPromise;
+        }
+
+        function queueProformaGeneration(rawArgs) {
+                if (!shouldProcessProforma("queue")) {
+                        console.log("[PROFORMA] Proforma desactivada para el flujo actual; se omite generación");
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
+                const signature = computeProformaSignature(rawArgs);
+                if (!signature) {
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
+                if (
+                        proformaState.lastResolvedSignature === signature &&
+                        (proformaState.lastResolvedUrl || latestProformaUrl)
+                ) {
+                        return Promise.resolve({
+                                url: proformaState.lastResolvedUrl || latestProformaUrl || "",
+                                signature,
+                        });
+                }
+
+                const argsWithSignature = { ...rawArgs, signature };
+
+                if (!proformaState.currentPromise) {
+                        proformaState.pendingArgs = null;
+                        return startProformaGeneration(argsWithSignature);
+                }
+
+                if (proformaState.currentSignature === signature) {
+                        return proformaState.currentPromise;
+                }
+
+                proformaState.pendingArgs = argsWithSignature;
+                return proformaState.currentPromise;
+        }
+
+        function normalizeProformaArgs(rawArgs = {}) {
+                const normalized = { ...rawArgs };
+                const items = Array.isArray(rawArgs.items) ? rawArgs.items : [];
+                const normalizedItems = items
+                        .map((item) => ({
+                                concepto:
+                                        typeof item.concepto === "string"
+                                                ? item.concepto.trim()
+                                                : item.concepto || "",
+                                valor: item.valor,
+                                destacado: Boolean(item.destacado),
+                        }))
+                        .filter((item) => {
+                                const hasConcept =
+                                        item.concepto !== undefined && item.concepto !== null
+                                                ? String(item.concepto).trim() !== ""
+                                                : false;
+                                const numericValor =
+                                        item.valor === 0 || item.valor === "0"
+                                                ? 0
+                                                : Number(item.valor);
+                                const hasValor =
+                                        item.valor === 0 || item.valor === "0"
+                                                ? true
+                                                : Number.isFinite(numericValor);
+                                return hasConcept || hasValor;
+                        })
+                        .map((item) => {
+                                const valorNumber = Number(item.valor);
+                                return {
+                                        concepto: String(item.concepto || "").trim(),
+                                        valor: Number.isFinite(valorNumber) ? valorNumber : "",
+                                        destacado: Boolean(item.destacado),
+                                };
+                        });
+
+                normalized.items = normalizedItems;
+                normalized.templateUrl = typeof normalized.templateUrl === "string"
+                        ? normalized.templateUrl
+                        : "";
+                normalized.coverageLabel = typeof rawArgs.coverageLabel === "string"
+                        ? rawArgs.coverageLabel.trim()
+                        : "";
+                normalized.matricula = typeof rawArgs.matricula === "string"
+                        ? rawArgs.matricula.trim()
+                        : "";
+                normalized.marca = typeof rawArgs.marca === "string" ? rawArgs.marca.trim() : "";
+                normalized.modelo = typeof rawArgs.modelo === "string" ? rawArgs.modelo.trim() : "";
+
+                normalized.vendorInfo = normalizeVendorInfo(rawArgs.vendorInfo || {});
+
+                normalized.paymentMethod = typeof rawArgs.paymentMethod === "string"
+                        ? rawArgs.paymentMethod.trim()
+                        : "";
+                normalized.transferIban = typeof rawArgs.transferIban === "string"
+                        ? rawArgs.transferIban.trim()
+                        : "";
+
+                const emissionIso = toIsoDateString(rawArgs.emissionDate);
+                const dueIso = toIsoDateString(rawArgs.dueDate);
+                normalized.emissionDate = emissionIso;
+                normalized.dueDate = dueIso;
+                normalized.coverageStart = toIsoDateString(rawArgs.coverageStart);
+                normalized.coverageEnd = toIsoDateString(rawArgs.coverageEnd);
+
+                return normalized;
+        }
+
+        function scheduleProformaGeneration(rawArgs, { immediate = false } = {}) {
+                if (!shouldProcessProforma("schedule")) {
+                        return Promise.resolve({ url: latestProformaUrl || "", signature: "" });
+                }
+
+                const args = normalizeProformaArgs(rawArgs);
+                const task = () => queueProformaGeneration(args);
+                if (immediate) {
+                        return task();
+                }
+
+                return new Promise((resolve, reject) => {
+                        const runner = () => {
+                                task().then(resolve).catch(reject);
+                        };
+
+                        if (typeof window.requestIdleCallback === "function") {
+                                window.requestIdleCallback(
+                                        () => {
+                                                runner();
+                                        },
+                                        { timeout: 1000 }
+                                );
+                        } else {
+                                window.setTimeout(runner, 0);
+                        }
+                });
+        }
+
+        async function generateProformaAndUpload({
+                draftId,
+                templateUrl,
+                items,
+                coverageLabel: rawCoverageLabel,
+                matricula,
+                marca,
+                modelo,
+                emissionDate,
+                dueDate,
+                coverageStart,
+                coverageEnd,
+                vendorInfo,
+                paymentMethod,
+                transferIban,
+                signature,
+        }) {
+                if (!draftId || !templateUrl || !Array.isArray(items) || items.length === 0) {
+                        return { url: latestProformaUrl || "", signature: signature || "" };
+                }
+
+                console.log("[AUTOSAVE] generateProformaAndUpload:start", {
+                        draftId,
+                        templateUrl,
+                        rows: items.length,
+                        signature,
+                });
+
+                const pdfBytesOut = await buildProformaPdf({
+                        templateUrl,
+                        items,
+                        coverageLabel: rawCoverageLabel,
+                        reference: matricula,
+                        matricula,
+                        marca,
+                        modelo,
+                        emissionDate,
+                        dueDate,
+                        coverageStart,
+                        coverageEnd,
+                        vendorInfo,
+                        paymentMethod,
+                        transferIban,
+                        proformaSettings,
+                        loadAsset: loadStaticPdf,
+                });
+
+                if (!pdfBytesOut) {
+                        return { url: latestProformaUrl || "", signature: signature || "" };
+                }
+
+                const uploadRes = await fetch(
+                        `${getRestRoot()}go/v1/guarantees/${draftId}/proforma`,
+                        {
+                                method: "POST",
+                                headers: {
+                                        "X-WP-Nonce": getRestNonce(),
+                                        "Content-Type": "application/pdf",
+                                        "X-GO360-PROFORMA-SIGNATURE": signature || "",
+                                },
+                                body: pdfBytesOut,
+                        }
+                );
+
+                const uploadJson = await uploadRes.json();
+                console.log("[AUTOSAVE] proforma upload response", {
+                        status: uploadRes.status,
+                        ok: uploadRes.ok,
+                        body: uploadJson,
+                });
+                if (!uploadRes.ok) {
+                        throw new Error(uploadJson?.message || "proforma_upload_failed");
+                }
+
+                const url = uploadJson.proforma_url || "";
+                if (url) {
+                        console.log("[AUTOSAVE] proforma uploaded", {
+                                draftId,
+                                url,
+                        });
+                } else {
+                        console.warn("[AUTOSAVE] proforma upload missing URL", uploadJson);
+                }
+                return { url, signature: signature || "" };
+        }
+
+        async function triggerPostFinalizeTasks({
+                draftId,
+                draftUuid,
+                responseJson,
+                datosVehiculo,
+                datosCliente,
+                garantia,
+                estadoGarantia,
+                firmaSello,
+                proformaArgs,
+        }) {
+                const docLinks = {
+                        condicionado: responseJson.condicionado_url || "",
+                        cobertura: responseJson.cobertura_url || "",
+                        proforma: responseJson.proforma_url || "",
+                };
+
+                if (docLinks.condicionado || docLinks.cobertura) {
+                        updateSuccessDocuments(docLinks);
+                }
+
+                if (responseJson.template_url) {
+                        scheduleCertificateGeneration(
+                                {
+                                        draftId,
+                                        templateUrl: responseJson.template_url,
+                                        coberturaUrl: responseJson.cobertura_url,
+                                        condicionadoUrl: responseJson.condicionado_url,
+                                        datosVehiculo,
+                                        datosCliente,
+                                        garantia,
+                                        estadoGarantia,
+                                        firmaSello,
+                                },
+                                { immediate: false }
+                        )
+                                .then((result) => {
+                                        if (result?.url) {
+                                                updateSuccessDocuments({ certificate: result.url });
+                                        }
+                                })
+                                .catch((err) => {
+                                        console.error("[AUTOSAVE] certificate finalize error", err);
+                                        markDocumentError();
+                                });
+                }
+
+                        const fallbackReferenceBaseDate = new Date();
+                        const resolvedVendorInfo = proformaArgs?.vendorInfo
+                                ? normalizeVendorInfo(proformaArgs.vendorInfo)
+                                : buildVendorInfoFromResponse(responseJson, garantia?.canal_venta);
+                        const normalizedProformaArgs = proformaArgs
+                                ? {
+                                          ...proformaArgs,
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  proformaArgs.paymentMethod ||
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof proformaArgs.transferIban === "string"
+                                                          ? proformaArgs.transferIban
+                                                          : typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                  }
+                                : {
+                                          draftId,
+                                          templateUrl: responseJson.proforma_template_url || "",
+                                          items: [],
+                                          coverageLabel: buildCoverageLabel(garantia),
+                                          matricula: datosVehiculo?.matricula || "",
+                                          marca: datosVehiculo?.marca || "",
+                                          modelo: datosVehiculo?.modelo || "",
+                                          emissionDate: toIsoDateString(fallbackReferenceBaseDate),
+                                          dueDate: toIsoDateString(addDays(fallbackReferenceBaseDate, 2)),
+                                          vendorInfo: resolvedVendorInfo,
+                                          paymentMethod:
+                                                  garantia?.metodo_pago ||
+                                                  responseJson?.garantia_contratada?.metodo_pago ||
+                                                  "",
+                                          transferIban:
+                                                  typeof responseJson.transfer_iban === "string"
+                                                          ? responseJson.transfer_iban
+                                                          : "",
+                                  };
+
+                if (
+                        normalizedProformaArgs.templateUrl &&
+                        Array.isArray(normalizedProformaArgs.items) &&
+                        normalizedProformaArgs.items.length > 0
+                ) {
+                        scheduleProformaGeneration(normalizedProformaArgs, { immediate: false })
+                                .then((result) => {
+                                        if (result?.url) {
+                                                updateSuccessDocuments({ proforma: result.url });
+                                        }
+                                })
+                                .catch((err) => {
+                                        console.error("[AUTOSAVE] proforma finalize error", err);
+                                });
+                }
+        }
+
+        function queuePostFinalizeTasks(args) {
+                if (postFinalizePromise) return;
+                postFinalizePromise = triggerPostFinalizeTasks(args).finally(() => {
+                        postFinalizePromise = null;
+                });
+        }
+
+        function fadeOut(el, hide = true) {
+                if (!el) return;
+                el.classList.add("fade-out");
+                const duration =
+                        parseFloat(
+                                getComputedStyle(el).transitionDuration || "0"
+                        ) * 1000;
+                if (hide) {
+                        setTimeout(() => (el.style.display = "none"), duration || 300);
+                }
+        }
+
+        function normalizeDateForInput(value) {
+                if (value === undefined || value === null) {
+                        return "";
+                }
+                const str = String(value).trim();
+                if (!str || str === "-" || str === "#") {
+                        return "";
+                }
+                if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+                        return str;
+                }
+                const separators = /[\/\-.]/;
+                if (separators.test(str)) {
+                        const parts = str.split(separators).filter(Boolean);
+                        if (parts.length === 3) {
+                                let [p1, p2, p3] = parts;
+                                let year;
+                                let month;
+                                let day;
+                                if (p1.length === 4 && p3.length <= 2) {
+                                        year = p1;
+                                        month = p2;
+                                        day = p3;
+                                } else {
+                                        day = p1;
+                                        month = p2;
+                                        year = p3;
+                                }
+                                const dayNum = parseInt(day, 10);
+                                const monthNum = parseInt(month, 10);
+                                let yearNum = parseInt(year, 10);
+                                if (Number.isNaN(dayNum) || Number.isNaN(monthNum) || Number.isNaN(yearNum)) {
+                                        return "";
+                                }
+                                if (year.length === 2) {
+                                        yearNum += yearNum >= 70 ? 1900 : 2000;
+                                }
+                                const iso = `${String(yearNum).padStart(4, "0")}-${String(monthNum).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
+                                const date = new Date(iso);
+                                if (Number.isNaN(date.getTime())) {
+                                        return "";
+                                }
+                                return iso;
+                        }
+                }
+                const parsed = new Date(str);
+                if (!Number.isNaN(parsed.getTime())) {
+                        const year = parsed.getFullYear();
+                        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+                        const day = String(parsed.getDate()).padStart(2, "0");
+                        return `${year}-${month}-${day}`;
+                }
+                return "";
+        }
+
+        async function loadDraft() {
+                if (!draftId) return;
+                try {
+                        const res = await fetch(
+                                `${getRestRoot()}go/v1/guarantees/${draftId}`,
+                                { headers: { "X-WP-Nonce": getRestNonce() } }
+                        );
+                        if (!res.ok) return;
+                        const data = await res.json();
+                        if (data.uuid && !draftUuid) {
+                                draftUuid = data.uuid;
+                                localStorage.setItem("go_draft_uuid", draftUuid);
+                        }
+                        const vehiclePayload = data.detail?.datos_vehiculo || data.datos_vehiculo || {};
+                        const map = {
+                                tipo_vehiculo: data.tipo_value,
+                                marca: data.marca,
+                                modelo: data.modelo,
+                                kilometros: data.kilometros,
+                                fecha_primera_matriculacion: normalizeDateForInput(
+                                        data.fecha_primera_matriculacion ??
+                                                data.primera_matriculacion ??
+                                                vehiclePayload.fecha_primera_matriculacion ??
+                                                vehiclePayload.primera_matriculacion
+                                ),
+                                fecha_inicio_garantia: normalizeDateForInput(
+                                        data.desde ??
+                                                data.fecha_inicio ??
+                                                data.fecha_inicio_garantia ??
+                                                data?.estado_garantia?.inicio
+                                ),
+                                matricula:
+                                        data.matricula && data.matricula !== "-"
+                                                ? data.matricula
+                                                : "",
+                                numero_bastidor: data.bastidor,
+                                precio_venta: data.precio_venta,
+                                combustible: data.combustible_value,
+                                cambio: data.cambio_value,
+                                traccion:
+                                        data.traccion_value ??
+                                        data.traccion ??
+                                        vehiclePayload.traccion_value ??
+                                        vehiclePayload.traccion,
+                                traccion_camion:
+                                        data.traccion_camion_value ??
+                                        data.traccion_camion ??
+                                        vehiclePayload.traccion_camion_value ??
+                                        vehiclePayload.traccion_camion,
+                                potencia: data.potencia,
+                                potencia_kw: data.potencia_kw,
+                                cilindrada: data.cilindrada,
+                                nombre_apellidos: data.nombre_comprador,
+                                dni: data.dni_comprador,
+                                telefono: data.telefono_comprador,
+                                correo: data.email_comprador,
+                                direccion: data.direccion_comprador,
+                                localidad: data.localidad_comprador,
+                                provincia: data.provincia_comprador,
+                                codigo_postal: data.codigo_postal_comprador,
+                                duracion: data?.garantia_contratada?.meses_contratados,
+                                metodo_pago: data?.garantia_contratada?.metodo_pago,
+                        };
+                        Object.entries(map).forEach(([id, val]) => {
+                                if (
+                                        val === undefined ||
+                                        val === null ||
+                                        val === "" ||
+                                        val === "-"
+                                )
+                                        return;
+                                const el = document.getElementById(id);
+                                if (!el) return;
+                                el.value = val;
+                                el.dispatchEvent(
+                                        new Event("input", { bubbles: true })
+                                );
+                                el.dispatchEvent(
+                                        new Event("change", { bubbles: true })
+                                );
+                        });
+
+                        const canalSelect = document.getElementById("canal-venta");
+                        const usuarioSelect = document.getElementById("usuario-rol");
+                        const normalizeChannelCandidate = (raw) => {
+                                if (raw === null || typeof raw === "undefined") return "";
+                                if (typeof raw === "object") {
+                                        if (typeof raw.value !== "undefined") {
+                                                return normalizeChannelCandidate(raw.value);
+                                        }
+                                        if (typeof raw.label !== "undefined") {
+                                                return normalizeChannelCandidate(raw.label);
+                                        }
+                                }
+                                const candidate = typeof raw === "string" ? raw : String(raw || "");
+                                if (!candidate) return "";
+                                const trimmed = candidate.trim();
+                                if (!trimmed) return "";
+                                if (trimmed.startsWith("go_")) {
+                                        const normalizedPrefixed = normalizeChannel(trimmed);
+                                        if (normalizedPrefixed) {
+                                                return normalizedPrefixed;
+                                        }
+                                }
+                                const normalized = normalizeChannel(trimmed);
+                                if (normalized) {
+                                        return normalized;
+                                }
+                                const withoutParens = trimmed.replace(/\(.*?\)/g, " ").trim();
+                                if (withoutParens && withoutParens !== trimmed) {
+                                        const normalizedNoParens = normalizeChannel(withoutParens);
+                                        if (normalizedNoParens) {
+                                                return normalizedNoParens;
+                                        }
+                                }
+                                if (/particular|individual/i.test(trimmed)) {
+                                        return "particular";
+                                }
+                                if (/profesional/i.test(trimmed)) {
+                                        return "profesional";
+                                }
+                                if (/gestor[ií]a|gestor/i.test(trimmed)) {
+                                        return "gestoria";
+                                }
+                                return "";
+                        };
+                        const resolveChannelSelectValue = (raw) => {
+                                const slug = normalizeChannelCandidate(raw);
+                                return slug ? `go_${slug}` : "";
+                        };
+                        const parseIdCandidate = (candidate) => {
+                                if (candidate === null || typeof candidate === "undefined") return "";
+                                if (typeof candidate === "object") {
+                                        if (typeof candidate.ID !== "undefined") {
+                                                return parseIdCandidate(candidate.ID);
+                                        }
+                                        if (typeof candidate.id !== "undefined") {
+                                                return parseIdCandidate(candidate.id);
+                                        }
+                                }
+                                const numberValue = Number(candidate);
+                                if (!Number.isFinite(numberValue)) return "";
+                                if (numberValue <= 0) return "";
+                                return String(Math.trunc(numberValue));
+                        };
+                        const pickFirstId = (candidates) => {
+                                for (const candidate of candidates) {
+                                        const parsed = parseIdCandidate(candidate);
+                                        if (parsed) return parsed;
+                                }
+                                return "";
+                        };
+                        const normalizeLabelCandidate = (value) => {
+                                if (!value) return "";
+                                if (typeof value === "string") {
+                                        return value.trim();
+                                }
+                                if (typeof value === "object") {
+                                        if (typeof value.label === "string") {
+                                                return value.label.trim();
+                                        }
+                                        if (typeof value.name === "string") {
+                                                return value.name.trim();
+                                        }
+                                        if (typeof value.display_name === "string") {
+                                                return value.display_name.trim();
+                                        }
+                                        if (typeof value.nombre === "string") {
+                                                return value.nombre.trim();
+                                        }
+                                }
+                                return "";
+                        };
+                        const pickFirstLabel = (candidates) => {
+                                for (const candidate of candidates) {
+                                        const normalizedLabel = normalizeLabelCandidate(candidate);
+                                        if (normalizedLabel) return normalizedLabel;
+                                }
+                                return "";
+                        };
+
+                        const channelCandidates = [
+                                data.canal_venta_value,
+                                data.canal_venta,
+                                data.channel,
+                                data?.garantia_contratada?.canal_venta,
+                                data.detail?.canal_venta_value,
+                                data.detail?.canal_venta,
+                                data.canal_venta_summary,
+                                data.vendor_company_type_value,
+                                data.vendor_company_type_label,
+                                data.detail?.vendor_company_type_value,
+                                data.detail?.vendor_company_type_label,
+                        ];
+                        let channelSlug = "";
+                        for (const candidate of channelCandidates) {
+                                const slug = normalizeChannelCandidate(candidate);
+                                if (slug) {
+                                        channelSlug = slug;
+                                        break;
+                                }
+                        }
+                        let hasParticularSignal = false;
+                        if (!channelSlug) {
+                                const particularSignals = [
+                                        data.detail?.nombre_comprador,
+                                        data.nombre_comprador,
+                                        data.detail?.datos_cliente_nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre,
+                                        data.detail?.cliente?.nombre,
+                                        data.detail?.cliente?.nombre_y_apellidos,
+                                        data.detail?.cliente?.nombre_completo,
+                                        data.customer_name,
+                                        data.customer?.nombre,
+                                        data.customer?.nombre_y_apellidos,
+                                        data.customer?.nombre_completo,
+                                        data.cliente?.nombre,
+                                        data.cliente?.nombre_y_apellidos,
+                                        data.cliente?.nombre_completo,
+                                ];
+                                hasParticularSignal = particularSignals.some((value) => {
+                                        if (typeof value !== "string") return false;
+                                        const trimmed = value.trim();
+                                        return trimmed !== "" && trimmed !== "-" && trimmed !== "--";
+                                });
+                                if (hasParticularSignal) {
+                                        channelSlug = "particular";
+                                }
+                        }
+                        const vendorIdCandidates = [
+                                data.vendor_id,
+                                data.concesionario_empresa_profesional,
+                                data.detail?.vendor_id,
+                                data.vendor?.id,
+                                data.vendor?.ID,
+                                data?.garantia_contratada?.concesionario_empresa_profesional,
+                        ];
+                        const customerIdCandidates = [
+                                data.customer_id,
+                                data.cliente_id,
+                                data.cliente?.id,
+                                data.cliente?.ID,
+                                data.customer?.id,
+                                data.customer?.ID,
+                                data.detail?.cliente_user_id,
+                                data.detail?.cliente?.id,
+                                data.detail?.cliente?.ID,
+                                data.detail?.cliente?.user_id,
+                                data.detail?.cliente?.usuario_id,
+                                data.detail?.comprador?.id,
+                                data.detail?.comprador_id,
+                                data.detail?.datos_cliente?.user_id,
+                                data.detail?.datos_cliente?.id,
+                                data.detail?.datos_cliente?.ID,
+                                data?.garantia_contratada?.cliente,
+                        ];
+                        const firstVendorId = pickFirstId(vendorIdCandidates);
+                        const firstCustomerId = pickFirstId(customerIdCandidates);
+                        if (!channelSlug) {
+                                const detailChannelCandidate = normalizeChannelCandidate(
+                                        data.detail?.cliente?.tipo_cliente ||
+                                                data.detail?.cliente?.tipo ||
+                                                data.detail?.customer_type ||
+                                                data.customer?.tipo ||
+                                                data.customer?.tipo_cliente ||
+                                                data.cliente?.tipo ||
+                                                data.cliente?.tipo_cliente,
+                                );
+                                if (detailChannelCandidate) {
+                                        channelSlug = detailChannelCandidate;
+                                }
+                        }
+                        if (!channelSlug) {
+                                if (firstCustomerId && !firstVendorId) {
+                                        channelSlug = "particular";
+                                } else if (firstVendorId && !firstCustomerId) {
+                                        channelSlug = "profesional";
+                                } else if (hasParticularSignal && firstCustomerId) {
+                                        channelSlug = "particular";
+                                }
+                        }
+
+                        let pendingSelectValue = "";
+                        let pendingSelectLabel = "";
+                        let pendingSelectMode = "vendor";
+
+                        if (usuarioSelect) {
+                                const vendorLabelCandidates = [
+                                        data.vendor_name,
+                                        data.concesionario,
+                                        data.concesionario_personal,
+                                        data.vendor_company?.name,
+                                        data.detail?.vendor_name,
+                                        data.detail?.concesionario_personal,
+                                ];
+                                const customerLabelCandidates = [
+                                        data.detail?.nombre_comprador,
+                                        data.detail?.datos_cliente_nombre_y_apellidos,
+                                        data.detail?.datos_cliente?.nombre_y_apellidos,
+                                        data.nombre_comprador,
+                                        data.cliente?.nombre_y_apellidos,
+                                        data.cliente?.nombre,
+                                        data.customer?.nombre_y_apellidos,
+                                        data.customer?.nombre_completo,
+                                        data.customer_name,
+                                ];
+
+                                if (channelSlug === "particular") {
+                                        pendingSelectMode = "customer";
+                                } else if (!channelSlug) {
+                                        if (firstCustomerId && !firstVendorId) {
+                                                pendingSelectMode = "customer";
+                                                channelSlug = "particular";
+                                        } else if (firstCustomerId && hasParticularSignal) {
+                                                pendingSelectMode = "customer";
+                                        }
+                                }
+
+                                if (pendingSelectMode === "customer") {
+                                        pendingSelectValue = firstCustomerId;
+                                        pendingSelectLabel = pickFirstLabel(customerLabelCandidates);
+                                } else {
+                                        pendingSelectValue = firstVendorId;
+                                        pendingSelectLabel = pickFirstLabel(vendorLabelCandidates);
+                                }
+
+                                if (pendingSelectValue) {
+                                        usuarioSelect.dataset.pendingValue = pendingSelectValue;
+                                } else {
+                                        delete usuarioSelect.dataset.pendingValue;
+                                }
+                                if (pendingSelectLabel) {
+                                        usuarioSelect.dataset.displayLabel = pendingSelectLabel;
+                                } else {
+                                        delete usuarioSelect.dataset.displayLabel;
+                                }
+
+                                if (pendingSelectValue) {
+                                        const existingOption = Array.from(usuarioSelect.options || []).find(
+                                                (opt) => opt.value === pendingSelectValue,
+                                        );
+                                        if (existingOption) {
+                                                existingOption.selected = true;
+                                                usuarioSelect.value = pendingSelectValue;
+                                                usuarioSelect.dispatchEvent(
+                                                        new Event("change", { bubbles: true })
+                                                );
+                                        } else if (pendingSelectLabel) {
+                                                const option = document.createElement("option");
+                                                option.value = pendingSelectValue;
+                                                option.textContent = pendingSelectLabel;
+                                                usuarioSelect.appendChild(option);
+                                                option.selected = true;
+                                                usuarioSelect.value = pendingSelectValue;
+                                                usuarioSelect.dispatchEvent(
+                                                        new Event("change", { bubbles: true })
+                                                );
+                                        }
+                                }
+                        }
+
+                        if (canalSelect) {
+                                const channelRaw =
+                                        data.canal_venta_value ||
+                                        data.canal_venta ||
+                                        data.channel ||
+                                        data?.garantia_contratada?.canal_venta ||
+                                        "";
+                                let channelValue = "";
+                                if (channelSlug) {
+                                        channelValue = `go_${channelSlug}`;
+                                } else {
+                                        channelValue = resolveChannelSelectValue(channelRaw);
+                                }
+                                if (!channelValue) {
+                                        const summaryChannel = normalizeChannelCandidate(data.canal_venta_summary);
+                                        if (summaryChannel) {
+                                                channelValue = `go_${summaryChannel}`;
+                                        }
+                                }
+                                if (!channelValue) {
+                                        const vendorTypeChannel = normalizeChannelCandidate(
+                                                data.vendor_company_type_value ||
+                                                        data.vendor_company_type_label ||
+                                                        data.detail?.vendor_company_type_value ||
+                                                        data.detail?.vendor_company_type_label,
+                                        );
+                                        if (vendorTypeChannel) {
+                                                channelValue = `go_${vendorTypeChannel}`;
+                                        }
+                                }
+                                if (!channelValue && !channelSlug) {
+                                        if (pendingSelectMode === "customer" && firstCustomerId) {
+                                                channelValue = "go_particular";
+                                        } else if (pendingSelectMode === "vendor" && firstVendorId) {
+                                                channelValue = "go_profesional";
+                                        }
+                                }
+                                if (!channelValue && channelSlug === "particular") {
+                                        channelValue = "go_particular";
+                                }
+                                if (!channelValue && channelSlug === "profesional") {
+                                        channelValue = "go_profesional";
+                                }
+                                if (channelValue) {
+                                        canalSelect.value = channelValue;
+                                        canalSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                } else if (pendingSelectValue) {
+                                        canalSelect.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                }
+                        }
+
+                        const modalidadId =
+                                data?.garantia_contratada?.garantia ??
+                                data?.garantia_contratada?.modalidad ??
+                                data?.modalidad_id ??
+                                data?.detail?.garantia_contratada?.garantia ??
+                                data?.detail?.garantia_contratada?.modalidad;
+                        const savedMonths = data?.garantia_contratada?.meses_contratados;
+                        if (modalidadId) {
+                                setSelectedModalidadId(String(modalidadId));
+                                const formPlans = document.getElementById("formPlans");
+                                const planCard = formPlans?.querySelector(
+                                        `.form__plan[data-modalidad-id="${modalidadId}"]`
+                                );
+                                if (planCard) {
+                                        const plans = Array.from(
+                                                formPlans.querySelectorAll(".form__plan") || []
+                                        );
+                                        plans.forEach((p) => {
+                                                p.classList.remove("selected", "form__plan--no-selected");
+                                                const txt = p.querySelector(".form__plan-button-text");
+                                                if (txt) {
+                                                        txt.innerHTML =
+                                                                '<span class="form__plan-button-text--label">Seleccionar</span>';
+                                                }
+                                        });
+                                        planCard.classList.add("selected");
+                                        const selectedBtn = planCard.querySelector(
+                                                ".form__plan-button-text"
+                                        );
+                                        const checkIcon =
+                                                getIcon("check") ||
+                                                '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M6 10.5L3.5 8l-1 1 3.5 3.5L14.5 4l-1-1L6 10.5z"/></svg>';
+                                        if (selectedBtn) {
+                                                selectedBtn.innerHTML = `<span class="plan-button-icon" aria-hidden="true">${checkIcon}</span> <span class="form__plan-button-text--label">Seleccionada</span>`;
+                                        }
+                                        plans
+                                                .filter((p) => p !== planCard)
+                                                .forEach((p) => p.classList.add("form__plan--no-selected"));
+                                }
+                        }
+                        if (savedMonths) {
+                                const durationEl = document.getElementById("duracion");
+                                if (durationEl) {
+                                        durationEl.value = savedMonths;
+                                        durationEl.dispatchEvent(
+                                                new Event("change", { bubbles: true })
+                                        );
+                                }
+                        }
+                } catch (e) {
+                        console.error("[AUTOSAVE] loadDraft", e);
+                }
+        }
+
+        loadDraft();
+
+        function launchConfetti() {
+                const layer = successBlock?.querySelector(
+                        ".form-success__confetti"
+                );
+                if (!layer) return;
+                const colors = [
+                        "#e2001b",
+                        "#2563eb",
+                        "#ffd700",
+                        "#4CAF50",
+                        "#9C27B0",
+                ];
+                for (let i = 0; i < 120; i++) {
+                        const piece = document.createElement("span");
+                        piece.className = "confetti-piece";
+                        piece.style.left = `${Math.random() * 100}%`;
+                        const size = Math.random() * 6 + 6;
+                        piece.style.width = `${size}px`;
+                        piece.style.height = `${size}px`;
+                        piece.style.backgroundColor =
+                                colors[Math.floor(Math.random() * colors.length)];
+                        piece.style.animationDuration = `${
+                                Math.random() * 2 + 3
+                        }s`;
+                        piece.style.animationDelay = `${Math.random()}s`;
+                        const drift = (Math.random() - 0.5) * 200;
+                        piece.style.setProperty("--drift", `${drift}px`);
+                        const front = Math.random() > 0.5;
+                        piece.style.zIndex = front ? 3 : 0;
+                        const parent = front ? successBlock : layer;
+                        parent.appendChild(piece);
+                        setTimeout(() => piece.remove(), 5000);
+                }
+        }
+
+        function parseGuaranteeStartDate(value) {
+                if (!value) return null;
+                if (value instanceof Date) return value;
+                if (typeof value === "number") {
+                        const fromNumber = new Date(value);
+                        if (!Number.isNaN(fromNumber.getTime())) {
+                                return fromNumber;
+                        }
+                }
+                const normalized = String(value).trim();
+                if (!normalized) return null;
+                const isoMatch = normalized.match(
+                        /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                );
+                if (isoMatch) {
+                        const [, year, month, day, hours = "0", minutes = "0", seconds = "0"] = isoMatch;
+                        const candidate = new Date(
+                                Number(year),
+                                Number(month) - 1,
+                                Number(day),
+                                Number(hours),
+                                Number(minutes),
+                                Number(seconds)
+                        );
+                        if (!Number.isNaN(candidate.getTime())) {
+                                return candidate;
+                        }
+                }
+                const localMatch = normalized.match(
+                        /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/
+                );
+                if (localMatch) {
+                        const [, day, month, year, hours = "0", minutes = "0", seconds = "0"] = localMatch;
+                        const candidate = new Date(
+                                Number(year),
+                                Number(month) - 1,
+                                Number(day),
+                                Number(hours),
+                                Number(minutes),
+                                Number(seconds)
+                        );
+                        if (!Number.isNaN(candidate.getTime())) {
+                                return candidate;
+                        }
+                }
+                return null;
+        }
+
+        function isSameCalendarDay(dateA, dateB) {
+                return (
+                        dateA.getFullYear() === dateB.getFullYear() &&
+                        dateA.getMonth() === dateB.getMonth() &&
+                        dateA.getDate() === dateB.getDate()
+                );
+        }
+
+        function calculateTransferDeadline(startValue, nowValue = new Date()) {
+                const startDate = parseGuaranteeStartDate(startValue);
+                if (!startDate) return null;
+                const nowDate = nowValue instanceof Date ? nowValue : new Date(nowValue);
+                if (Number.isNaN(nowDate.getTime())) return null;
+                const baseDate = isSameCalendarDay(startDate, nowDate) ? nowDate : startDate;
+                const deadline = new Date(baseDate.getTime() + 48 * 60 * 60 * 1000);
+                if (Number.isNaN(deadline.getTime())) return null;
+                return deadline;
+        }
+
+        function formatTransferDeadlineLabel(startValue) {
+                const deadline = calculateTransferDeadline(startValue);
+                if (!deadline) return "";
+                try {
+                        return new Intl.DateTimeFormat("es-ES", {
+                                day: "numeric",
+                                month: "long",
+                        }).format(deadline);
+                } catch (error) {
+                        console.warn("No se pudo formatear la fecha límite de transferencia", error);
+                        return "";
+                }
+        }
+
+        function showSuccess(method, plate, amount, planName, months, docLinks, extras = {}) {
+                console.log("[AUTOSAVE] showSuccess", { docLinks });
+                fadeOut(form, false);
+                fadeOut(navButtons);
+                fadeOut(tabs);
+                if (summaryContainer) {
+                        summaryContainer.classList.add("slide-out");
+                        container.classList.add("form-container--full");
+                        summaryContainer.addEventListener(
+                                "transitionend",
+                                () => {
+                                        summaryContainer.style.display = "none";
+                                        form.style.display = "none";
+                                        revealSuccess(method, plate, amount, planName, months, docLinks, extras);
+                                },
+                                { once: true }
+                        );
+                } else {
+                        setTimeout(() => {
+                                form.style.display = "none";
+                                revealSuccess(method, plate, amount, planName, months, docLinks, extras);
+                        }, 300);
+                }
+        }
+
+        function revealSuccess(method, plate, amount, planName, months, docLinks = {}, extras = {}) {
+                console.log("[AUTOSAVE] revealSuccess", { docLinks });
+                if (!successBlock) return;
+                successBlock.style.display = "block";
+                requestAnimationFrame(() => successBlock.classList.add("is-visible"));
+                const cleanPlan =
+                        typeof planName === "string" && planName.trim()
+                                ? planName.trim()
+                                : "";
+                let planDescription = "";
+                const plan = successBlock.querySelector("[data-plan]");
+                if (plan) {
+                        const parts = [];
+                        if (cleanPlan) {
+                                parts.push(cleanPlan);
+                        }
+                        if (months) {
+                                const monthsNumber = Number(months);
+                                if (!Number.isNaN(monthsNumber) && monthsNumber > 0) {
+                                        parts.push(`${monthsNumber} meses`);
+                                } else if (typeof months === "string" && months.trim()) {
+                                        parts.push(months.trim());
+                                }
+                        }
+                        planDescription = parts.join(" ");
+                        plan.textContent = planDescription
+                                ? `Cobertura ${planDescription}`
+                                : "Cobertura";
+                }
+                const message = successBlock.querySelector(
+                        ".form-success__message"
+                );
+                if (message) {
+                        const planLabel = planDescription || cleanPlan;
+                        message.innerHTML = "";
+                        const introSpan = document.createElement("span");
+                        introSpan.textContent = "Gracias por contratar la garantía ";
+                        message.append(introSpan);
+                        if (planLabel) {
+                                const strong = document.createElement("strong");
+                                strong.textContent = planLabel;
+                                message.append(strong);
+                                message.append(document.createTextNode(". "));
+                        } else {
+                                message.append(
+                                        document.createTextNode(
+                                                "tu garantía. "
+                                        )
+                                );
+                        }
+                        message.append(
+                                document.createTextNode(
+                                        "Puedes descargar la documentación ahora o acceder cuando quieras desde Mis Garantías."
+                                )
+                        );
+                        message.hidden = false;
+                }
+                const loading = successBlock.querySelector(
+                        ".form-success__loading"
+                );
+                if (loading) {
+                        loading.hidden = false;
+                        loading.style.display = "";
+                        const text = loading.querySelector(
+                                ".form-success__loading-text"
+                        );
+                        if (text) {
+                                text.textContent = "Generando documentos...";
+                        }
+                        if (loadingTimeoutId) {
+                                clearTimeout(loadingTimeoutId);
+                        }
+                        loadingTimeoutId = window.setTimeout(() => {
+                                console.warn("[AUTOSAVE] success spinner forced hide after timeout");
+                                loading.hidden = true;
+                                loading.style.display = "none";
+                                const timeoutText = loading.querySelector(
+                                        ".form-success__loading-text"
+                                );
+                                if (timeoutText) {
+                                        timeoutText.textContent =
+                                                "Los documentos estarán disponibles en Mis Garantías";
+                                }
+                        }, 15000);
+                }
+                updateDocsMessage(extras?.signatureStatus ?? null);
+                refreshDocumentLinks(docLinks || {}, { reset: true });
+                const detailsLink = successBlock.querySelector(
+                        ".form-success__details-link"
+                );
+                if (detailsLink) {
+                        const baseUrl = getMisGarantiasUrl();
+                        const plateValue =
+                                typeof plate === "string" ? plate.trim().toUpperCase() : "";
+                        if (baseUrl && plateValue) {
+                                let href = baseUrl;
+                                try {
+                                        const detailUrl = new URL(baseUrl, window.location.origin);
+                                        detailUrl.searchParams.set("matricula", plateValue);
+                                        href = detailUrl.toString();
+                                } catch (err) {
+                                        const separator = baseUrl.includes("?") ? "&" : "?";
+                                        href = `${baseUrl}${separator}matricula=${encodeURIComponent(
+                                                plateValue
+                                        )}`;
+                                }
+                                detailsLink.href = href;
+                                const refSpan = detailsLink.querySelector("[data-ref-text]");
+                                if (refSpan) {
+                                        refSpan.textContent = plateValue;
+                                }
+                                detailsLink.hidden = false;
+                        } else {
+                                detailsLink.hidden = true;
+                        }
+                }
+                const newLink = successBlock.querySelector(".form-success__new");
+                if (newLink) {
+                        const nuevaUrl = getNuevaGarantiaUrl();
+                        if (nuevaUrl) {
+                                newLink.href = nuevaUrl;
+                        }
+                }
+                if (draftId) {
+                        fetchLatestDocumentLinks(draftId);
+                }
+                const pay = successBlock.querySelector(".form-success__payment");
+                if (pay) {
+                        const transfer = pay.querySelector(".form-success__transfer");
+                        const showTransfer = method === "transferencia";
+                        pay.hidden = !showTransfer;
+                        if (transfer) {
+                                transfer.hidden = !showTransfer;
+                        }
+                        if (showTransfer && transfer) {
+                                const deadlineLabel =
+                                        typeof extras.transferDeadlineLabel === "string"
+                                                ? extras.transferDeadlineLabel.trim()
+                                                : "";
+                                const transferNote = transfer.querySelector(
+                                        ".form-success__transfer-note"
+                                );
+                                if (transferNote) {
+                                        const message = deadlineLabel
+                                                ? `Realiza la transferencia antes del ${deadlineLabel}.`
+                                                : "Realiza la transferencia lo antes posible.";
+                                        let noteTextNode = transferNote.querySelector(
+                                                ".form-success__transfer-note-text"
+                                        );
+                                        if (!noteTextNode) {
+                                                noteTextNode = document.createElement("span");
+                                                noteTextNode.className = "form-success__transfer-note-text";
+                                                transferNote.appendChild(noteTextNode);
+                                        }
+                                        noteTextNode.textContent = message;
+                                }
+                                const reference = plate
+                                        ? `Garantía ${plate.toUpperCase()}`
+                                        : "";
+                                transfer
+                                        .querySelectorAll("[data-ref],[data-ref-text]")
+                                        .forEach((el) => (el.textContent = reference));
+                                const amountText =
+                                        amount !== undefined && amount !== null
+                                                ? `${Number(amount).toLocaleString("es-ES", {
+                                                          minimumFractionDigits: 2,
+                                                          maximumFractionDigits: 2,
+                                                  })} €`
+                                                : "";
+                                transfer
+                                        .querySelectorAll("[data-amount],[data-amount-text]")
+                                        .forEach((el) => (el.textContent = amountText));
+
+                                const ibanValue =
+                                        typeof extras.transferIban === "string"
+                                                ? extras.transferIban.trim()
+                                                : "";
+                                const ibanTargets = transfer.querySelectorAll(
+                                        "[data-iban],[data-iban-text]"
+                                );
+                                ibanTargets.forEach((el) => {
+                                        el.textContent = ibanValue;
+                                });
+                                const ibanRow = transfer.querySelector("[data-iban]")?.closest("tr");
+                                if (ibanRow) {
+                                        ibanRow.hidden = !ibanValue;
+                                }
+                                const ibanCopyBtn = transfer.querySelector(
+                                        'button[data-copy="[data-iban]"]'
+                                );
+                                if (ibanCopyBtn) {
+                                        if (ibanValue) {
+                                                ibanCopyBtn.removeAttribute("disabled");
+                                                ibanCopyBtn.removeAttribute("aria-disabled");
+                                        } else {
+                                                ibanCopyBtn.setAttribute("disabled", "true");
+                                                ibanCopyBtn.setAttribute("aria-disabled", "true");
+                                        }
+                                }
+
+                                const emailLink = transfer.querySelector("[data-email-link]");
+                                if (emailLink) {
+                                        const baseEmail =
+                                                emailLink.dataset.emailBase ||
+                                                emailLink.textContent.trim() ||
+                                                (emailLink.getAttribute("href") || "")
+                                                        .replace(/^mailto:/i, "")
+                                                        .trim();
+                                        if (baseEmail) {
+                                                const baseSubject =
+                                                        "Justificante de transferencia Garantía";
+                                                const subject = plate
+                                                        ? `${baseSubject} ${plate.toUpperCase()}`
+                                                        : baseSubject;
+                                                emailLink.href = `mailto:${baseEmail}?subject=${encodeURIComponent(
+                                                        subject
+                                                )}`;
+                                                emailLink.textContent = emailLink.dataset.emailBase || baseEmail;
+                                        }
+                                }
+                        }
+                }
+                function copyText(text) {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                                return navigator.clipboard.writeText(text);
+                        }
+                        const textarea = document.createElement("textarea");
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(textarea);
+                        return Promise.resolve();
+                }
+
+                function showToast(message) {
+                        const toast = successBlock.querySelector(
+                                ".form-success__toast"
+                        );
+                        if (toast) {
+                                toast.textContent = message || "Copiado al portapapeles.";
+                                toast.classList.add("show");
+                                setTimeout(
+                                        () => toast.classList.remove("show"),
+                                        2000
+                                );
+                        }
+                }
+
+                function handleSuccessCopy(btn) {
+                        if (!btn) return;
+                        const selector = btn.getAttribute("data-copy");
+                        if (!selector) return;
+                        const target = successBlock.querySelector(selector);
+                        if (!target) return;
+                        const text = (
+                                target.dataset.copyValue || target.textContent || ""
+                        ).trim();
+                        if (!text) return;
+                        copyText(text).then(() => {
+                                const label = btn.querySelector(
+                                        ".form-success__copy-text"
+                                );
+                                if (label) {
+                                        const original = btn.dataset.label || label.textContent;
+                                        label.textContent = btn.dataset.done || "Copiado";
+                                        setTimeout(
+                                                () => (label.textContent = original),
+                                                2000
+                                        );
+                                } else {
+                                        const original =
+                                                btn.dataset.label ||
+                                                btn.getAttribute("aria-label") ||
+                                                "";
+                                        const done = btn.dataset.done || "Copiado";
+                                        if (done) {
+                                                btn.setAttribute("aria-label", done);
+                                                setTimeout(() => {
+                                                        if (original) {
+                                                                btn.setAttribute(
+                                                                        "aria-label",
+                                                                        original
+                                                                );
+                                                        }
+                                                }, 2000);
+                                        }
+                                }
+                                showToast(btn.dataset.toast);
+                        });
+                }
+
+                successBlock.querySelectorAll("[data-copy]").forEach((btn) => {
+                        btn.addEventListener("click", () => handleSuccessCopy(btn));
+                });
+
+                successBlock.addEventListener("click", (event) => {
+                        const copyButton = event.target.closest("[data-copy]");
+                        if (copyButton && successBlock.contains(copyButton)) {
+                                return;
+                        }
+
+                        const row = event.target.closest("tr[data-copy-row]");
+                        if (row && successBlock.contains(row)) {
+                                const btn = row.querySelector("[data-copy]");
+                                if (btn) {
+                                        handleSuccessCopy(btn);
+                                }
+                                return;
+                        }
+
+                        const cell = event.target.closest("[data-copy-cell]");
+                        if (!cell || !successBlock.contains(cell)) return;
+                        const btn = cell.querySelector("[data-copy]");
+                        if (!btn) return;
+                        handleSuccessCopy(btn);
+                });
+                const sound = successBlock.querySelector("#form-success__sound");
+                if (sound) {
+                        sound.currentTime = 0;
+                        sound.play().catch(() => {});
+                }
+                launchConfetti();
+        }
+
+        function requiresCancelledPlateConfirmation() {
+                if (cancelledPlateConfirmed || draftId) return false;
+                const plateInput = document.getElementById("matricula");
+                if (!plateInput) return false;
+                return plateInput.dataset.cancelled === "true";
+        }
+
+        function confirmCancelledPlate() {
+                const plateInput = document.getElementById("matricula");
+                const plateValue = plateInput?.value?.trim().toUpperCase() || "";
+                const message = plateValue
+                        ? `Se archivará la garantía cancelada con matrícula ${plateValue} y se creará una nueva. ¿Quieres continuar?`
+                        : "Se archivará la garantía cancelada y se creará una nueva. ¿Quieres continuar?";
+                return window.confirm(message);
+        }
+
+        async function sendAutosave(finalize = false) {
+                if (saving) return;
+                if (requiresCancelledPlateConfirmation()) {
+                        const confirmed = confirmCancelledPlate();
+                        if (!confirmed) {
+                                return;
+                        }
+                        cancelledPlateConfirmed = true;
+                }
+                saving = true;
+
+                console.log("[AUTOSAVE] Triggered", { draftId, finalize });
+
+                status.classList.remove("autosave-status--hidden");
+                spinner.style.display = "inline-block";
+                icon.style.display = "none";
+                text.textContent = finalize ? "Generando documentos..." : "Guardando";
+                if (finalize && nextBtn) {
+                        nextBtn.classList.add("is-loading");
+                        nextBtn.disabled = true;
+                }
+
+                const payload = {};
+                const datosVehiculo = {};
+                const datosCliente = {};
+
+                FormCache.inputs.forEach((input) => {
+                        if (!input.id || skipFields.has(input.id)) return;
+                        let value = input.value;
+                        if (numericFields.includes(input.id)) {
+                                if (input.id === "precio_venta") {
+                                        value = normalizePrice(value);
+                                } else {
+                                        value = value.replace(/\./g, "").replace(",", ".");
+                                }
+                        }
+                        if (vehiculoFields.includes(input.id)) {
+                                datosVehiculo[input.id] = value;
+                        } else if (clienteFieldMap[input.id]) {
+                                datosCliente[clienteFieldMap[input.id]] = value;
+                        } else {
+                                payload[input.id] = value;
+                        }
+                });
+
+                if (datosVehiculo.fecha_primera_matriculacion) {
+                        datosVehiculo.primera_matriculacion =
+                                datosVehiculo.fecha_primera_matriculacion;
+                        delete datosVehiculo.fecha_primera_matriculacion;
+                }
+
+                if (
+                        datosVehiculo.combustible === "electrico" &&
+                        datosVehiculo.potencia
+                ) {
+                        const kw = parseFloat(datosVehiculo.potencia);
+                        if (!isNaN(kw)) {
+                                datosVehiculo.potencia_kw = datosVehiculo.potencia;
+                                datosVehiculo.potencia = Math.round(
+                                        kw * 1.3596
+                                ).toString();
+                        }
+                }
+
+                if (Object.keys(datosVehiculo).length) {
+                        payload.datos_vehiculo = datosVehiculo;
+                        if (datosVehiculo.matricula) {
+                                payload.matricula = datosVehiculo.matricula;
+                        }
+                }
+
+                if (Object.keys(datosCliente).length) {
+                        payload.datos_cliente = datosCliente;
+                }
+
+                // --- Garantía contratada ---
+                const garantia = {};
+                const userRole = getUserRole();
+                const modalidadId = getSelectedModalidadId();
+                if (modalidadId) {
+                        garantia.garantia = modalidadId;
+                        const modalidad = getVisibleModalidades().find(
+                                (m) => String(m.ID) === String(modalidadId)
+                        );
+                        if (modalidad) {
+                                const detalles = modalidad.acf?.detalles_modalidad || {};
+                                const rawPlanName =
+                                        detalles.nombre_mostrar ||
+                                        modalidad.title ||
+                                        "";
+                                const planDisplayName =
+                                        typeof rawPlanName === "string"
+                                                ? rawPlanName.trim()
+                                                : "";
+                                if (planDisplayName) {
+                                        garantia.plan_display_name = planDisplayName;
+                                }
+                                const tipo = Array.isArray(modalidad.tipo_garantia)
+                                        ? modalidad.tipo_garantia[0]
+                                        : modalidad.tipo_garantia;
+                                const nivel = Array.isArray(modalidad.nivel_garantia)
+                                        ? modalidad.nivel_garantia[0]
+                                        : modalidad.nivel_garantia;
+                                if (tipo) garantia.tipo_garantia = tipo;
+                                if (nivel) garantia.nivel_garantia = nivel;
+                        }
+                }
+
+                const duracionEl = document.getElementById("duracion");
+                if (duracionEl && duracionEl.value) {
+                        garantia.meses_contratados = duracionEl.value;
+                }
+
+                const metodoPagoEl = document.getElementById("metodo_pago");
+                if (metodoPagoEl && metodoPagoEl.value) {
+                        garantia.metodo_pago = metodoPagoEl.value;
+                }
+
+                if (garantia.precio === undefined || garantia.precio === "") {
+                        const resumenPrecioEl = document.querySelector(
+                                "#final-summary .item--destacado .valor"
+                        );
+                        if (resumenPrecioEl) {
+                                garantia.precio = normalizePrice(
+                                        resumenPrecioEl.textContent
+                                );
+                        }
+                }
+
+                let precioBase;
+                const resumenItems = document.querySelectorAll(
+                        "#final-summary .contratacion-summary__list .item"
+                );
+                resumenItems.forEach((item) => {
+                        const concepto = item.querySelector(".concepto")?.textContent || "";
+                        if (/precio base/i.test(concepto)) {
+                                const valorText = item.querySelector(".valor")?.textContent || "";
+                                precioBase = normalizePrice(valorText);
+                        }
+                });
+
+                if (precioBase === undefined || precioBase === "") {
+                        const recargosEl = document.querySelector(
+                                ".form__plan.selected .form__plan-recargos-precios"
+                        );
+                        if (recargosEl) {
+                                const txt = recargosEl.textContent;
+                                const baseMatch = txt.match(/Precio base:\s*([0-9.,]+)/i);
+                                if (baseMatch) {
+                                        precioBase = normalizePrice(baseMatch[1]);
+                                }
+                        }
+                }
+
+                const listadoDescuentosRecargos = buildListadoDescuentosRecargos(normalizePrice);
+                const hasListado = listadoDescuentosRecargos.length > 0;
+
+                if (finalize || precioBase !== undefined || hasListado) {
+                        const descuentosYRecargos = {};
+
+                        if (precioBase !== undefined && precioBase !== "") {
+                                descuentosYRecargos.precio_base = precioBase;
+                        }
+
+                        if (hasListado) {
+                                descuentosYRecargos.listado_descuentos_recargos = listadoDescuentosRecargos;
+                        }
+
+                        if (Object.keys(descuentosYRecargos).length > 0) {
+                                console.log("[AUTOSAVE] descuentos_y_recargos payload", {
+                                        finalize,
+                                        precioBase,
+                                        listadoDescuentosRecargos,
+                                });
+                                garantia.descuentos_y_recargos = descuentosYRecargos;
+                        }
+                }
+
+                if (garantia.precio === undefined || garantia.precio === "") {
+                        const selectedPlan = document.querySelector(
+                                ".form__plan.selected"
+                        );
+                        if (selectedPlan) {
+                                const priceCandidates = [
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value"
+                                        ),
+                                        selectedPlan.querySelector(
+                                                ".plan-price-value-noiva"
+                                        ),
+                                ];
+                                for (const candidate of priceCandidates) {
+                                        if (
+                                                !candidate ||
+                                                getComputedStyle(candidate)
+                                                        .display === "none"
+                                        ) {
+                                                continue;
+                                        }
+                                        const priceText = candidate.textContent
+                                                ?.trim();
+                                        if (priceText) {
+                                                garantia.precio = normalizePrice(
+                                                        priceText
+                                                );
+                                                break;
+                                        }
+                                }
+                        }
+                }
+
+                const normalizedRole = String(userRole).toLowerCase();
+                if (
+                        normalizedRole === "admin" ||
+                        normalizedRole === "go_garantias" ||
+                        normalizedRole === "go_director_comercial"
+                ) {
+                        const canal = document.getElementById("canal-venta");
+                        if (canal && canal.value) {
+                                const canalNormalizado = normalizeChannel(canal.value);
+                                garantia.canal_venta = canalNormalizado || "profesional";
+                        } else {
+                                garantia.canal_venta = "profesional";
+                        }
+                        const usuario = document.getElementById("usuario-rol");
+                        if (usuario && usuario.value) {
+                                garantia.concesionario_empresa_profesional = usuario.value;
+                        }
+                } else if (normalizedRole === "comercial" || normalizedRole === "go_comercial") {
+                        garantia.canal_venta = "profesional";
+                        const usuario = document.getElementById("usuario-rol");
+                        if (usuario && usuario.value) {
+                                garantia.concesionario_empresa_profesional = usuario.value;
+                        }
+               } else if (normalizedRole === "profesional" || normalizedRole === "go_profesional") {
+                        garantia.canal_venta = "profesional";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
+               } else if (
+                       normalizedRole === "go_particular" ||
+                       normalizedRole === "particular" ||
+                       normalizedRole === "go_individual" ||
+                       normalizedRole === "individual"
+               ) {
+                        garantia.canal_venta = "particular";
+                        const currentId = getCurrentUserId();
+                        if (currentId) {
+                                garantia.concesionario_empresa_profesional = currentId;
+                        }
+                }
+
+                if (Object.keys(garantia).length) {
+                        payload.garantia_contratada = garantia;
+                }
+
+                // --- Estado de la garantía ---
+                const inicioEl = document.getElementById("fecha_inicio_garantia");
+                if (inicioEl && inicioEl.value) {
+                        const estado = { inicio: inicioEl.value };
+                        const meses = parseInt(garantia.meses_contratados || 0, 10);
+                        if (!isNaN(meses) && meses > 0) {
+                                const end = new Date(inicioEl.value);
+                                end.setMonth(end.getMonth() + meses);
+                                end.setDate(end.getDate() - 1);
+                                estado.finalizacion = end.toISOString().split("T")[0];
+                        }
+                        payload.estado_garantia = estado;
+                }
+
+                if (!payload.estado_garantia) payload.estado_garantia = {};
+                if (finalize) {
+                        payload.post_status = "publish";
+                        if (garantia.metodo_pago === "domiciliacion") {
+                                payload.estado_garantia.estado_contratacion = "activada";
+                        } else {
+                                payload.estado_garantia.estado_contratacion = "pendiente_pago";
+                        }
+                } else {
+                        payload.estado_garantia.estado_contratacion = "sin_finalizar";
+                }
+
+                console.log("[AUTOSAVE] payload", payload);
+
+                try {
+                        const res = await fetch(`${getRestRoot()}go/v1/guarantees/autosave`, {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": getRestNonce(),
+                                },
+                                body: JSON.stringify({ id: draftId, uuid: draftUuid, data: payload }),
+                        });
+                        console.log("[AUTOSAVE] response status", res.status);
+                        const json = await res.json();
+                        console.log("[AUTOSAVE] response json", json);
+                        const firmaSello = json.firma_sello || {};
+                        if (!res.ok) {
+                                if (res.status === 409 && json?.message) {
+                                        alert(json.message);
+                                        const plateInput = document.getElementById("matricula");
+                                        if (plateInput) setError(plateInput, json.message);
+                                }
+                                status.classList.add("autosave-status--hidden");
+                                return;
+                        }
+                        if (json.id) {
+                                draftId = json.id;
+                                localStorage.setItem("go_draft_id", draftId);
+                                console.log("[AUTOSAVE] stored draftId", draftId);
+                        }
+                        if (json.uuid) {
+                                draftUuid = json.uuid;
+                                localStorage.setItem("go_draft_uuid", draftUuid);
+                                console.log("[AUTOSAVE] stored draftUuid", draftUuid);
+                        }
+                        if (json.trashed_cancelled_id) {
+                                cancelledPlateConfirmed = true;
+                                const plateInput = document.getElementById("matricula");
+                                if (plateInput) {
+                                        plateInput.dataset.cancelled = "false";
+                                        delete plateInput.dataset.cancelledId;
+                                }
+                        }
+                        if (!finalize && json.template_url) {
+                                loadStaticPdf(json.template_url).catch((err) => {
+                                        console.debug("[AUTOSAVE] template preload error", err);
+                                });
+                        }
+
+                        const certificateArgs = json.template_url
+                                ? {
+                                          draftId,
+                                          templateUrl: json.template_url,
+                                          coberturaUrl: json.cobertura_url,
+                                          condicionadoUrl: json.condicionado_url,
+                                          datosVehiculo,
+                                          datosCliente,
+                                          garantia,
+                                          estadoGarantia: payload.estado_garantia || {},
+                                          firmaSello,
+                                  }
+                                : null;
+
+                        const referenceBaseDate = new Date();
+                        const emissionIso = toIsoDateString(referenceBaseDate);
+                        const dueIso = toIsoDateString(addDays(referenceBaseDate, 2));
+                        const vendorInfo = buildVendorInfoFromResponse(json, garantia?.canal_venta);
+
+                        const proformaHabilitada = shouldProcessProforma("autosave_response");
+                        const proformaArgs =
+                                proformaHabilitada && json.proforma_template_url
+                                        ? {
+                                                  draftId,
+                                                  templateUrl: json.proforma_template_url,
+                                                  items: listadoDescuentosRecargos,
+                                                  coverageLabel: buildCoverageLabel(garantia),
+                                                  matricula: datosVehiculo?.matricula || "",
+                                                  marca: datosVehiculo?.marca || "",
+                                                  modelo: datosVehiculo?.modelo || "",
+                                                  emissionDate: emissionIso,
+                                                  dueDate: dueIso,
+                                                  coverageStart: payload.estado_garantia?.inicio,
+                                                  coverageEnd: payload.estado_garantia?.finalizacion,
+                                                  vendorInfo,
+                                                  paymentMethod: garantia?.metodo_pago || "",
+                                                  transferIban:
+                                                          typeof json.transfer_iban === "string"
+                                                                  ? json.transfer_iban.trim()
+                                                                  : "",
+                                          }
+                                        : null;
+
+                        if (!finalize && certificateArgs) {
+                                scheduleCertificateGeneration(certificateArgs, {
+                                        immediate: true,
+                                }).catch((err) => {
+                                        console.error("[AUTOSAVE] certificate queue error", err);
+                                });
+                        }
+
+                        if (!finalize && proformaArgs && listadoDescuentosRecargos.length > 0) {
+                                scheduleProformaGeneration(proformaArgs, {
+                                        immediate: true,
+                                }).catch((err) => {
+                                        console.error("[AUTOSAVE] proforma queue error", err);
+                                });
+                        }
+
+                        if (finalize) {
+                                const docLinks = {
+                                        certificate: latestCertificateUrl || "",
+                                        condicionado: json.condicionado_url || "",
+                                        cobertura: json.cobertura_url || "",
+                                        proforma: latestProformaUrl || json.proforma_url || "",
+                                };
+                                const extras = {
+                                        transferIban:
+                                                typeof json.transfer_iban === "string"
+                                                        ? json.transfer_iban.trim()
+                                                        : "",
+                                        signatureStatus: resolveSignatureStatus(firmaSello),
+                                };
+                                const transferDeadlineLabel = formatTransferDeadlineLabel(
+                                        payload.estado_garantia?.inicio
+                                );
+                                if (transferDeadlineLabel) {
+                                        extras.transferDeadlineLabel = transferDeadlineLabel;
+                                }
+                                showSuccess(
+                                        garantia.metodo_pago,
+                                        datosVehiculo.matricula,
+                                        garantia.precio,
+                                        garantia.plan_display_name ||
+                                                garantia.nivel_garantia ||
+                                                "",
+                                        garantia.meses_contratados,
+                                        docLinks,
+                                        extras
+                                );
+                                queuePostFinalizeTasks({
+                                        draftId,
+                                        draftUuid,
+                                        responseJson: json,
+                                        datosVehiculo,
+                                        datosCliente,
+                                        garantia,
+                                        estadoGarantia: payload.estado_garantia || {},
+                                        firmaSello,
+                                        proformaArgs,
+                                });
+                                if (json.notify_url && draftUuid) {
+                                        triggerContractNotice(json.notify_url, draftUuid);
+                                }
+                        }
+                        spinner.style.display = "none";
+                        icon.style.display = "inline-block";
+                        text.textContent = "Guardado";
+                        setTimeout(() => {
+                                status.classList.add("autosave-status--hidden");
+                        }, 1500);
+                } catch (e) {
+                        console.error("[AUTOSAVE] error", e);
+                        status.classList.add("autosave-status--hidden");
+                } finally {
+                        if (finalize && nextBtn) {
+                                nextBtn.classList.remove("is-loading");
+                                nextBtn.disabled = false;
+                        }
+                        saving = false;
+                }
+        }
+
+        const debounced = debounce(sendAutosave, 300);
+
+        FormCache.nextButton?.addEventListener(
+                "click",
+                () => {
+                const finalize =
+                                FormCache.currentTab ===
+                                FormCache.fieldsets.length - 1;
+                        console.log("[AUTOSAVE] next button click finalize=", finalize);
+                        debounced(finalize);
+                },
+                { capture: true }
+        );
+        FormCache.prevButton?.addEventListener("click", () => debounced(false));
+        FormCache.tabs?.forEach((tab) => tab.addEventListener("click", () => debounced(false)));
+}
