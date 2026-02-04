@@ -4257,6 +4257,7 @@ class GuaranteeRestController
         $pending_validation = self::sum_prices_for_states(['validacion_pendiente'], $statuses);
         $month = self::collect_month_summary($statuses);
         $year = self::collect_year_summary($statuses);
+        $global = self::collect_global_summary($statuses);
 
         return [
             'totals' => [
@@ -4264,8 +4265,9 @@ class GuaranteeRestController
             ],
             'states' => $states,
             'contexts' => [
-                'year'  => $year,
-                'month' => $month,
+                'global' => $global,
+                'year'   => $year,
+                'month'  => $month,
             ],
             'pending' => [
                 'draft'     => $pending_draft,
@@ -4381,6 +4383,11 @@ class GuaranteeRestController
                 $previous['amount_map']['activada'] ?? 0.0,
                 __('vs año ant.', 'garantias-online-360vo')
             ),
+            'amount_total' => self::build_summary_trend(
+                $current['amount'] ?? 0.0,
+                $previous['amount'] ?? 0.0,
+                __('vs año ant.', 'garantias-online-360vo')
+            ),
             'count'  => self::build_summary_trend(
                 $current['count'] ?? 0,
                 $previous['count'] ?? 0,
@@ -4394,6 +4401,19 @@ class GuaranteeRestController
         $current['trends'] = $trends;
 
         return $current;
+    }
+
+    private static function collect_global_summary(array $statuses): array
+    {
+        $summary = self::summarize_all_time($statuses);
+        $summary['label'] = __('Total histórico', 'garantias-online-360vo');
+        $summary['trends'] = [
+            'amount'       => self::build_empty_summary_trend(),
+            'amount_total' => self::build_empty_summary_trend(),
+            'count'        => self::build_empty_summary_trend(),
+        ];
+
+        return $summary;
     }
 
     private static function get_summary_state_groups(): array
@@ -4650,6 +4670,11 @@ class GuaranteeRestController
                 $previous['amount_map']['activada'] ?? 0.0,
                 __('vs mes ant.', 'garantias-online-360vo')
             ),
+            'amount_total' => self::build_summary_trend(
+                $current['amount'] ?? 0.0,
+                $previous['amount'] ?? 0.0,
+                __('vs mes ant.', 'garantias-online-360vo')
+            ),
             'count'  => self::build_summary_trend(
                 $current['count'] ?? 0,
                 $previous['count'] ?? 0,
@@ -4664,6 +4689,100 @@ class GuaranteeRestController
         $current['trends'] = $trends;
 
         return $current;
+    }
+
+    private static function summarize_all_time(array $statuses): array
+    {
+        global $wpdb;
+
+        $post_type = \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE;
+        list($status_clause, $status_params) = self::build_in_clause($statuses);
+
+        $sql = "
+            SELECT state.meta_value AS state, price.meta_value AS price
+            FROM {$wpdb->posts} p
+            INNER JOIN {$wpdb->postmeta} state
+                ON state.post_id = p.ID
+                AND state.meta_key = 'estado_garantia_estado_contratacion'
+            LEFT JOIN {$wpdb->postmeta} price
+                ON price.post_id = p.ID
+                AND price.meta_key = 'garantia_contratada_precio'
+            WHERE p.post_type = %s
+              AND p.post_status IN ($status_clause)
+        ";
+
+        $params = array_merge([$post_type], $status_params);
+        $rows = $wpdb->get_results($wpdb->prepare($sql, $params), ARRAY_A);
+
+        $count = 0;
+        $amount_values = [];
+        $state_counts = [];
+        $state_amounts = [];
+
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                $state = isset($row['state']) ? (string) $row['state'] : '';
+                if ($state === 'cancelada') {
+                    continue;
+                }
+                $count++;
+                $normalized_price = self::normalize_price_amount($row['price'] ?? '');
+                $amount_values[] = $normalized_price;
+                if ($state === '') {
+                    continue;
+                }
+                if (! isset($state_counts[$state])) {
+                    $state_counts[$state] = 0;
+                }
+                $state_counts[$state]++;
+                if (! isset($state_amounts[$state])) {
+                    $state_amounts[$state] = 0.0;
+                }
+                $state_amounts[$state] += $normalized_price;
+            }
+        }
+
+        $pending_collect = self::collect_pending_direct_debit_summary($statuses);
+        if ($pending_collect['count'] > 0) {
+            $state_counts['pendiente_cobro'] = ($state_counts['pendiente_cobro'] ?? 0) + $pending_collect['count'];
+            if (isset($state_counts['activada'])) {
+                $state_counts['activada'] = max(0, $state_counts['activada'] - $pending_collect['count']);
+            }
+            $state_amounts['pendiente_cobro'] = ($state_amounts['pendiente_cobro'] ?? 0.0) + $pending_collect['amount'];
+            if (isset($state_amounts['activada'])) {
+                $state_amounts['activada'] = max(0.0, $state_amounts['activada'] - $pending_collect['amount']);
+            }
+        }
+
+        $amount = self::sum_price_values($amount_values);
+        $states = self::aggregate_summary_states($state_counts);
+        $amounts = self::aggregate_summary_state_amounts($state_amounts);
+
+        $amount_map = [];
+        foreach ($amounts as $entry) {
+            $value = isset($entry['value']) ? (string) $entry['value'] : '';
+            if ($value === '') {
+                continue;
+            }
+            $amount_map[$value] = isset($entry['amount']) ? (float) $entry['amount'] : 0.0;
+        }
+
+        $top = null;
+        foreach ($states as $entry) {
+            $entry_count = isset($entry['count']) ? (int) $entry['count'] : 0;
+            if ($top === null || $entry_count > (int) ($top['count'] ?? 0)) {
+                $top = $entry;
+            }
+        }
+
+        return [
+            'count'      => (int) $count,
+            'amount'     => $amount,
+            'states'     => $states,
+            'amounts'    => $amounts,
+            'top_state'  => $top,
+            'amount_map' => $amount_map,
+        ];
     }
 
     private static function summarize_period(array $statuses, DateTimeImmutable $start, DateTimeImmutable $end): array
@@ -4782,8 +4901,6 @@ class GuaranteeRestController
         $percentage = 0.0;
         if ($previous_value > 0.0) {
             $percentage = (($current_value - $previous_value) / $previous_value) * 100.0;
-        } elseif ($current_value > 0.0) {
-            $percentage = 100.0;
         }
 
         $percentage = round($percentage, 1);
@@ -4805,6 +4922,18 @@ class GuaranteeRestController
             'formatted'  => self::format_trend_percentage($percentage),
             'direction'  => $direction,
             'label'      => $label,
+        ];
+    }
+
+    private static function build_empty_summary_trend(): array
+    {
+        return [
+            'current'    => 0.0,
+            'previous'   => 0.0,
+            'percentage' => 0.0,
+            'formatted'  => '—',
+            'direction'  => 'neutral',
+            'label'      => '',
         ];
     }
 
