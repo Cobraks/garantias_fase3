@@ -1,5 +1,8 @@
 # Historial de cambios
 
+## 6.4.2 - 2026-09-26
+- Resumen de garantías: añadido selector Total / Anual / Mensual y nuevo toggle de importe cobrado vs con pendientes en el KPI mensual.
+
 ## 6.2.6 - 2026-09-26
 - Para admin, selector de profesional ahora no limitado a 25
 
