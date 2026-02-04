@@ -53,12 +53,19 @@ function setupClearButtons() {
  * Pone el valor y el mínimo de fecha de la garantía al día de hoy
  */
 function setTodayForGarantia() {
-	const fechaInput = document.getElementById("fecha_inicio_garantia");
-	if (!fechaInput) return;
+        const fechaInput = document.getElementById("fecha_inicio_garantia");
+        if (!fechaInput) return;
 
-	const today = new Date().toISOString().split("T")[0];
-	fechaInput.value = today;
-	fechaInput.min = today;
+        const today = new Date().toISOString().split("T")[0];
+        const autoFillEnabled = fechaInput.dataset.autoFill !== "0";
+
+        fechaInput.min = today;
+        if (autoFillEnabled && !fechaInput.value) {
+                fechaInput.value = today;
+        }
+
+        updateNextButtonState();
+        debouncedUpdateSummary();
 }
 
 /**
@@ -78,43 +85,48 @@ function handleDateInputs() {
  * Crea un párrafo de mensaje de info dentro de un contenedor dado
  */
 function createInfoMessage(container) {
-	const message = document.createElement("p");
-	message.classList.add("form__info-message");
-	container.appendChild(message);
-	return message;
+        const message = document.createElement("p");
+        message.classList.add("form__info-message");
+        container.appendChild(message);
+        return message;
 }
 
 /**
- * Shimmer: animación temporal al cambiar duración
+ * Fuerza la desactivación del autocompletado del navegador en los campos sensibles
+ * para evitar que Chrome muestre el diálogo de guardar dirección con datos de terceros.
  */
-function shimmerOnDurationChange() {
-	const wrappers = document.querySelectorAll(".form__plan-price-wrapper");
-	wrappers.forEach((wrapper) => {
-		const text = wrapper.querySelector(".form__plan-price-text");
-		const skeleton = wrapper.querySelector(".plan-price-skeleton");
-		if (text && skeleton) {
-			text.style.display = "none";
-			skeleton.style.display = "inline-block";
-			skeleton.style.opacity = "1";
-		}
-	});
+function disableAddressAutocomplete() {
+        const form = document.getElementById("form-garantia");
+        if (!form) return;
 
-	setTimeout(() => {
-		wrappers.forEach((wrapper) => {
-			const text = wrapper.querySelector(".form__plan-price-text");
-			const skeleton = wrapper.querySelector(".plan-price-skeleton");
-			if (text && skeleton) {
-				skeleton.style.opacity = "0";
-				setTimeout(() => {
-					skeleton.style.display = "none";
-					text.style.visibility = "visible";
-				}, 120);
-			}
-		});
-                if (typeof filtrarModalidades === "function") {
-                        filtrarModalidades();
-                }
-	}, 500);
+        form.autocomplete = "off";
+        form.setAttribute("data-form-type", "other");
+        form.setAttribute("name", `form-garantia-${Date.now().toString(36)}`);
+
+        const sectionToken = `nostore-${Date.now().toString(36)}`;
+
+        const fieldsToDisable = [
+                "nombre_apellidos",
+                "dni",
+                "telefono",
+                "correo",
+                "direccion",
+                "localidad",
+                "provincia",
+                "codigo_postal",
+        ];
+
+        fieldsToDisable.forEach((id) => {
+                const input = document.getElementById(id);
+                if (!input) return;
+                const blocker = `${sectionToken}-${id}`;
+                input.setAttribute("autocomplete", `section-${sectionToken} off`);
+                input.setAttribute("name", blocker);
+                input.setAttribute("data-form-type", "other");
+                input.setAttribute("autocorrect", "off");
+                input.setAttribute("autocapitalize", "off");
+                input.setAttribute("spellcheck", "false");
+        });
 }
 
 /**
@@ -122,6 +134,7 @@ function shimmerOnDurationChange() {
  */
 function init() {
         setupClearButtons();
+        disableAddressAutocomplete();
         setTodayForGarantia();
         handleDateInputs();
 
@@ -143,15 +156,6 @@ function init() {
                 });
         }
 
-	// Cambio de duración: shimmer + render
-        const duracionSelect = document.getElementById("duracion");
-        if (duracionSelect) {
-                const shimmerDurationListener = (e) => {
-                        e.preventDefault();
-                        shimmerOnDurationChange();
-                };
-                duracionSelect.addEventListener("change", shimmerDurationListener);
-        }
 }
 
 export default {

@@ -3,62 +3,98 @@
 
 /**
  * Wrapper central para leer la configuración expuesta desde el servidor.
- * Preferimos window.__GO_CONFIG__ y solo si no existe caemos a legacy.
  */
 
 function getRawConfig() {
-	return window.__GO_CONFIG__ || {};
+        return window.__GO_CONFIG__ || {};
 }
 
 // REST
 export function getRestRoot() {
-	return (
-		(getRawConfig().rest && getRawConfig().rest.root) ||
-		(window.GO_REST && window.GO_REST.root) ||
-		"/wp-json/"
-	);
+        return getRawConfig().rest?.root || "/wp-json/";
 }
 
 export function getRestNonce() {
-	return (
-		(getRawConfig().rest && getRawConfig().rest.nonce) ||
-		(window.GO_REST && window.GO_REST.nonce) ||
-		""
-	);
+        return getRawConfig().rest?.nonce || "";
 }
 
 // Usuario / rol
 export function getUserRole() {
-	const roleFromConfig = getRawConfig().user?.role;
-	if (roleFromConfig) return String(roleFromConfig).toLowerCase();
-	if (typeof window.userRole !== "undefined")
-		return String(window.userRole).toLowerCase();
-	return "";
+        const roleFromConfig = getRawConfig().user?.role;
+        if (roleFromConfig) return String(roleFromConfig).toLowerCase();
+        return "";
 }
 
 export function getCurrentUserId() {
-	const idFromConfig = getRawConfig().user?.currentUserId;
-	if (typeof idFromConfig !== "undefined" && idFromConfig !== null) {
-		const n = Number(idFromConfig);
-		if (!isNaN(n)) return n;
-	}
-	if (typeof window.currentUserId !== "undefined") {
-		const n = Number(window.currentUserId);
-		if (!isNaN(n)) return n;
-	}
-	return null;
+        const idFromConfig = getRawConfig().user?.currentUserId;
+        if (typeof idFromConfig !== "undefined" && idFromConfig !== null) {
+                const n = Number(idFromConfig);
+                if (!isNaN(n)) return n;
+        }
+        return null;
+}
+
+export function getCurrentUserCompanyName() {
+        const nameFromConfig = getRawConfig().user?.companyName;
+        return typeof nameFromConfig === "string" ? nameFromConfig : "";
+}
+
+export function getCurrentUserCompanyTypeLabel() {
+        const typeLabel = getRawConfig().user?.companyTypeLabel;
+        return typeof typeLabel === "string" ? typeLabel : "";
 }
 
 // Íconos
 export function getIcon(name) {
-	if (
-		getRawConfig().icons &&
-		typeof getRawConfig().icons[name] !== "undefined"
-	) {
-		return getRawConfig().icons[name];
-	}
-	if (window.GO_ICONS && typeof window.GO_ICONS[name] !== "undefined") {
-		return window.GO_ICONS[name];
-	}
-	return "";
+        const icons = getRawConfig().icons || {};
+        if (typeof icons[name] !== "undefined") {
+                return icons[name];
+        }
+        return "";
+}
+
+export function getPageUrl(key) {
+        if (!key) return "";
+        const pages = getRawConfig().pages || {};
+        const value = pages[key];
+        return typeof value === "string" ? value : "";
+}
+
+export function getMisGarantiasUrl() {
+        return getPageUrl("misGarantias");
+}
+
+export function getNuevaGarantiaUrl() {
+        return getPageUrl("nuevaGarantia");
+}
+
+export function getDocumentUrl(key) {
+        if (!key) return "";
+        const docs = getRawConfig().documents || {};
+        const value = docs[key];
+        return typeof value === "string" ? value : "";
+}
+
+export function getProformaFeatureSettings() {
+        const raw = getRawConfig().proforma || {};
+        const allowedRoles = Array.isArray(raw.allowedRoles)
+                ? raw.allowedRoles.map((role) => String(role || "").toLowerCase())
+                : [];
+        const professionalPaymentModes = Array.isArray(raw.professionalPaymentModes)
+                ? raw.professionalPaymentModes.map((mode) => String(mode || "").toLowerCase())
+                : [];
+        const options = raw.options && typeof raw.options === "object" ? raw.options : {};
+        return {
+                enabled: raw.enabled !== false,
+                allowedRoles,
+                professionalPaymentModes,
+                highlightTotal:
+                        raw.highlightTotal === undefined
+                                ? true
+                                : Boolean(raw.highlightTotal),
+                showOnSuccessScreen: options.mostrar_en_pantalla_exito === true,
+                showInDocuments: options.mostrar_en_documentos === true,
+                sendByEmail: options.enviar_por_correo === true,
+                options,
+        };
 }

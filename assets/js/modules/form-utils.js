@@ -27,11 +27,100 @@ export function logDebug(...args) {
 // 1. Límites y constantes globales
 // ===============================
 export const numericLimits = {
-	kilometros: { min: 0, max: 400000 },
-	precio_venta: { min: 0, max: 999999 },
-	cilindrada: { min: 0, max: 99999 },
-	potencia: { min: 0, max: 3000 },
+        kilometros: { min: 0, max: Infinity },
+        precio_venta: { min: 0, max: 999999 },
+        cilindrada: { min: 0, max: 9000 },
+        potencia: { min: 0, max: 3000 },
 };
+
+// -- Listas y helpers de validación avanzada
+const SUSPICIOUS_EMAIL_TERMS = new Set([
+        "notiene",
+        "nohay",
+        "sincorreo",
+        "sinemail",
+        "sinmail",
+        "sin_mail",
+        "sinmail",
+        "nocorreo",
+        "nomail",
+        "noemail",
+        "ninguno",
+        "ninguna",
+        "nada",
+        "vacio",
+        "vacío",
+        "unknown",
+        "desconocido",
+        "anonimo",
+        "anonymous",
+        "placeholder",
+        "fake",
+        "falso",
+        "temporal",
+        "tmp",
+        "tempa",
+        "temporalmail",
+        "prueba",
+        "test",
+        "testing",
+        "demo",
+        "ejemplo",
+        "example",
+        "dummy",
+        "spam",
+        "trash",
+        "basura",
+        "guest",
+        "usuario",
+        "user",
+        "cliente",
+        "na",
+        "noaplica",
+        "naoaplica",
+        "nodisponible",
+        "nodato",
+        "nodatos",
+        "sindato",
+        "nodata",
+        "sindata",
+        "sinregistro",
+        "sincuenta",
+        "sinuser",
+        "hola",
+        "hello",
+        "qwerty",
+        "qwer",
+        "asdf",
+        "asdfg",
+        "asdfgh",
+        "zxcv",
+        "zxcvb",
+        "zxcvbn",
+        "qwertyui",
+        "qwertyuiop",
+        "abc",
+        "abcd",
+        "abcde",
+        "xyz",
+        "123",
+        "1234",
+        "12345",
+        "123456",
+        "000",
+        "0000",
+        "111",
+        "999",
+]);
+
+const SUSPICIOUS_GENERIC_LOCALPARTS = new Set([
+        "correo",
+        "email",
+        "mail",
+        "user",
+        "usuario",
+        "cliente",
+]);
 
 export const IVA_PORCENTAJE = 21;
 
@@ -93,9 +182,124 @@ export const PROVINCIAS = new Set([
 // Cache auxiliar para startsWith sobre provincias clásicas
 const PROVINCIAS_ARRAY = Array.from(PROVINCIAS);
 export function provinciaEmpiezaPor(prefijo) {
-	if (!prefijo) return false;
-	const upper = prefijo.toUpperCase();
-	return PROVINCIAS_ARRAY.some((p) => p.startsWith(upper));
+        if (!prefijo) return false;
+        const upper = prefijo.toUpperCase();
+        return PROVINCIAS_ARRAY.some((p) => p.startsWith(upper));
+}
+
+// Normaliza cadenas (acentos y mayúsculas) para validaciones heurísticas
+function normalizeString(str) {
+        return str
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toLowerCase();
+}
+
+// Detecta si la cadena es una repetición del mismo carácter (mínimo len)
+function isFullRepetition(str, minLength = 3) {
+        if (!str || str.length < minLength) return false;
+        return new Set(str).size === 1;
+}
+
+function hasSequentialRun(str, minLength = 5) {
+        if (!str || str.length < minLength) return false;
+        const sequences = [
+                "0123456789",
+                "9876543210",
+                "abcdefghijklmnopqrstuvwxyz",
+                "zyxwvutsrqponmlkjihgfedcba",
+        ];
+        return sequences.some((seq) => seq.includes(str));
+}
+
+function hasNumericStepRun(str, minLength = 6) {
+        if (!str || str.length < minLength) return false;
+        for (let start = 0; start <= str.length - minLength; start++) {
+                let asc = true;
+                let desc = true;
+                for (let i = start + 1; i < start + minLength; i++) {
+                        const prev = Number.parseInt(str[i - 1], 10);
+                        const curr = Number.parseInt(str[i], 10);
+                        if (Number.isNaN(prev) || Number.isNaN(curr)) {
+                                asc = false;
+                                desc = false;
+                                break;
+                        }
+                        asc = asc && curr - prev === 1;
+                        desc = desc && prev - curr === 1;
+                }
+                if (asc || desc) return true;
+        }
+        return false;
+}
+
+function hasSuspiciousEmailLocalPart(localPartRaw) {
+        if (!localPartRaw) return false;
+        const normalized = normalizeString(localPartRaw);
+        const compact = normalized.replace(/[._+-]/g, "");
+        const tokens = normalized.split(/[._+-]+/).filter(Boolean);
+
+        if (SUSPICIOUS_EMAIL_TERMS.has(compact) || SUSPICIOUS_EMAIL_TERMS.has(normalized)) {
+                return true;
+        }
+
+        if (tokens.length > 0) {
+                const allSuspicious = tokens.every(
+                        (t) => SUSPICIOUS_EMAIL_TERMS.has(t) || SUSPICIOUS_GENERIC_LOCALPARTS.has(t)
+                );
+                if (allSuspicious) return true;
+                if (tokens.some((t) => SUSPICIOUS_EMAIL_TERMS.has(t))) return true;
+        }
+
+        const baseWithoutDigits = compact.replace(/\d+/g, "");
+        if (SUSPICIOUS_GENERIC_LOCALPARTS.has(baseWithoutDigits)) {
+                        const tailDigits = compact.slice(baseWithoutDigits.length);
+                        if (tailDigits === "" || /^0{1,4}$/.test(tailDigits) || /^1{1,4}$/.test(tailDigits) || /^1234?$/.test(tailDigits)) {
+                                return true;
+                        }
+        }
+
+        if (isFullRepetition(compact)) return true;
+
+        const keyboardStarts = ["asdf", "asdfg", "qwert", "qwerty", "zxcv", "zxcvb", "zxcvbn", "qwer", "poiuy", "lkjh", "mnbv"];
+        if (keyboardStarts.some((seq) => compact.startsWith(seq) && compact.length >= seq.length + 1)) {
+                return true;
+        }
+
+        if (hasSequentialRun(compact, 5) || hasNumericStepRun(compact, 6)) {
+                return true;
+        }
+
+        if (compact.length <= 2 && /^[a-z0-9]+$/.test(compact)) {
+                return true;
+        }
+
+        return false;
+}
+
+function isSuspiciousPhone(value) {
+        if (!value || value.length !== 9) return false;
+
+        if (/^(\d)\1{8}$/.test(value)) return true; // todos iguales
+        if (/^[6789](\d)\1{7}$/.test(value)) return true; // prefijo válido + resto repetido
+
+        const block1 = value.slice(0, 3);
+        const block2 = value.slice(3, 6);
+        const block3 = value.slice(6);
+        if (block1 === block2 && block2 === block3) return true; // 3 bloques idénticos
+        if (block1 === block2 || block2 === block3 || block1 === block3) return true;
+
+        if (hasNumericStepRun(value, 7)) return true; // escaleras largas
+
+        if (/(\d)\1{4,}$/.test(value)) return true; // tramo final muy repetido
+
+        const zeroCounterMatch = value.match(/^([6789])0{6,7}(\d{1,3})$/);
+        if (zeroCounterMatch) {
+                const tail = Number.parseInt(zeroCounterMatch[2], 10);
+                if (!Number.isNaN(tail) && tail >= 1 && tail <= 199) return true;
+        }
+
+        return false;
 }
 
 // ===============================
@@ -131,19 +335,99 @@ export function eurosString(valor) {
 
 export function parseNumericFormValue(val) {
 	if (typeof val === "number") return val;
-	if (!val && val !== 0) return 0;
-	return Number(
-		String(val).replace(/\./g, "").replace(/,/g, ".").replace(/\s/g, "")
-	);
+	if (val === null || val === undefined) return 0;
+
+	let str = String(val).trim();
+	if (!str) return 0;
+
+	// Elimina espacios y separadores no numéricos comunes (salvo signo y separadores decimales)
+	str = str.replace(/\s/g, "");
+
+	const lastComma = str.lastIndexOf(",");
+	const lastDot = str.lastIndexOf(".");
+	let decimalSeparator = null;
+
+	if (lastComma !== -1 && lastDot !== -1) {
+		decimalSeparator = lastComma > lastDot ? "," : ".";
+	} else if (lastComma !== -1) {
+		const decimalsLength = str.length - lastComma - 1;
+		decimalSeparator = decimalsLength === 3 && lastComma > 0 ? null : ",";
+	} else if (lastDot !== -1) {
+		const decimalsLength = str.length - lastDot - 1;
+		decimalSeparator = decimalsLength === 3 && lastDot > 0 ? null : ".";
+	}
+
+	const thousandSeparator = decimalSeparator === "," ? "." : ",";
+
+	if (decimalSeparator) {
+		const thousandRegex = new RegExp(`\\${thousandSeparator}`, "g");
+		str = str.replace(thousandRegex, "");
+		if (decimalSeparator !== ".") {
+			const decimalRegex = new RegExp(`\\${decimalSeparator}`, "g");
+			str = str.replace(decimalRegex, ".");
+		}
+	} else {
+		// No se detectó separador decimal; elimina ambos separadores comunes como miles.
+		str = str.replace(/[.,]/g, "");
+	}
+
+	// Elimina cualquier carácter que no sea dígito o signo negativo.
+	str = str.replace(/[^0-9.-]/g, "");
+
+	const parsed = Number(str);
+	return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 export function getAntiguedadFromDate(fechaISO) {
 	if (!fechaISO) return null;
-	const fecha = new Date(fechaISO);
+	const partes = typeof fechaISO === "string" ? fechaISO.split("-") : null;
+	let fecha = null;
+	if (
+		Array.isArray(partes) &&
+		partes.length >= 3 &&
+		partes.every((p) => /^\d+$/.test(p))
+	) {
+		const [anio, mes, dia] = partes.map((p) => Number.parseInt(p, 10));
+		fecha = new Date(anio, (mes || 1) - 1, dia || 1);
+	} else {
+		fecha = new Date(fechaISO);
+	}
 	if (isNaN(fecha.getTime())) return null;
-	const anioMatriculacion = fecha.getFullYear();
-	const anioActual = new Date().getFullYear();
-	return anioActual - anioMatriculacion;
+
+	const hoy = new Date();
+	const fechaMatriculacion = new Date(
+		fecha.getFullYear(),
+		fecha.getMonth(),
+		fecha.getDate()
+	);
+
+	if (hoy < fechaMatriculacion) return 0;
+
+	let anos = hoy.getFullYear() - fechaMatriculacion.getFullYear();
+	let meses = hoy.getMonth() - fechaMatriculacion.getMonth();
+	let dias = hoy.getDate() - fechaMatriculacion.getDate();
+	let baseDias = 0;
+
+	if (dias < 0) {
+		const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+		baseDias = mesAnterior.getDate();
+		dias += baseDias;
+		meses -= 1;
+	} else {
+		baseDias = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
+	}
+
+	if (meses < 0) {
+		meses += 12;
+		anos -= 1;
+	}
+
+	const mesesTotales = anos * 12 + meses;
+	const fraccionMes = baseDias > 0 ? dias / baseDias : 0;
+	const antiguedad = (mesesTotales + fraccionMes) / 12;
+
+	const normalizado = antiguedad < 0 ? 0 : antiguedad;
+	return Number(normalizado.toFixed(6));
 }
 
 // ===============================
@@ -194,6 +478,23 @@ export function formatNumber(input) {
 	}
 }
 
+export function formatCurrency(input, keepTrailingComma = false) {
+	if (!input) return;
+	let value = input.value.replace(/\./g, "").replace(/[^0-9,]/g, "");
+	const endsWithComma = value.endsWith(",");
+	const parts = value.split(",");
+	const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+	const decPart = parts.slice(1).join("");
+	if (decPart) {
+		input.value = `${intPart},${decPart}`;
+	} else if (keepTrailingComma && endsWithComma) {
+		input.value = `${intPart},`;
+	} else {
+		input.value = intPart;
+	}
+	logDebug(`formatCurrency(${input.id}): ${input.value}`);
+}
+
 // ===============================
 // 5. Validaciones de campos básicos y específicos
 // ===============================
@@ -238,28 +539,54 @@ export function validateDNI(value) {
 	return dni.slice(-1) === validLetter;
 }
 
+const COMPANY_NIF_INITIALS = new Set(["A", "B", "C", "D", "E", "F", "G", "H", "J", "N", "P", "Q", "R", "S", "U", "V", "W"]);
+const COMPANY_NIF_REGEX = /^[ABCDEFGHJNPQRSUVW]\d{7}[A-Z0-9]$/;
+
 export function validateDNIField(input, showError, isHardCheck = false) {
 	if (!input) return false;
 	const value = input.value.trim().toUpperCase();
+	let documentType = null;
 	if (value.length > 0) {
 		if (/^[0-9]/.test(value)) {
+			documentType = "dni";
 			const digitsPart = value.slice(0, Math.min(value.length, 8));
 			if (!/^\d*$/.test(digitsPart)) {
 				if (showError) setError(input, "DNI incorrecto");
 				return false;
 			}
 		} else if (/^[XYZ]/.test(value)) {
+			documentType = "dni";
 			const numberPart = value.slice(1, Math.min(value.length, 8));
 			if (!/^\d*$/.test(numberPart)) {
 				if (showError) setError(input, "DNI incorrecto");
+				return false;
+			}
+		} else if (/^[A-Z]/.test(value)) {
+			const initial = value[0];
+			if (!COMPANY_NIF_INITIALS.has(initial)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+			documentType = "nif";
+			const numericSegment = value.slice(1, Math.min(value.length, 8));
+			if (!/^\d*$/.test(numericSegment)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+			if (value.length === 9 && !/^[A-Z0-9]$/.test(value.slice(-1))) {
+				if (showError) setError(input, "NIF no válido");
 				return false;
 			}
 		} else {
 			if (showError) setError(input, "Formato inicial inválido");
 			return false;
 		}
-		if (value.length === 9 && !validateDNI(value)) {
+		if (documentType === "dni" && value.length === 9 && !validateDNI(value)) {
 			if (showError) setError(input, "DNI incorrecto");
+			return false;
+		}
+		if (documentType === "nif" && value.length === 9 && !COMPANY_NIF_REGEX.test(value)) {
+			if (showError) setError(input, "NIF no válido");
 			return false;
 		}
 	}
@@ -272,8 +599,18 @@ export function validateDNIField(input, showError, isHardCheck = false) {
 			if (showError) setError(input, "Debe tener 9 caracteres");
 			return false;
 		}
-		if (!validateDNI(value)) {
-			if (showError) setError(input, "Letra de control incorrecta.");
+		if (documentType === "dni") {
+			if (!validateDNI(value)) {
+				if (showError) setError(input, "Letra de control incorrecta.");
+				return false;
+			}
+		} else if (documentType === "nif") {
+			if (!COMPANY_NIF_REGEX.test(value)) {
+				if (showError) setError(input, "NIF no válido");
+				return false;
+			}
+		} else {
+			if (showError) setError(input, "Formato inicial inválido");
 			return false;
 		}
 	}
@@ -283,25 +620,26 @@ export function validateDNIField(input, showError, isHardCheck = false) {
 
 // -- TELÉFONO
 export function validateTelefonoField(input, showError, isHardCheck = false) {
-	if (!input) return false;
-	const value = input.value.trim();
-	const firstDigit = value[0] || "";
-	if (value.length > 0 && !/^[6-9]$/.test(firstDigit)) {
-		if (showError) setError(input, "Debe empezar con 6-9");
-		return false;
-	}
-	if (isHardCheck) {
-		if (value === "") {
-			if (showError) setError(input, "Este campo es obligatorio.");
-			return false;
-		}
-		if (!/^[6-9]\d{8}$/.test(value)) {
-			if (showError) setError(input, "Teléfono inválido (9 dígitos)");
-			return false;
-		}
-	}
-	clearError(input);
-	return true;
+        if (!input) return false;
+        const value = input.value.trim();
+        const firstDigit = value[0] || "";
+        if (value.length > 0 && !/^[6-9]$/.test(firstDigit)) {
+                if (showError)
+                        setError(input, isHardCheck ? "Teléfono no válido" : "Debe empezar con 6-9");
+                return false;
+        }
+        if (isHardCheck) {
+                if (value === "") {
+                        if (showError) setError(input, "Este campo es obligatorio.");
+                        return false;
+                }
+                if (!/^[6-9]\d{8}$/.test(value) || isSuspiciousPhone(value)) {
+                        if (showError) setError(input, "Teléfono no válido");
+                        return false;
+                }
+        }
+        clearError(input);
+        return true;
 }
 
 // -- CÓDIGO POSTAL
@@ -339,17 +677,23 @@ export function validateCodigoPostalField(
 
 // -- EMAIL
 export function validateEmailField(input, showError, isHardCheck = false) {
-	if (!input) return false;
-	const value = input.value.trim();
-	if (isHardCheck) {
-		const emailRegex = /^[A-Za-z0-9._%-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-		if (!emailRegex.test(value)) {
-			if (showError) setError(input, "Correo electrónico inválido.");
-			return false;
-		}
-	}
-	clearError(input);
-	return true;
+        if (!input) return false;
+        const value = input.value.trim();
+        if (isHardCheck) {
+                const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+                if (!emailRegex.test(value)) {
+                        if (showError) setError(input, "Correo electrónico no válido");
+                        return false;
+                }
+
+                const localPart = value.split("@")[0];
+                if (hasSuspiciousEmailLocalPart(localPart)) {
+                        if (showError) setError(input, "Correo electrónico no válido");
+                        return false;
+                }
+        }
+        clearError(input);
+        return true;
 }
 
 // -- CAMPO OBLIGATORIO
@@ -434,7 +778,7 @@ export function isPotentiallyValidMatricula(value) {
 	if (/^\d{0,4}$/.test(value)) {
 		return true;
 	}
-	if (/^\d{4}[BCDFGHJKLMNPSTVWXYZ]{0,3}$/i.test(value)) {
+	if (/^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{0,3}$/i.test(value)) {
 		return true;
 	}
 	// Clásica
@@ -457,7 +801,7 @@ export function isPotentiallyValidMatricula(value) {
 		if (/^\d{1,4}$/.test(rest)) return true;
 		if (!/^\d{4}/.test(rest.slice(0, 4))) continue;
 		const tail = rest.slice(4);
-		if (/^[BCDFGHJKLMNPSTVWXYZ]{1,2}$/i.test(tail)) return true;
+		if (/^[BCDFGHJKLMNPRSTVWXYZ]{1,2}$/i.test(tail)) return true;
 	}
 	return false;
 }
@@ -469,7 +813,7 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 	input.value = value;
 
 	// Moderna completa: 4 dígitos + 3 letras válidas
-	const modernFullRegex = /^\d{4}[BCDFGHJKLMNPSTVWXYZ]{3}$/i;
+	const modernFullRegex = /^\d{4}[BCDFGHJKLMNPRSTVWXYZ]{3}$/i;
 
 	if (!isHardCheck) {
 		// Caracteres no permitidos
@@ -574,12 +918,12 @@ export function validateMatriculaField(input, showError, isHardCheck = false) {
 				);
 			return false;
 		}
-		if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPSTVWXYZ]/.test(letter1))) {
+		if (!(/[AEIOU]/.test(letter1) || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter1))) {
 			if (showError)
 				setError(input, `Error en la parte numérica de la matrícula clásica.`);
 			return false;
 		}
-		if (!(letter2 === "U" || /[BCDFGHJKLMNPSTVWXYZ]/.test(letter2))) {
+		if (!(letter2 === "U" || /[BCDFGHJKLMNPRSTVWXYZ]/.test(letter2))) {
 			if (showError)
 				setError(input, `La última letra no puede ser A, E, I, O ni un número`);
 			return false;
