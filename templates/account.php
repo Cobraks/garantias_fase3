@@ -217,6 +217,8 @@ if ($is_director_account) {
     $channel_label = 'Gestoría';
 } elseif ($is_commercial_account) {
     $channel_label = 'Comercial';
+} elseif ($is_individual_account) {
+    $channel_label = $role_labels[0] ?? 'Particular';
 } elseif ($company_type_label !== '') {
     $channel_label = $company_type_label;
 }
