@@ -64,7 +64,7 @@ class PushMessageFactory
             : admin_url('users.php');
 
         return [
-            'title' => __('Inicio de sesión registrado', 'garantias-online-360vo'),
+            'title' => __('Inicio de sesión', 'garantias-online-360vo'),
             'body'  => $actor_label !== ''
                 ? sprintf(__('El usuario %s ha iniciado sesión.', 'garantias-online-360vo'), $actor_label)
                 : __('Se ha registrado un nuevo inicio de sesión.', 'garantias-online-360vo'),
