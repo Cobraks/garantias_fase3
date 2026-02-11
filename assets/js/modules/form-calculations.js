@@ -9,9 +9,10 @@ import {
        debounce,
 } from "./form-utils.js";
 import {
-	fetchOfertas,
-	updateOfertasList,
-	ofertaAplicaAmodalidad,
+        fetchOfertas,
+        ofertaAplicaAmodalidad,
+        refreshOfertasDisplay,
+        showOfertasLoading,
 } from "./form-ofertas.js";
 import {
         getEffectiveUserRole,
@@ -414,44 +415,8 @@ function renderRecargosHTML({
 }
 
 // --------- OFERTAS: INTEGRACIÓN CON MODALIDADES ---------
-let _refreshOfertasPending = null;
-
-async function refreshOfertasDisplay(attempt = 0) {
-	if (isProfesional()) {
-		await ensureCurrentUserIdReady();
-	}
-
-	const usuarioId = getEffectiveProfessionalId();
-	if (!usuarioId) {
-		if (isProfesional() && attempt < 5) {
-			if (ENABLE_LOGS)
-				log(
-					"[refreshOfertasDisplay] usuarioId aún null, reintentando",
-					"intento:",
-					attempt + 1
-				);
-			setTimeout(() => refreshOfertasDisplay(attempt + 1), 200);
-		}
-		return;
-	}
-
-	if (_refreshOfertasPending) clearTimeout(_refreshOfertasPending);
-        _refreshOfertasPending = setTimeout(async () => {
-                const ofertas = getCurrentOfertas() || (await fetchOfertas(usuarioId));
-                setCurrentOfertas(ofertas);
-                const modalidadesVisibles = Array.isArray(getVisibleModalidades())
-                        ? getVisibleModalidades()
-                        : [];
-                await updateOfertasList(usuarioId, modalidadesVisibles);
-		if (ENABLE_LOGS)
-			log("Refresco ofertas tras cambio de filtros:", {
-				user: usuarioId,
-				modalidadesVisibles,
-			});
-	}, 50);
-}
-
 async function updateOfertas() {
+        showOfertasLoading();
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();
         }
@@ -459,37 +424,10 @@ async function updateOfertas() {
         const usuarioId = getEffectiveProfessionalId();
         if (!usuarioId) return;
 
-        const [ofertas] = await Promise.all([
-                fetchOfertas(usuarioId),
-                filtrarModalidadesBase(),
-        ]);
-        setCurrentOfertas(ofertas || []);
-
-        const modalidadesVisibles = Array.isArray(getVisibleModalidades())
-                ? getVisibleModalidades()
-                : [];
-
-        await updateOfertasList(usuarioId, modalidadesVisibles);
-
-        if (ENABLE_LOGS) log("Ofertas activas usuario:", ofertas);
-
+        await fetchOfertas(usuarioId, { force: true });
+        await filtrarModalidadesBase();
         document.dispatchEvent(new Event("ofertas:actualizadas"));
 }
-
-// Legacy / compatibilidad temporal
-
-// observar cambio de vendedor
-const usuarioRolInput = document.getElementById("usuario-rol");
-if (usuarioRolInput) {
-	usuarioRolInput.addEventListener("change", updateOfertas);
-}
-
-setTimeout(async () => {
-	if (isProfesional()) {
-		await ensureCurrentUserIdReady();
-	}
-	updateOfertas();
-}, 0);
 
 // --------- MODALIDADES (con cache) ---------
 let modalidadesCache = {
@@ -1211,13 +1149,18 @@ async function initCalculations() {
                 "cambio",
                 "doble_motor",
         ];
-	dynamicFields.forEach((id) => {
-		const input = document.getElementById(id);
-		if (input) {
-			input.addEventListener("input", filtrarModalidades);
-			input.addEventListener("change", filtrarModalidades);
-		}
-	});
+        dynamicFields.forEach((id) => {
+                const input = document.getElementById(id);
+                if (input) {
+                        const handler = () => {
+                                showPlanPriceSkeleton();
+                                showOfertasLoading();
+                                filtrarModalidades();
+                        };
+                        input.addEventListener("input", handler);
+                        input.addEventListener("change", handler);
+                }
+        });
 	const inputTipoVehiculo = document.getElementById("tipo_vehiculo");
 	if (inputTipoVehiculo) {
 		inputTipoVehiculo.addEventListener("change", (e) => {
@@ -1241,39 +1184,45 @@ async function initCalculations() {
 			setTimeout(filtrarModalidades, 10);
 		});
 	}
-	const inputDuracion = document.getElementById("duracion");
-	if (inputDuracion) {
-		inputDuracion.addEventListener("change", filtrarModalidades);
-	}
-	const inputVendedor = document.getElementById("usuario-rol");
-	if (inputVendedor) {
-		inputVendedor.addEventListener("change", async () => {
-			document
-				.querySelectorAll(".plan-price-value, .plan-price-value-noiva")
-				.forEach((el) => {
-					el.textContent = "";
-				});
-			document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
-				el.style.display = "inline-block";
-			});
-			await updateOfertas();
-		});
-	}
+        // Helper para indicar visualmente que los precios se están recalculando
+        function showPlanPriceSkeleton() {
+                document
+                        .querySelectorAll(".form__plan-price-text")
+                        .forEach((el) => {
+                                el.style.display = "none";
+                        });
+                document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
+                        el.style.display = "inline-block";
+                        el.style.opacity = "1";
+                });
+        }
 
-	const inputCheckIVA = document.getElementById("check-iva");
-	if (inputCheckIVA) {
-		inputCheckIVA.addEventListener("change", () => {
-			document
-				.querySelectorAll(".plan-price-value, .plan-price-value-noiva")
-				.forEach((el) => {
-					el.textContent = "";
-				});
-			document.querySelectorAll(".plan-price-skeleton").forEach((el) => {
-				el.style.display = "inline-block";
-			});
-			setTimeout(filtrarModalidades, 50);
-		});
-	}
+        const inputVendedor = document.getElementById("usuario-rol");
+        if (inputVendedor) {
+                inputVendedor.addEventListener("change", async () => {
+                        showPlanPriceSkeleton();
+                        showOfertasLoading();
+                        await updateOfertas();
+                });
+        }
+
+        const inputCheckIVA = document.getElementById("check-iva");
+        if (inputCheckIVA) {
+                inputCheckIVA.addEventListener("change", () => {
+                        showPlanPriceSkeleton();
+                        showOfertasLoading();
+                        setTimeout(filtrarModalidades, 50);
+                });
+        }
+
+        const inputCanalVenta = document.getElementById("canal-venta");
+        if (inputCanalVenta) {
+                inputCanalVenta.addEventListener("change", () => {
+                        showPlanPriceSkeleton();
+                        showOfertasLoading();
+                        setTimeout(filtrarModalidades, 50);
+                });
+        }
 
         if (isProfesional()) {
                 await ensureCurrentUserIdReady();
@@ -1300,5 +1249,3 @@ export {
 export default initCalculations;
 
 /*renderPlans hace uso parcial de descuentos sin esperar el await de su cálculo real; considera convertir parte de esa lógica en async/await para que el precio refleje correctamente los descuentos si es necesario.*/
-
-/*Funciona hasta aquí*/
