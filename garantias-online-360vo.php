@@ -3,7 +3,7 @@
  * Plugin Name: Garantías Online - 360VO
  * Description: Sistema completo de gestión de garantías de vehículos. Permite registrar, gestionar y consultar garantías de manera sencilla y eficiente.
  * Plugin URI:  https://360vo.es/
- * Version:     6.4.5
+ * Version:     6.4.6
  * Author:      Carlos Marín - 360VO
  * Text Domain: garantias-online-360vo
  */
