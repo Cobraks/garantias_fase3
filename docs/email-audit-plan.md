@@ -47,8 +47,35 @@
 - [ ] Plan de observabilidad: métricas de envíos/minuto, errores SMTP, latencia.
 - [ ] Plan de despliegue gradual y rollback.
 
+## Checklist adicional — Hallazgos Wordfence / Plesk (pendiente)
+
+### Núcleo WordPress (bajo riesgo reportado)
+- [ ] **Cleartext `wp_signups.activation_key` (Low, Core)**: verificar si el sitio usa multisitio/alta en `wp_signups`; si no aplica, documentar excepción y mantener ignorado con justificación.
+- [ ] **Blind SSRF no autenticado (Low, Core)**: aplicar mitigaciones de endurecimiento en superficie pública (XML-RPC/pingbacks y validación de callbacks externos) sin bloquear APIs REST necesarias del plugin.
+
+### Endurecimiento Plesk (compatibilidad con el plugin)
+- [ ] Bloquear acceso a archivos confidenciales (`.user.ini`, `.env`, backups, etc.) manteniendo funcionamiento de Wordfence WAF (`auto_prepend_file`).
+- [ ] Revisar **Bloqueo XML-RPC** y **Desactivar pingbacks** (en principio compatibles con el plugin).
+- [ ] Revisar **Prohibir ejecución PHP en `wp-content/uploads`** (en principio compatible con el plugin).
+- [ ] Validar **Activar protección de bots** para no interferir con endpoints REST de registro y garantía.
+- [ ] Revisar **Bloquear análisis author** para confirmar que no rompe navegación ni rutas personalizadas.
+
+## Matriz rápida de compatibilidad (plugin 360VO)
+- ✅ Seguro de activar normalmente:
+  - Bloquear exploración de directorios.
+  - Bloquear acceso a `wp-config.php`.
+  - Bloquear acceso a archivos confidenciales (`.user.ini`, `.htaccess`, `.htpasswd`, etc.).
+  - Prohibir ejecución PHP en `wp-includes`.
+  - Prohibir ejecución PHP en `wp-content/uploads`.
+  - Desactivar edición de archivos en WP-Admin.
+  - Desactivar pingbacks.
+- ⚠️ Activar con validación posterior (staging/ventana controlada):
+  - Bloquear XML-RPC (normalmente no necesario para este plugin, pero validar si hay apps externas).
+  - Protección de bots (puede afectar formularios/REST públicos del registro).
+  - Bloquear análisis `author` (normalmente compatible, validar SEO/tema).
+
 ## Registro de avance
-- **Estado actual:** planificación inicial creada.
-- **Próximo hito:** completar Fase 1 (inventario técnico completo de envíos).
-- **Responsable sugerido:** equipo backend/plugin.
+- **Estado actual:** planificación inicial creada y ampliada con checklist de hardening Wordfence/Plesk.
+- **Próximo hito:** completar Fase 1 (inventario técnico completo de envíos) + validación de compatibilidad de medidas de hardening en staging.
+- **Responsable sugerido:** equipo backend/plugin + sysadmin Plesk.
 - **Última actualización:** 2026-03-05.
