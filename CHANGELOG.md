@@ -1,5 +1,13 @@
 # Historial de cambios
 
+## 6.4.6 - 2026-03-05
+- Bump de versión del plugin.
+- Añadido plan/checklist de auditoría en `docs/email-audit-plan.md` para continuidad del trabajo y traspaso de contexto.
+
+## 6.4.5 - 2026-03-05
+- Añadida A Coruña en Provincias.
+- Nombres de provincias adaptados según lengua cooficial.
+
 ## 6.4.4 - 2026-09-26
 - Resumen de garantías: tendencias con diferencias absolutas y ajuste del fondo global.
 
