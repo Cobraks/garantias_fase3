@@ -16,6 +16,7 @@ class GuaranteeColumns
             'pendiente_pago' => __('Pendiente de pago', 'garantias-online-360vo'),
             'sin_finalizar'  => __('Sin finalizar', 'garantias-online-360vo'),
             'activada'       => __('Activada', 'garantias-online-360vo'),
+            'en_revision'    => __('En revisión', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
         ];
