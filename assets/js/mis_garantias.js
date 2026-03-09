@@ -4782,6 +4782,13 @@ const ADD_DOC_KEY = "add-document";
                                                 });
                                                 return;
                                         }
+                                        if (context && context.intent === "correct-guarantee") {
+                                                if (context.editUrl) {
+                                                        window.open(context.editUrl, "_blank", "noopener");
+                                                }
+                                                closeModal();
+                                                return;
+                                        }
                                         closeModal();
                                         if (context) {
                                                 runConfirmRequest(context);
@@ -5125,9 +5132,24 @@ const ADD_DOC_KEY = "add-document";
                                 '[data-management-action="cancel-for-nonpayment"]',
                                 !isCancelled
                         );
+                        const shouldEnableCertificateCorrection =
+                                !isCancelled && estadoClase !== "sin-finalizar";
                         toggleAction(
                                 '[data-management-action="certificate-error"]',
-                                !isCancelled
+                                !isCancelled,
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                !shouldEnableCertificateCorrection
+                                        );
+                                        btn.toggleAttribute(
+                                                "disabled",
+                                                !shouldEnableCertificateCorrection
+                                        );
+                                }
                         );
                         const shouldDisableInvoice = estadoClase === "sin-finalizar";
                         toggleAction(
@@ -5878,6 +5900,50 @@ const ADD_DOC_KEY = "add-document";
                                                         requireInvoiceReference: true,
                                                         invoiceSendEmailChecked: true,
                                                         invoiceShowDocumentationChecked: true,
+                                                });
+                                        }
+                                        return;
+                                }
+
+                                if (action === "certificate-error") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const uuid = cachedDetail && cachedDetail.uuid ? cachedDetail.uuid : "";
+                                        if (!uuid) {
+                                                return;
+                                        }
+                                        const editUrl = `${newGuaranteeUrl}?uuid=${encodeURIComponent(uuid)}`;
+                                        pendingConfirmContext = {
+                                                intent: "correct-guarantee",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                uuid,
+                                                editUrl,
+                                        };
+                                        if (confirmModalController) {
+                                                confirmModalController.open({
+                                                        title: "Corregir datos",
+                                                        subtitle,
+                                                        message:
+                                                                "Sigue estos pasos para corregir la garantía: <ol><li>El estado cambiará a <strong>en revisión</strong>.</li><li>Edita la garantía en una nueva pestaña.</li><li>Finaliza de nuevo la garantía para regenerar el PDF.</li><li>Elige si quieres notificar al cliente por correo electrónico.</li></ol>",
+                                                        note: `Enlace de edición: <a href="${escapeHtml(
+                                                                editUrl
+                                                        )}" target="_blank" rel="noopener">abrir garantía para editar</a>.`,
+                                                        confirmLabel: "Abrir edición",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "Confirmo que quiero iniciar la corrección de datos.",
+                                                        enableNotify: true,
+                                                        notifyChecked: true,
+                                                        notifyLabel:
+                                                                "Notificar al cliente por correo al finalizar la corrección.",
+                                                        notifyNote:
+                                                                "Esta preferencia se aplicará en el siguiente paso de implementación del flujo.",
                                                 });
                                         }
                                         return;
