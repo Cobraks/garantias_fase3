@@ -58,8 +58,12 @@ function setTodayForGarantia() {
 
         const today = new Date().toISOString().split("T")[0];
         const autoFillEnabled = fechaInput.dataset.autoFill !== "0";
+        const allowPastDate = fechaInput.dataset.allowPastDate === "1";
 
-        fechaInput.min = today;
+        if (!allowPastDate) {
+                fechaInput.min = today;
+        }
+
         if (autoFillEnabled && !fechaInput.value) {
                 fechaInput.value = today;
         }
