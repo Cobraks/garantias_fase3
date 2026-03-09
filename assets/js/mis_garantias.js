@@ -4185,6 +4185,110 @@ const ADD_DOC_KEY = "add-document";
                                 });
                 }
 
+                function runStartCorrectionRequest(context, ui = {}) {
+                        if (!context) return;
+
+                        const { id, panel, row, editUrl } = context;
+                        const { confirmBtn = null, closeModal = () => {}, statusEl = null } = ui;
+
+                        if (!id) {
+                                closeModal();
+                                return;
+                        }
+
+                        const setStatus = (message) => {
+                                if (!statusEl) return;
+                                statusEl.textContent = message || "";
+                                statusEl.hidden = !message;
+                        };
+
+                        if (confirmBtn) {
+                                confirmBtn.disabled = true;
+                                confirmBtn.textContent = "Iniciando corrección…";
+                        }
+                        setStatus("Actualizando estado de la garantía…");
+
+                        fetch(
+                                `${restRoot}go/v1/guarantees/${encodeURIComponent(id)}/start-correction`,
+                                {
+                                        method: "POST",
+                                        headers: {
+                                                "Content-Type": "application/json",
+                                                "X-WP-Nonce": restNonce,
+                                        },
+                                        body: JSON.stringify({
+                                                notify_customer: Boolean(context.notifyCustomer),
+                                        }),
+                                }
+                        )
+                                .then(async (res) => {
+                                        if (!res.ok) {
+                                                let message = "No se ha podido iniciar la corrección.";
+                                                try {
+                                                        const data = await res.json();
+                                                        if (data && typeof data.message === "string" && data.message.trim() !== "") {
+                                                                message = data.message;
+                                                        }
+                                                } catch (jsonError) {
+                                                        // ignore
+                                                }
+                                                throw new Error(message);
+                                        }
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const detailResponse = json?.detail || null;
+                                        const detailId = String(id);
+                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                                        const targetRow = row && row.isConnected ? row : findRowById(detailId);
+
+                                        if (detailResponse) {
+                                                const data = normalizeDetailData(detailResponse);
+                                                detailCache.set(detailId, data);
+                                                const estadoValue = (data.estado && data.estado.value) || "en_revision";
+                                                const estadoLabel = (data.estado && data.estado.label) || "En revisión";
+                                                const estadoClase = normalizeEstadoClase(estadoValue);
+
+                                                if (targetRow) {
+                                                        targetRow.dataset.estadoclase = estadoClase;
+                                                        targetRow.dataset.estado = estadoLabel;
+                                                        const badge = targetRow.querySelector(".guarantees-list__badge");
+                                                        if (badge) {
+                                                                badge.className =
+                                                                        "guarantees-list__badge guarantees-list__badge--" + estadoClase;
+                                                                badge.textContent = estadoLabel;
+                                                        }
+                                                }
+
+                                                if (targetPanel) {
+                                                        targetPanel.dataset.estado = estadoLabel;
+                                                        targetPanel.dataset.estadoclase = estadoClase;
+                                                        syncManagementActionsAvailability(targetPanel);
+                                                }
+                                        }
+
+                                        closeModal();
+                                        if (editUrl) {
+                                                window.open(editUrl, "_blank", "noopener");
+                                        }
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido iniciar la corrección.";
+                                        setStatus(message);
+                                        if (confirmBtn) {
+                                                confirmBtn.disabled = false;
+                                                confirmBtn.textContent = "Abrir garantía para editar";
+                                        }
+                                        const targetPanel = panel || document.querySelector(".guarantee-detail__panel.active");
+                                        if (targetPanel) {
+                                                showDetailToast(targetPanel, message);
+                                        }
+                                });
+                }
+
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
                 document.addEventListener("click", handleShareClick);
@@ -4782,6 +4886,14 @@ const ADD_DOC_KEY = "add-document";
                                                 });
                                                 return;
                                         }
+                                        if (context && context.intent === "correct-guarantee") {
+                                                runStartCorrectionRequest(context, {
+                                                        confirmBtn,
+                                                        closeModal,
+                                                        statusEl,
+                                                });
+                                                return;
+                                        }
                                         closeModal();
                                         if (context) {
                                                 runConfirmRequest(context);
@@ -5125,9 +5237,42 @@ const ADD_DOC_KEY = "add-document";
                                 '[data-management-action="cancel-for-nonpayment"]',
                                 !isCancelled
                         );
+                        const shouldEnableCertificateCorrection =
+                                !isCancelled && estadoClase !== "sin-finalizar";
                         toggleAction(
                                 '[data-management-action="certificate-error"]',
-                                !isCancelled
+                                !isCancelled,
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                !shouldEnableCertificateCorrection
+                                        );
+                                        btn.toggleAttribute(
+                                                "disabled",
+                                                !shouldEnableCertificateCorrection
+                                        );
+                                }
+                        );
+                        const shouldDisableContinueGuarantee = shouldEnableCertificateCorrection;
+                        toggleAction(
+                                '[data-management-action="continue-guarantee-form"]',
+                                !isCancelled,
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                shouldDisableContinueGuarantee
+                                        );
+                                        btn.toggleAttribute(
+                                                "disabled",
+                                                shouldDisableContinueGuarantee
+                                        );
+                                }
                         );
                         const shouldDisableInvoice = estadoClase === "sin-finalizar";
                         toggleAction(
@@ -5883,6 +6028,50 @@ const ADD_DOC_KEY = "add-document";
                                         return;
                                 }
 
+                                if (action === "certificate-error") {
+                                        const safePlate = escapeHtml(context.plate || "");
+                                        const subtitle = safePlate
+                                                ? `Garantía <strong>${safePlate}</strong>`
+                                                : "";
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const uuid = cachedDetail && cachedDetail.uuid ? cachedDetail.uuid : "";
+                                        if (!uuid) {
+                                                return;
+                                        }
+                                        const editUrl = `${newGuaranteeUrl}?uuid=${encodeURIComponent(uuid)}`;
+                                        pendingConfirmContext = {
+                                                intent: "correct-guarantee",
+                                                btn: actionButton,
+                                                panel: context.panel,
+                                                id: context.id,
+                                                row: context.row,
+                                                uuid,
+                                                editUrl,
+                                        };
+                                        if (confirmModalController) {
+                                                confirmModalController.open({
+                                                        title: "Corregir datos de la garantía",
+                                                        subtitle,
+                                                        message:
+                                                                "Antes de continuar, revisa el flujo de corrección: <ol><li>La garantía pasará al estado <strong>En revisión</strong>.</li><li>Se abrirá la garantía en una nueva pestaña para su edición.</li><li>Corrige los datos necesarios y completa de nuevo la contratación.</li><li>Al finalizar, se regenerará el PDF con la información actualizada.</li></ol>",
+                                                        note: `Acceso directo a edición: <a href="${escapeHtml(
+                                                                editUrl
+                                                        )}" target="_blank" rel="noopener">abrir garantía para editar</a>.`,
+                                                        confirmLabel: "Abrir garantía para editar",
+                                                        requireAcknowledgement: true,
+                                                        checkboxLabel:
+                                                                "He revisado los pasos y quiero iniciar la corrección.",
+                                                        enableNotify: true,
+                                                        notifyChecked: false,
+                                                        notifyLabel:
+                                                                "Notificar al cliente por correo al finalizar la corrección.",
+                                                        notifyNote:
+                                                                "Se guardará tu preferencia para el envío en el flujo de corrección.",
+                                                });
+                                        }
+                                        return;
+                                }
+
                                 if (action === "delete-guarantee") {
                                         const safePlate = escapeHtml(context.plate || "");
                                         const subtitle = safePlate
@@ -5995,6 +6184,16 @@ const ADD_DOC_KEY = "add-document";
                                                 context.id
                                         )}&action=edit`;
                                         window.open(editUrl, "_blank", "noopener");
+                                        return;
+                                }
+
+                                if (action === "continue-guarantee-form") {
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const uuid = cachedDetail && cachedDetail.uuid ? cachedDetail.uuid : "";
+                                        if (!uuid) {
+                                                return;
+                                        }
+                                        window.location.href = `${newGuaranteeUrl}?uuid=${encodeURIComponent(uuid)}`;
                                 }
                         }
                 }
@@ -10100,6 +10299,7 @@ const ADD_DOC_KEY = "add-document";
                 "validacion-pendiente": "#1e40af",
                 "pend-cobro": "#1e40af",
                 "sin-finalizar": "#1f2937",
+                "en-revision": "#1e40af",
                 "expira-pronto": "#92400e",
                 expirada: "#991b1b",
                 cancelada: "#991b1b",
@@ -10110,6 +10310,7 @@ const ADD_DOC_KEY = "add-document";
                 "validacion-pendiente": "#93c5fd",
                 "pend-cobro": "#93c5fd",
                 "sin-finalizar": "#1f2937",
+                "en-revision": "#93c5fd",
                 "expira-pronto": "#fcd34d",
                 expirada: "#fca5a5",
                 cancelada: "#fca5a5",

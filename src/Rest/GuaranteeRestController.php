@@ -290,6 +290,20 @@ class GuaranteeRestController
         );
         register_rest_route(
             self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/start-correction',
+            [
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'start_correction'],
+                    'permission_callback' => [__CLASS__, 'can_edit'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
             '/' . self::BASE . '/(?P<id>\d+)/certificate',
             [
                 [
@@ -2732,6 +2746,72 @@ class GuaranteeRestController
         return new WP_REST_Response(['detail' => $snapshot], 200);
     }
 
+    public static function start_correction($request)
+    {
+        if (! is_user_logged_in()) {
+            return new WP_Error(
+                'rest_forbidden',
+                __('No tienes permisos para realizar esta acción.', 'garantias-online-360vo'),
+                ['status' => 401]
+            );
+        }
+
+        $id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($id <= 0) {
+            return new WP_Error(
+                'invalid_id',
+                __('Identificador de garantía no válido.', 'garantias-online-360vo'),
+                ['status' => 400]
+            );
+        }
+
+        $current_user = wp_get_current_user();
+        if (! self::user_can_manage_corrections($current_user)) {
+            return new WP_Error(
+                'rest_forbidden_role',
+                __('No tienes permisos para iniciar una corrección.', 'garantias-online-360vo'),
+                ['status' => 403]
+            );
+        }
+
+        $detail = self::get_detail_data($id, true);
+        if (! is_array($detail) || empty($detail)) {
+            return new WP_Error(
+                'not_found',
+                __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'),
+                ['status' => 404]
+            );
+        }
+
+        $current_state = sanitize_key((string) ($detail['estado']['value'] ?? ''));
+        if ($current_state === 'sin_finalizar') {
+            return new WP_Error(
+                'invalid_state',
+                __('La garantía ya está en estado Sin finalizar.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        if ($current_state === 'cancelada') {
+            return new WP_Error(
+                'invalid_state',
+                __('No puedes iniciar una corrección sobre una garantía cancelada.', 'garantias-online-360vo'),
+                ['status' => 409]
+            );
+        }
+
+        update_post_meta($id, 'estado_garantia_estado_contratacion', 'en_revision');
+        update_post_meta(
+            $id,
+            'estado_garantia_notificar_cliente_correccion',
+            ! empty($request->get_param('notify_customer')) ? '1' : '0'
+        );
+
+        $snapshot = self::collect_detail_snapshot($id, true);
+
+        return new WP_REST_Response(['detail' => $snapshot], 200);
+    }
+
     public static function trash_item($request)
     {
         if (!is_user_logged_in()) {
@@ -3947,8 +4027,15 @@ class GuaranteeRestController
                 $estado['estado_contratacion'] = 'activada';
             } elseif (isset($data['estado_garantia']['estado_contratacion'])) {
                 $ec = sanitize_text_field($data['estado_garantia']['estado_contratacion']);
-                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto', 'cancelada'];
+                $valid = ['pendiente_pago', 'validacion_pendiente', 'sin_finalizar', 'activada', 'expirada', 'expira_pronto', 'cancelada', 'en_revision'];
                 if (in_array($ec, $valid, true)) {
+                    if ($ec === 'en_revision' && ! self::user_can_manage_corrections($current_user)) {
+                        return new WP_Error(
+                            'rest_forbidden_role',
+                            __('No tienes permisos para asignar el estado En revisión.', 'garantias-online-360vo'),
+                            ['status' => 403]
+                        );
+                    }
                     $estado['estado_contratacion'] = $ec;
                 }
             }
@@ -5221,6 +5308,7 @@ class GuaranteeRestController
             'expirada'              => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'         => __('Expira pronto', 'garantias-online-360vo'),
             'pendiente_cobro'       => __('Pend. Domiciliación', 'garantias-online-360vo'),
+            'en_revision'           => __('En revisión', 'garantias-online-360vo'),
         ];
     }
 
@@ -5582,6 +5670,22 @@ class GuaranteeRestController
             || in_array('go_garantias', $roles, true);
     }
 
+    private static function user_can_manage_corrections($user): bool
+    {
+        if (! ($user instanceof \WP_User)) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')) {
+            return true;
+        }
+
+        $roles = array_map('strtolower', (array) $user->roles);
+
+        return in_array('go_director_comercial', $roles, true)
+            || in_array('go_garantias', $roles, true);
+    }
+
     private static function parse_date_ymd($raw): ?DateTimeImmutable
     {
         $value = is_string($raw) ? trim($raw) : '';
@@ -5908,6 +6012,7 @@ class GuaranteeRestController
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
             'cancelada'      => __('Cancelada', 'garantias-online-360vo'),
+            'en_revision'    => __('En revisión', 'garantias-online-360vo'),
         ];
         $estado_label = $estado_labels[$estado] ?? $estado;
 
@@ -6999,6 +7104,7 @@ class GuaranteeRestController
             'activada'       => __('Activada', 'garantias-online-360vo'),
             'expirada'       => __('Expirada', 'garantias-online-360vo'),
             'expira_pronto'  => __('Expira pronto', 'garantias-online-360vo'),
+            'en_revision'   => __('En revisión', 'garantias-online-360vo'),
         ];
         $estados = array_map(function ($e) use ($estado_labels, $estado_counts) {
             return [

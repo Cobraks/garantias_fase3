@@ -1262,6 +1262,18 @@ if (($is_admin_user || $is_director || $is_professional)
                                         <span class="management-actions__description"><?php esc_html_e('Acceder al panel de administración', 'garantias-online-360vo'); ?></span>
                                     </span>
                                 </button>
+                                <button
+                                    type="button"
+                                    class="management-actions__item"
+                                    data-management-action="continue-guarantee-form">
+                                    <span class="management-actions__icon" aria-hidden="true">
+                                        <?php echo Svg::icon('continue'); ?>
+                                    </span>
+                                    <span class="management-actions__copy">
+                                        <strong><?php esc_html_e('Continuar formulario de garantía', 'garantias-online-360vo'); ?></strong>
+                                        <span class="management-actions__description"><?php esc_html_e('Abrir el flujo normal para continuar la garantía', 'garantias-online-360vo'); ?></span>
+                                    </span>
+                                </button>
                             </div>
                             <div class="management-actions__inline" role="presentation">
                                 <button
