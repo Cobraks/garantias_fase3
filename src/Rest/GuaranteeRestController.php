@@ -3477,6 +3477,27 @@ class GuaranteeRestController
         $is_professional_role = in_array('go_profesional', $normalized_roles, true)
             || in_array('profesional', $normalized_roles, true);
         $is_particular_role = self::roles_include_particular($normalized_roles);
+        $can_set_retroactive_start = self::user_can_set_retroactive_start_date($current_user);
+
+        if (isset($data['estado_garantia']) && is_array($data['estado_garantia'])) {
+            $incoming_start = isset($data['estado_garantia']['inicio'])
+                ? self::parse_date_ymd((string) $data['estado_garantia']['inicio'])
+                : null;
+
+            if ($incoming_start instanceof DateTimeImmutable && ! $can_set_retroactive_start) {
+                $today = new DateTimeImmutable(
+                    'today',
+                    function_exists('wp_timezone') ? wp_timezone() : null
+                );
+                if ($incoming_start < $today) {
+                    return new WP_Error(
+                        'retroactive_start_date_forbidden',
+                        __('No puedes seleccionar una fecha de inicio anterior a hoy.', 'garantias-online-360vo'),
+                        ['status' => 403]
+                    );
+                }
+            }
+        }
 
         if ($is_professional_role || $is_particular_role) {
             if (!isset($data['garantia_contratada']) || !is_array($data['garantia_contratada'])) {
@@ -5542,6 +5563,39 @@ class GuaranteeRestController
         }
 
         return false;
+    }
+
+
+    private static function user_can_set_retroactive_start_date($user): bool
+    {
+        if (! ($user instanceof \WP_User)) {
+            return false;
+        }
+
+        if (user_can($user, 'manage_options')) {
+            return true;
+        }
+
+        $roles = array_map('strtolower', (array) $user->roles);
+
+        return in_array('go_director_comercial', $roles, true)
+            || in_array('go_garantias', $roles, true);
+    }
+
+    private static function parse_date_ymd($raw): ?DateTimeImmutable
+    {
+        $value = is_string($raw) ? trim($raw) : '';
+        if ($value === '') {
+            return null;
+        }
+
+        $timezone = function_exists('wp_timezone') ? wp_timezone() : null;
+        $date = DateTimeImmutable::createFromFormat('Y-m-d', $value, $timezone ?: null);
+        if (! ($date instanceof DateTimeImmutable)) {
+            return null;
+        }
+
+        return $date->setTime(0, 0, 0);
     }
 
     private static function normalize_vendor_meta($raw)

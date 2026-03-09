@@ -1863,20 +1863,26 @@ export default function initAutosave() {
                                 draftUuid = data.uuid;
                                 localStorage.setItem("go_draft_uuid", draftUuid);
                         }
-                        const vehiclePayload = data.detail?.datos_vehiculo || data.datos_vehiculo || {};
+                        const detailPayload = data.detail && typeof data.detail === "object" ? data.detail : data;
+                        const vehiclePayload = detailPayload?.datos_vehiculo || data.datos_vehiculo || {};
                         const map = {
-                                tipo_vehiculo: data.tipo_value,
-                                marca: data.marca,
-                                modelo: data.modelo,
-                                kilometros: data.kilometros,
+                                tipo_vehiculo: detailPayload.tipo_value,
+                                marca: detailPayload.marca,
+                                modelo: detailPayload.modelo,
+                                kilometros: detailPayload.kilometros,
                                 fecha_primera_matriculacion: normalizeDateForInput(
-                                        data.fecha_primera_matriculacion ??
-                                                data.primera_matriculacion ??
+                                        detailPayload.primera_matriculacion_raw ??
+                                                detailPayload.fecha_primera_matriculacion ??
+                                                detailPayload.primera_matriculacion ??
                                                 vehiclePayload.fecha_primera_matriculacion ??
                                                 vehiclePayload.primera_matriculacion
                                 ),
                                 fecha_inicio_garantia: normalizeDateForInput(
-                                        data.desde ??
+                                        detailPayload.desde ??
+                                                detailPayload.fecha_inicio ??
+                                                detailPayload.fecha_inicio_garantia ??
+                                                detailPayload?.estado_garantia?.inicio ??
+                                                data.desde ??
                                                 data.fecha_inicio ??
                                                 data.fecha_inicio_garantia ??
                                                 data?.estado_garantia?.inicio
