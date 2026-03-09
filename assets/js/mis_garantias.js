@@ -5927,23 +5927,24 @@ const ADD_DOC_KEY = "add-document";
                                         };
                                         if (confirmModalController) {
                                                 confirmModalController.open({
-                                                        title: "Corregir datos",
+                                                        title: "Corregir datos de la garantía",
                                                         subtitle,
                                                         message:
-                                                                "Sigue estos pasos para corregir la garantía: <ol><li>El estado cambiará a <strong>en revisión</strong>.</li><li>Edita la garantía en una nueva pestaña.</li><li>Finaliza de nuevo la garantía para regenerar el PDF.</li><li>Elige si quieres notificar al cliente por correo electrónico.</li></ol>",
-                                                        note: `Enlace de edición: <a href="${escapeHtml(
+                                                                "Antes de continuar, revisa el flujo de corrección: <ol><li>Se abrirá la garantía en una nueva pestaña para su edición.</li><li>Corrige los datos necesarios y completa de nuevo la contratación.</li><li>Al finalizar, se regenerará el PDF con la información actualizada.</li><li>Podrás decidir después si notificar al cliente por correo.</li></ol>",
+                                                        note: `Acceso directo a edición: <a href="${escapeHtml(
                                                                 editUrl
                                                         )}" target="_blank" rel="noopener">abrir garantía para editar</a>.`,
-                                                        confirmLabel: "Abrir edición",
+                                                        confirmLabel: "Abrir garantía para editar",
                                                         requireAcknowledgement: true,
                                                         checkboxLabel:
-                                                                "Confirmo que quiero iniciar la corrección de datos.",
+                                                                "He revisado los pasos y quiero iniciar la corrección.",
                                                         enableNotify: true,
-                                                        notifyChecked: true,
+                                                        notifyChecked: false,
+                                                        notifyDisabled: true,
                                                         notifyLabel:
-                                                                "Notificar al cliente por correo al finalizar la corrección.",
+                                                                "Notificar al cliente por correo al finalizar la corrección (próximamente).",
                                                         notifyNote:
-                                                                "Esta preferencia se aplicará en el siguiente paso de implementación del flujo.",
+                                                                "La notificación automática por correo aún no está activa en este flujo.",
                                                 });
                                         }
                                         return;
