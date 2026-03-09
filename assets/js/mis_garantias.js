@@ -5256,6 +5256,24 @@ const ADD_DOC_KEY = "add-document";
                                         );
                                 }
                         );
+                        const shouldDisableContinueGuarantee = shouldEnableCertificateCorrection;
+                        toggleAction(
+                                '[data-management-action="continue-guarantee-form"]',
+                                !isCancelled,
+                                (btn) => {
+                                        if (!btn) {
+                                                return;
+                                        }
+                                        btn.classList.toggle(
+                                                "management-actions__item--disabled",
+                                                shouldDisableContinueGuarantee
+                                        );
+                                        btn.toggleAttribute(
+                                                "disabled",
+                                                shouldDisableContinueGuarantee
+                                        );
+                                }
+                        );
                         const shouldDisableInvoice = estadoClase === "sin-finalizar";
                         toggleAction(
                                 '[data-management-action="generate-invoice"]',
@@ -6166,6 +6184,16 @@ const ADD_DOC_KEY = "add-document";
                                                 context.id
                                         )}&action=edit`;
                                         window.open(editUrl, "_blank", "noopener");
+                                        return;
+                                }
+
+                                if (action === "continue-guarantee-form") {
+                                        const cachedDetail = context.id ? detailCache.get(context.id) : null;
+                                        const uuid = cachedDetail && cachedDetail.uuid ? cachedDetail.uuid : "";
+                                        if (!uuid) {
+                                                return;
+                                        }
+                                        window.location.href = `${newGuaranteeUrl}?uuid=${encodeURIComponent(uuid)}`;
                                 }
                         }
                 }
