@@ -214,6 +214,7 @@ class PushNotificationService
             'user.verification_verified',
             'guarantee.created',
             'guarantee.contracted',
+            'guarantee.certificate_regenerated',
             'guarantee.cancelled',
             'guarantee.note_added',
             'payment.recorded',
