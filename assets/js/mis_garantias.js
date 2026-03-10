@@ -442,6 +442,7 @@ const ADD_DOC_KEY = "add-document";
                 const userIcon = '<svg height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M234-276q51-39 114-61.5T480-360q69 0 132 22.5T726-276q35-41 54.5-93T800-480q0-133-93.5-226.5T480-800q-133 0-226.5 93.5T160-480q0 59 19.5 111t54.5 93Zm246-164q-59 0-99.5-40.5T340-580q0-59 40.5-99.5T480-720q59 0 99.5 40.5T620-580q0 59-40.5 99.5T480-440Zm0 360q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q53 0 100-15.5t86-44.5q-39-29-86-44.5T480-280q-53 0-100 15.5T294-220q39 29 86 44.5T480-160Zm0-360q26 0 43-17t17-43q0-26-17-43t-43-17q-26 0-43 17t-17 43q0 26 17 43t43 17Zm0-60Zm0 360Z"/></svg>';
                 const warningIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/></svg>';
                 const heartIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Zm0-108q96-86 158-147.5t98-107q36-45.5 50-81t14-70.5q0-60-40-100t-100-40q-47 0-87 26.5T518-680h-76q-15-41-55-67.5T300-774q-60 0-100 40t-40 100q0 35 14 70.5t50 81q36 45.5 98 107T480-228Zm0-273Z"/></svg>';
+                const heartFilledIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z"/></svg>';
                 const shareIcon = '<svg height="24" viewBox="0 -960 960 960" width="24" fill="currentColor"><path d="M680-80q-50 0-85-35t-35-85q0-6 3-28L282-392q-16 15-37 23.5t-45 8.5q-50 0-85-35t-35-85q0-50 35-85t85-35q24 0 45 8.5t37 23.5l281-164q-2-7-2.5-13.5T560-760q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35q-24 0-45-8.5T598-672L317-508q2 7 2.5 13.5t.5 14.5q0 8-.5 14.5T317-452l281 164q16-15 37-23.5t45-8.5q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-200q0-17-11.5-28.5T680-240q-17 0-28.5 11.5T640-200q0 17 11.5 28.5T680-160ZM200-440q17 0 28.5-11.5T240-480q0-17-11.5-28.5T200-520q-17 0-28.5 11.5T160-480q0 17 11.5 28.5T200-440Zm480-280q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0 520ZM200-480Zm480-280Z"/></svg>';
                 const personAddIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M720-400v-120H600v-80h120v-120h80v120h120v80H800v120h-80Zm-360-80q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-160v-112q0-34 17.5-62.5T104-378q62-31 126-46.5T360-440q66 0 130 15.5T616-378q29 15 46.5 43.5T680-272v112H40Zm80-80h480v-32q0-11-5.5-20T580-306q-54-27-109-40.5T360-360q-56 0-111 13.5T140-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T440-640q0-33-23.5-56.5T360-720q-33 0-56.5 23.5T280-640q0 33 23.5 56.5T360-560Zm0-80Zm0 400Z"/></svg>';
                 const personIcon = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M480-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM160-160v-112q0-34 17.5-62.5T224-378q62-31 126-46.5T480-440q66 0 130 15.5T736-378q29 15 46.5 43.5T800-272v112H160Zm80-80h480v-32q0-11-5.5-20T700-306q-54-27-109-40.5T480-360q-56 0-111 13.5T260-306q-9 5-14.5 14t-5.5 20v32Zm240-320q33 0 56.5-23.5T560-640q0-33-23.5-56.5T480-720q-33 0-56.5 23.5T400-640q0 33 23.5 56.5T480-560Zm0-80Zm0 400Z"/></svg>';
@@ -773,6 +774,9 @@ const ADD_DOC_KEY = "add-document";
                 const searchInput = searchField
                         ? searchField.querySelector("input")
                         : null;
+                const favoritesFilterToggle = searchField
+                        ? searchField.querySelector('[data-filter="favorites"]')
+                        : null;
                 const bottomBar = document.querySelector("[data-mobile-bottom-bar]");
                 const bottomNavButtons = bottomBar
                         ? Array.from(
@@ -817,6 +821,7 @@ const ADD_DOC_KEY = "add-document";
                 let selectedVendorType = "";
                 let selectedPaymentMethod = "";
                 let selectedCommercial = "";
+                let favoritesOnly = false;
                 let selectedYear = "";
                 let selectedMonthFrom = "";
                 let selectedMonthTo = "";
@@ -2306,7 +2311,8 @@ const ADD_DOC_KEY = "add-document";
                                 selectedConcesionario ||
                                 selectedVendorType ||
                                 selectedPaymentMethod ||
-                                selectedCommercial
+                                selectedCommercial ||
+                                favoritesOnly
                         ) {
                                 return true;
                         }
@@ -2315,6 +2321,37 @@ const ADD_DOC_KEY = "add-document";
                         }
                         return false;
                 };
+
+                function syncFavoritesFilterToggle(animate = false) {
+                        if (!favoritesFilterToggle) {
+                                return;
+                        }
+                        favoritesFilterToggle.dataset.active = favoritesOnly ? "true" : "false";
+                        favoritesFilterToggle.setAttribute("aria-pressed", favoritesOnly ? "true" : "false");
+                        if (animate) {
+                                favoritesFilterToggle.classList.remove("is-burst");
+                                void favoritesFilterToggle.offsetWidth;
+                                favoritesFilterToggle.classList.add("is-burst");
+                        }
+                }
+
+                function updateFavoriteButtonVisual(button, isFavorite, animate = false) {
+                        if (!button) return;
+                        button.classList.toggle("is-favorite", Boolean(isFavorite));
+                        button.setAttribute(
+                                "aria-label",
+                                isFavorite ? "Eliminar de favoritos" : "Guardar en favoritos"
+                        );
+                        const icon = button.querySelector(".guarantee-detail__btn-icon");
+                        if (icon) {
+                                icon.innerHTML = isFavorite ? heartFilledIcon : heartIcon;
+                        }
+                        if (animate) {
+                                button.classList.remove("is-burst");
+                                void button.offsetWidth;
+                                button.classList.add("is-burst");
+                        }
+                }
 
                 const updateResetVisibility = () => {
                         if (!resetFiltersBtn) {
@@ -2595,6 +2632,7 @@ const ADD_DOC_KEY = "add-document";
                         orderBy = "",
                         orderDirection = "",
                         commercial = "",
+                        favorites = "",
                         year = "",
                         monthFrom = "",
                         monthTo = ""
@@ -2610,6 +2648,7 @@ const ADD_DOC_KEY = "add-document";
                                 orderBy,
                                 orderDirection,
                                 commercial,
+                                favorites,
                                 year,
                                 monthFrom,
                                 monthTo,
@@ -3699,6 +3738,7 @@ const ADD_DOC_KEY = "add-document";
                                                 panel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 panel.dataset.plan = data.plan || rowData.plan || "";
+                                                panel.dataset.favorite = data.is_favorite ? "1" : "0";
                                                 hydrateManagementDataset(panel, data, rowData);
                                                 syncManagementDetailFields(panel);
                                                 syncPdfModalDocs(panel);
@@ -3847,6 +3887,7 @@ const ADD_DOC_KEY = "add-document";
                                         panel.dataset.matricula =
                                                 data.matricula || rowData.matricula || "";
                                         panel.dataset.plan = data.plan || rowData.plan || "";
+                                        panel.dataset.favorite = data.is_favorite ? "1" : "0";
                                         panel.dataset.estado = newEstadoLabel;
                                         panel.dataset.estadoclase = newEstadoClase;
                                         panel.dataset.loadedId = id;
@@ -4126,6 +4167,7 @@ const ADD_DOC_KEY = "add-document";
                                                 targetPanel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 targetPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                targetPanel.dataset.favorite = data.is_favorite ? "1" : "0";
                                                 targetPanel.dataset.estado = newEstadoLabel;
                                                 targetPanel.dataset.estadoclase = newEstadoClase;
                                                 targetPanel.dataset.loadedId = id;
@@ -4217,7 +4259,8 @@ const ADD_DOC_KEY = "add-document";
                                                 "X-WP-Nonce": restNonce,
                                         },
                                         body: JSON.stringify({
-                                                notify_customer: Boolean(context.notifyCustomer),
+                                                notify_customer: !Boolean(context.notifyCustomer),
+                                                suppress_customer_emails: Boolean(context.notifyCustomer),
                                         }),
                                 }
                         )
@@ -4291,6 +4334,7 @@ const ADD_DOC_KEY = "add-document";
 
                 document.addEventListener("click", handleConfirmClick);
                 document.addEventListener("click", handleTransferReportClick);
+                document.addEventListener("click", handleFavoriteClick);
                 document.addEventListener("click", handleShareClick);
                 document.addEventListener("click", handleTrashClick);
                 document.addEventListener("click", handleManagementClicks);
@@ -4917,6 +4961,93 @@ const ADD_DOC_KEY = "add-document";
                         return `${base}${separator}matricula=${encodeURIComponent(normalized)}`;
                 }
 
+                function handleFavoriteClick(event) {
+                        const filterBtn = event.target.closest('[data-filter="favorites"]');
+                        if (filterBtn) {
+                                event.preventDefault();
+                                favoritesOnly = !favoritesOnly;
+                                syncFavoritesFilterToggle(true);
+                                applyFilters();
+                                updateResetVisibility();
+                                return;
+                        }
+
+                        const btn = event.target.closest(".guarantee-detail__btn--fav");
+                        if (!btn) {
+                                return;
+                        }
+
+                        event.preventDefault();
+                        let panel = btn.closest(".guarantee-detail__panel");
+                        if (!panel) {
+                                const context = getActiveManagementContext();
+                                panel = context.panel;
+                        }
+                        if (!panel) {
+                                return;
+                        }
+
+                        const id = panel.dataset.loadedId || "";
+                        if (!id) {
+                                return;
+                        }
+
+                        const currentlyFavorite =
+                                panel.dataset.favorite === "1" || btn.classList.contains("is-favorite");
+                        const nextFavorite = !currentlyFavorite;
+                        const method = nextFavorite ? "POST" : "DELETE";
+
+                        btn.disabled = true;
+
+                        fetch(`${restRoot}go/v1/guarantees/${encodeURIComponent(id)}/favorite`, {
+                                method,
+                                headers: {
+                                        "Content-Type": "application/json",
+                                        "X-WP-Nonce": restNonce,
+                                },
+                        })
+                                .then(async (res) => {
+                                        if (!res.ok) {
+                                                throw new Error("No se ha podido actualizar favorito.");
+                                        }
+                                        return res.json();
+                                })
+                                .then((json) => {
+                                        const favorite = Boolean(json && json.is_favorite);
+                                        panel.dataset.favorite = favorite ? "1" : "0";
+                                        updateFavoriteButtonVisual(btn, favorite, true);
+                                        const row = findRowById(String(id));
+                                        if (row) {
+                                                row.dataset.favorite = favorite ? "1" : "0";
+                                        }
+                                        const cached = detailCache.get(String(id));
+                                        if (cached && typeof cached === "object") {
+                                                cached.is_favorite = favorite;
+                                                detailCache.set(String(id), cached);
+                                        }
+                                        showDetailToast(
+                                                panel,
+                                                favorite
+                                                        ? "Añadida a favoritos."
+                                                        : "Eliminada de favoritos."
+                                        );
+
+                                        if (favoritesOnly && !favorite) {
+                                                applyFilters();
+                                        }
+                                })
+                                .catch((error) => {
+                                        const message =
+                                                error instanceof Error && error.message
+                                                        ? error.message
+                                                        : "No se ha podido actualizar favorito.";
+                                        showDetailToast(panel, message);
+                                })
+                                .finally(() => {
+                                        btn.disabled = false;
+                                });
+                }
+
                 function handleShareClick(event) {
                         const btn = event.target.closest(
                                 ".guarantee-detail__btn--share"
@@ -5105,6 +5236,14 @@ const ADD_DOC_KEY = "add-document";
                         if (managementCoverageLabel) {
                                 const coverage = panel.dataset?.coverage || "";
                                 managementCoverageLabel.textContent = coverage || "—";
+                        }
+                        const favButton = panel.querySelector(".guarantee-detail__btn--fav");
+                        if (favButton) {
+                                updateFavoriteButtonVisual(
+                                        favButton,
+                                        panel.dataset?.favorite === "1",
+                                        false
+                                );
                         }
                 }
 
@@ -6053,20 +6192,17 @@ const ADD_DOC_KEY = "add-document";
                                                         title: "Corregir datos de la garantía",
                                                         subtitle,
                                                         message:
-                                                                "Antes de continuar, revisa el flujo de corrección: <ol><li>La garantía pasará al estado <strong>En revisión</strong>.</li><li>Se abrirá la garantía en una nueva pestaña para su edición.</li><li>Corrige los datos necesarios y completa de nuevo la contratación.</li><li>Al finalizar, se regenerará el PDF con la información actualizada.</li></ol>",
-                                                        note: `Acceso directo a edición: <a href="${escapeHtml(
-                                                                editUrl
-                                                        )}" target="_blank" rel="noopener">abrir garantía para editar</a>.`,
-                                                        confirmLabel: "Abrir garantía para editar",
+                                                                "Vas a continuar el formulario para regenerar el certificado con los datos corregidos. La garantía pasará a <strong>En revisión</strong> hasta finalizar el proceso.",
+                                                        confirmLabel: "Continuar formulario de garantía",
                                                         requireAcknowledgement: true,
                                                         checkboxLabel:
                                                                 "He revisado los pasos y quiero iniciar la corrección.",
                                                         enableNotify: true,
                                                         notifyChecked: false,
                                                         notifyLabel:
-                                                                "Notificar al cliente por correo al finalizar la corrección.",
+                                                                "No enviar correos.",
                                                         notifyNote:
-                                                                "Se guardará tu preferencia para el envío en el flujo de corrección.",
+                                                                "Se enviará solo una notificación interna a administración (360vo.es y copias ocultas).",
                                                 });
                                         }
                                         return;
@@ -7386,6 +7522,7 @@ const ADD_DOC_KEY = "add-document";
                                 item.detail && Object.prototype.hasOwnProperty.call(item.detail, "vendor_company_type_value")
                                         ? item.detail.vendor_company_type_value
                                         : "";
+                        const isFavorite = Boolean(item.is_favorite || item.detail?.is_favorite);
                         const normalizedChannel = normalizeChannelValue(canalVentaValueRaw);
                         const normalizedVendorType = normalizeChannelValue(vendorTypeValueRaw);
                         const isVendorParticular =
@@ -7579,6 +7716,7 @@ const ADD_DOC_KEY = "add-document";
                                 concesionarioPersonal: item.detail?.concesionario_personal ?? "",
                                 ibanVendedor: item.detail?.iban_vendedor || "",
                                 transferIban: item.detail?.transfer_iban || "",
+                                isFavorite,
                         };
                 }
 
@@ -7720,6 +7858,7 @@ const ADD_DOC_KEY = "add-document";
                         tr.dataset.cobroRealizado = view.cobroRealizado || "";
                         tr.dataset.ibanVendedor = view.ibanVendedor || "";
                         tr.dataset.transferIban = view.transferIban || "";
+                        tr.dataset.favorite = view.isFavorite ? "1" : "0";
                         tr.dataset.compradorNombre = view.clienteNombre || "-";
                         tr.dataset.compradorTelefono = view.clienteTelefonoDataset || "-";
 
@@ -9204,6 +9343,7 @@ const ADD_DOC_KEY = "add-document";
                         }
                         nextPanel.dataset.loadedId = "";
                         nextPanel.dataset.matricula = "";
+                        nextPanel.dataset.favorite = "0";
                         syncPdfModalDocs(nextPanel);
                         if (normalizedMode === "awaiting") {
                                 initializeAdminSummary(nextPanel);
@@ -9405,6 +9545,11 @@ const ADD_DOC_KEY = "add-document";
                                         monthTo: overrideMonthTo,
                                 });
 
+                        const favorites =
+                                typeof overrides.favorites !== "undefined"
+                                        ? Boolean(overrides.favorites)
+                                        : favoritesOnly;
+
                         const cacheKey = buildListCacheKey(
                                 search,
                                 estado,
@@ -9416,6 +9561,7 @@ const ADD_DOC_KEY = "add-document";
                                 orderBy,
                                 orderDirection,
                                 commercial,
+                                favorites ? "1" : "0",
                                 normalizedYear,
                                 normalizedMonthFrom,
                                 normalizedMonthTo
@@ -9430,6 +9576,7 @@ const ADD_DOC_KEY = "add-document";
                                 vendorType,
                                 paymentMethod,
                                 commercial,
+                                favorites,
                                 orderBy,
                                 orderDirection,
                                 year: normalizedYear,
@@ -9472,6 +9619,9 @@ const ADD_DOC_KEY = "add-document";
                         }
                         if (filters.commercial) {
                                 params.append("commercial", filters.commercial);
+                        }
+                        if (filters.favorites) {
+                                params.append("favorites", "1");
                         }
                         if (filters.year) {
                                 params.append("year", filters.year);
@@ -10145,6 +10295,7 @@ const ADD_DOC_KEY = "add-document";
                                 canal_venta: row.dataset.vendedor_type ?? "-",
                                 precio: row.dataset.precio ?? "-",
                                 metodo_pago: row.dataset.metodoPago ?? "",
+                                is_favorite: row.dataset.favorite === "1",
                                 cobro_realizado: row.dataset.cobroRealizado === "1",
                                 iban_vendedor: row.dataset.ibanVendedor ?? "",
                                 transfer_iban: row.dataset.transferIban ?? "",
@@ -11757,6 +11908,7 @@ async function activateRow(row, options = {}) {
                                 nextPanel.dataset.matricula =
                                         cachedDetail.matricula || rowData.matricula || "";
                                 nextPanel.dataset.plan = cachedDetail.plan || rowData.plan || "";
+                                nextPanel.dataset.favorite = cachedDetail.is_favorite ? "1" : "0";
                                 hydrateManagementDataset(nextPanel, cachedDetail, rowData);
                                 syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
@@ -11771,6 +11923,7 @@ async function activateRow(row, options = {}) {
                                 nextPanel.classList.add("is-loading");
                                 nextPanel.dataset.matricula = rowData.matricula || fallbackPlate || "";
                                 nextPanel.dataset.plan = rowData.plan || "";
+                                nextPanel.dataset.favorite = rowData.is_favorite ? "1" : "0";
                                 hydrateManagementDataset(nextPanel, {}, rowData);
                                 syncManagementDetailFields(nextPanel);
                                 syncPdfModalDocs(nextPanel);
@@ -11826,6 +11979,7 @@ async function activateRow(row, options = {}) {
                                                 nextPanel.dataset.matricula =
                                                         data.matricula || rowData.matricula || "";
                                                 nextPanel.dataset.plan = data.plan || rowData.plan || "";
+                                                nextPanel.dataset.favorite = data.is_favorite ? "1" : "0";
                                                 hydrateManagementDataset(nextPanel, data, rowData);
                                                 syncManagementDetailFields(nextPanel);
                                                 syncPdfModalDocs(nextPanel);
@@ -13021,6 +13175,7 @@ async function activateRow(row, options = {}) {
                 refreshClientsVisibility();
                 updateAdvancedHeight();
                 fetchFilters();
+                syncFavoritesFilterToggle();
 
                 const input = document.getElementById("buscador_mis_garantias");
                 const closeIcon = document.querySelector(".guarantees-list__close-icon");
@@ -13051,6 +13206,8 @@ async function activateRow(row, options = {}) {
                                 selectedVendorType = "";
                                 selectedPaymentMethod = "";
                                 selectedCommercial = "";
+                                favoritesOnly = false;
+                                syncFavoritesFilterToggle();
                                 if (hasPeriodFilters) {
                                         const defaultYear = periodDefaults.year || "";
                                         const defaultFrom = periodDefaults.monthFrom || "";

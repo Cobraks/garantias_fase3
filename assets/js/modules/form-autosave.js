@@ -755,10 +755,21 @@ export default function initAutosave() {
                                 `[data-doc="${doc.key}"]`
                         );
                         if (!link) continue;
+                        const resolvedLabel =
+                                (typeof doc.successLabel === "string" && doc.successLabel.trim() !== ""
+                                        ? doc.successLabel.trim()
+                                        : doc.key === "certificate"
+                                        ? "Descargar certificado completo"
+                                        : doc.key === "proforma"
+                                        ? "Descargar factura proforma"
+                                        : "Descargar documento");
+                        if (resolvedLabel === "") {
+                                continue;
+                        }
                         const iconHtml = `<span class="document-card__icon" aria-hidden="true">${getIcon(
                                 "pdf"
                         )}</span>`;
-                        const titleHtml = `<span class="document-card__title">${doc.successLabel}</span>`;
+                        const titleHtml = `<span class="document-card__title">${resolvedLabel}</span>`;
                         link.href = url;
                         link.target = "_blank";
                         link.rel = "noopener";
