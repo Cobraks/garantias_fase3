@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 6.4.13 - 2026-03-10
+- UX Mis Garantías: `.guarantees-list__filter` usa `display: flex`, `align-items: center` y `gap: .5rem` para homogeneizar layout en controles de filtros.
+- UX Favoritos: microanimación de relleno/vaciado de corazón al activar/desactivar filtro y refuerzo visual del estado activo (borde más oscuro + `font-weight: 700`).
+
 ## 6.4.12 - 2026-03-10
 - FIX Filtro de favoritos en listado: la caché REST de `get_items` ahora distingue solicitudes con `favorites=1` para evitar devolver listados generales cacheados.
 - UX Botón Favoritos: ajuste de layout con `display: flex`, `align-items: center` y `gap: .5rem` según pauta de interfaz.

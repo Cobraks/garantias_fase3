@@ -2326,13 +2326,21 @@ const ADD_DOC_KEY = "add-document";
                         if (!favoritesFilterToggle) {
                                 return;
                         }
+                        const wasActive = favoritesFilterToggle.dataset.active === "true";
                         favoritesFilterToggle.dataset.active = favoritesOnly ? "true" : "false";
                         favoritesFilterToggle.setAttribute("aria-pressed", favoritesOnly ? "true" : "false");
                         const icon = favoritesFilterToggle.querySelector(
                                 ".guarantees-list__favorites-icon"
                         );
                         if (icon) {
+                                icon.classList.remove("is-fill-anim", "is-unfill-anim");
                                 icon.innerHTML = favoritesOnly ? heartFilledIcon : heartIcon;
+                                if (animate && wasActive !== favoritesOnly) {
+                                        void icon.offsetWidth;
+                                        icon.classList.add(
+                                                favoritesOnly ? "is-fill-anim" : "is-unfill-anim"
+                                        );
+                                }
                         }
                         if (animate) {
                                 favoritesFilterToggle.classList.remove("is-burst");
