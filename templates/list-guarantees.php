@@ -299,6 +299,17 @@ if (($is_admin_user || $is_director || $is_professional)
             <div class="guarantees-list__filters-body">
                 <div class="guarantees-list__filters-controls">
                     <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
+                    <button
+                        type="button"
+                        class="guarantees-list__favorites-toggle"
+                        data-filter="favorites"
+                        data-active="false"
+                        aria-pressed="false"
+                        aria-label="<?php esc_attr_e('Mostrar solo favoritos', 'garantias-online-360vo'); ?>">
+                        <span class="guarantees-list__favorites-icon guarantees-list__favorites-icon--outline" aria-hidden="true"><?php echo Svg::icon('heart'); ?></span>
+                        <span class="guarantees-list__favorites-icon guarantees-list__favorites-icon--filled" aria-hidden="true"><?php echo Svg::icon('heart_filled'); ?></span>
+                        <span class="guarantees-list__favorites-label"><?php esc_html_e('Favoritos', 'garantias-online-360vo'); ?></span>
+                    </button>
 
                     <select
                         id="guarantees-filter-estado"
@@ -1375,17 +1386,6 @@ if (($is_admin_user || $is_director || $is_professional)
                     placeholder="<?php esc_attr_e('Buscar vehículo o matrícula…', 'garantias-online-360vo'); ?>"
                     aria-label="<?php esc_attr_e('Buscar vehículo o matrícula', 'garantias-online-360vo'); ?>"
                     id="buscador_mis_garantias">
-                <button
-                    type="button"
-                    class="guarantees-list__favorites-toggle"
-                    data-filter="favorites"
-                    data-active="false"
-                    aria-pressed="false"
-                    aria-label="<?php esc_attr_e('Mostrar solo favoritos', 'garantias-online-360vo'); ?>">
-                    <span class="guarantees-list__favorites-icon guarantees-list__favorites-icon--outline" aria-hidden="true"><?php echo Svg::icon('heart'); ?></span>
-                    <span class="guarantees-list__favorites-icon guarantees-list__favorites-icon--filled" aria-hidden="true"><?php echo Svg::icon('heart_filled'); ?></span>
-                    <span class="guarantees-list__favorites-label"><?php esc_html_e('Favoritos', 'garantias-online-360vo'); ?></span>
-                </button>
                 <span class="guarantees-list__close-icon" aria-hidden="true">
                     <?php echo Svg::icon('cerrar'); ?>
                 </span>

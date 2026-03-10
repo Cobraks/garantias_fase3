@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 6.4.10 - 2026-03-10
+- Ajuste UI favoritos en Mis Garantías: botón movido fuera del contenedor de búsqueda (junto al slot de búsqueda) y estilo alineado con selects.
+- Ajuste visual de iconografía: se muestra solo corazón contorno en reposo y corazón relleno al activar favoritos.
+
 ## 6.4.9 - 2026-03-10
 - FIX Pantalla de finalización: se evita mostrar enlaces de documentos sin etiqueta válida y se endurece la condición de render de proforma para no imprimir un `<a>` vacío.
 - NUEVO Favoritos por usuario en garantías: endpoint REST para marcar/desmarcar, persistencia en `user_meta` y estado `is_favorite` en listado/detalle.

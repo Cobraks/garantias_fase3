@@ -774,9 +774,9 @@ const ADD_DOC_KEY = "add-document";
                 const searchInput = searchField
                         ? searchField.querySelector("input")
                         : null;
-                const favoritesFilterToggle = searchField
-                        ? searchField.querySelector('[data-filter="favorites"]')
-                        : null;
+                const favoritesFilterToggle = document.querySelector(
+                        '.guarantees-list__favorites-toggle[data-filter="favorites"]'
+                );
                 const bottomBar = document.querySelector("[data-mobile-bottom-bar]");
                 const bottomNavButtons = bottomBar
                         ? Array.from(

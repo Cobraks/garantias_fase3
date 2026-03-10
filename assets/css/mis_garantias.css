@@ -1033,15 +1033,22 @@ background: var(--scrollbar-thumb);
 .guarantees-list__favorites-toggle {
     border: 1px solid var(--border-color-strong);
     background: var(--surface);
-    border-radius: 999px;
-    height: 36px;
-    padding: 0 0.75rem;
+    border-radius: 10px;
+    height: 46px;
+    width: 46px;
+    min-width: 46px;
+    padding: 0;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    justify-content: center;
+    gap: 0;
     cursor: pointer;
     color: var(--text-color);
     transition: transform .2s ease, color .2s ease, border-color .2s ease, background-color .2s ease;
+}
+
+.guarantees-list__favorites-label {
+    display: none;
 }
 
 .guarantees-list__favorites-toggle .guarantees-list__favorites-icon--filled {
