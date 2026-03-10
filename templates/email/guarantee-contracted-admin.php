@@ -17,10 +17,13 @@ $admin_intro = $copy['admin_intro'] ?? '';
 $signature = $copy['signature'] ?? '';
 $is_domiciliation = in_array($payment_slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true);
 $is_transfer = in_array($payment_slug, ['transferencia', 'transferencia_bancaria'], true);
+$is_correction_regeneration = ! empty($context['is_correction_regeneration']);
 $vendor_display = $vendor !== '' ? $vendor : __('El profesional', 'garantias-online-360vo');
-$heading = $is_domiciliation
+$heading = $is_correction_regeneration
+    ? __('Certificado regenerado para %s', 'garantias-online-360vo')
+    : ($is_domiciliation
     ? __('Garantía activada para %s', 'garantias-online-360vo')
-    : __('Garantía contratada para %s', 'garantias-online-360vo');
+    : __('Garantía contratada para %s', 'garantias-online-360vo'));
 $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FILE__);
 ?>
 <!DOCTYPE html>
@@ -37,7 +40,9 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                     <tr>
                         <td style="padding:32px 28px 12px 28px;">
                             <?php
-                            $badge_text = __('Nueva garantía', 'garantias-online-360vo');
+                            $badge_text = $is_correction_regeneration
+                                ? __('Certificado actualizado', 'garantias-online-360vo')
+                                : __('Nueva garantía', 'garantias-online-360vo');
                             include __DIR__ . '/partials/header.php';
                             ?>
                             <?php if ($admin_intro !== '') : ?>
@@ -54,7 +59,19 @@ $logo_url = plugins_url('assets/images/logo-horizontal.png', GARANTIAS360VO__FIL
                                 ?>
                             </h1>
                             <p style="font-size:15px;margin:0 0 18px;color:#374151;line-height:1.7;">
-                                <?php if ($is_domiciliation) : ?>
+                                <?php if ($is_correction_regeneration) : ?>
+                                    <?php
+                                    printf(
+                                        /* translators: 1: plate, 2: professional name */
+                                        wp_kses(
+                                            __('Se ha regenerado el certificado <strong style="color:#111827;">%1$s</strong> tras la corrección de datos de %2$s.', 'garantias-online-360vo'),
+                                            ['strong' => ['style' => []]]
+                                        ),
+                                        esc_html($plate_label),
+                                        '<strong style="color:#111827;">' . esc_html($vendor_display) . '</strong>'
+                                    );
+                                    ?>
+                                <?php elseif ($is_domiciliation) : ?>
                                     <?php
                                     printf(
                                         /* translators: %s: professional name */

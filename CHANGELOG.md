@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 6.4.7 - 2026-03-10
+- Flujo de corrección de garantía: mejoras UX/UI en popup (texto resumido), botón renombrado a “Continuar formulario de garantía” y opción “No enviar correos”.
+- Correcciones con “No enviar correos”: se bloquean notificaciones de cliente/profesional en la recontratación y se mantiene aviso interno a administración.
+- Notificaciones y actividad: nuevo evento de “Certificado regenerado” para distinguir una corrección frente a una contratación nueva.
+- Añadido icono específico de certificado regenerado para notificaciones push.
+
 ## 6.4.6 - 2026-03-05
 - Bump de versión del plugin.
 - Añadido plan/checklist de auditoría en `docs/email-audit-plan.md` para continuidad del trabajo y traspaso de contexto.

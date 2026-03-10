@@ -4217,7 +4217,8 @@ const ADD_DOC_KEY = "add-document";
                                                 "X-WP-Nonce": restNonce,
                                         },
                                         body: JSON.stringify({
-                                                notify_customer: Boolean(context.notifyCustomer),
+                                                notify_customer: !Boolean(context.notifyCustomer),
+                                                suppress_customer_emails: Boolean(context.notifyCustomer),
                                         }),
                                 }
                         )
@@ -6053,20 +6054,17 @@ const ADD_DOC_KEY = "add-document";
                                                         title: "Corregir datos de la garantía",
                                                         subtitle,
                                                         message:
-                                                                "Antes de continuar, revisa el flujo de corrección: <ol><li>La garantía pasará al estado <strong>En revisión</strong>.</li><li>Se abrirá la garantía en una nueva pestaña para su edición.</li><li>Corrige los datos necesarios y completa de nuevo la contratación.</li><li>Al finalizar, se regenerará el PDF con la información actualizada.</li></ol>",
-                                                        note: `Acceso directo a edición: <a href="${escapeHtml(
-                                                                editUrl
-                                                        )}" target="_blank" rel="noopener">abrir garantía para editar</a>.`,
-                                                        confirmLabel: "Abrir garantía para editar",
+                                                                "Vas a continuar el formulario para regenerar el certificado con los datos corregidos. La garantía pasará a <strong>En revisión</strong> hasta finalizar el proceso.",
+                                                        confirmLabel: "Continuar formulario de garantía",
                                                         requireAcknowledgement: true,
                                                         checkboxLabel:
                                                                 "He revisado los pasos y quiero iniciar la corrección.",
                                                         enableNotify: true,
                                                         notifyChecked: false,
                                                         notifyLabel:
-                                                                "Notificar al cliente por correo al finalizar la corrección.",
+                                                                "No enviar correos.",
                                                         notifyNote:
-                                                                "Se guardará tu preferencia para el envío en el flujo de corrección.",
+                                                                "Se enviará solo una notificación interna a administración (360vo.es y copias ocultas).",
                                                 });
                                         }
                                         return;

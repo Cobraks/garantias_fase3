@@ -140,10 +140,10 @@ class EventCatalog
             'message'  => '{{context.initiator_label}} ha iniciado una nueva garantía.',
         ],
         'guarantee.updated' => [
-            'label'    => 'Garantía actualizada',
+            'label'    => 'Garantía / certificado actualizado',
             'category' => 'guarantee',
             'level'    => 'info',
-            'message'  => 'Actualización en la garantía {{context.guarantee_label}}.',
+            'message'  => 'Actualización en la garantía {{context.guarantee_label}} (certificado regenerado cuando aplica).',
         ],
         'guarantee.status_changed' => [
             'label'    => 'Estado de garantía actualizado',
@@ -155,7 +155,13 @@ class EventCatalog
             'label'    => 'Garantía contratada',
             'category' => 'guarantee',
             'level'    => 'info',
-            'message'  => 'Garantía {{context.guarantee_label}} contratada. Estado actual: {{context.current_state_label}}.',
+            'message'  => '{{context.contract_action_label}}: {{context.guarantee_label}}. Estado actual: {{context.current_state_label}}.',
+        ],
+        'guarantee.certificate_regenerated' => [
+            'label'    => 'Certificado regenerado',
+            'category' => 'guarantee',
+            'level'    => 'info',
+            'message'  => 'Certificado regenerado para {{context.guarantee_label}}. Estado actual: {{context.current_state_label}}.',
         ],
         'guarantee.assigned' => [
             'label'    => 'Garantía asignada',
