@@ -6807,6 +6807,9 @@ class GuaranteeRestController
         if ($commercial) {
             $cache_key .= '_cm_' . $commercial;
         }
+        if ($favorites_only) {
+            $cache_key .= '_fav_1';
+        }
         if ($year > 0) {
             $cache_key .= '_yr_' . $year;
             $cache_key .= '_mf_' . $normalized_month_from;

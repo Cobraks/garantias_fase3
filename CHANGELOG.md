@@ -1,5 +1,9 @@
 # Historial de cambios
 
+## 6.4.12 - 2026-03-10
+- FIX Filtro de favoritos en listado: la caché REST de `get_items` ahora distingue solicitudes con `favorites=1` para evitar devolver listados generales cacheados.
+- UX Botón Favoritos: ajuste de layout con `display: flex`, `align-items: center` y `gap: .5rem` según pauta de interfaz.
+
 ## 6.4.11 - 2026-03-10
 - FIX Favoritos en Mis Garantías: se invalida caché de listado tras marcar/desmarcar para que el filtro de favoritos refleje cambios inmediatamente.
 - UX Favoritos: botón de filtro con apariencia de select (`guarantees-list__filter`) y render de un único corazón dinámico (contorno/relleno según estado).
