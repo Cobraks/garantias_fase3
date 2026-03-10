@@ -18,7 +18,7 @@ class GuaranteeEmailBuilder
 
     public function composeContractedAdmin(array $data, array $recipients, array $context = [], array $options = []): ?EmailMessage
     {
-        $subject = $this->build_admin_subject($data);
+        $subject = $this->build_admin_subject($data, $context);
 
         return $this->create_message(
             $recipients,
@@ -112,9 +112,19 @@ class GuaranteeEmailBuilder
         return $plate;
     }
 
-    private function build_admin_subject(array $data): string
+    private function build_admin_subject(array $data, array $context = []): string
     {
         $plate = $this->resolve_plate_label($data);
+        $is_correction_regeneration = ! empty($context['is_correction_regeneration']);
+
+        if ($is_correction_regeneration) {
+            return sprintf(
+                /* translators: %s: vehicle plate */
+                __('Certificado %s regenerado tras corrección', 'garantias-online-360vo'),
+                $plate
+            );
+        }
+
         $slug  = isset($data['payment_slug']) ? (string) $data['payment_slug'] : '';
 
         if (in_array($slug, ['domiciliacion', 'domiciliacion_bancaria', 'domiciliacion-bancaria'], true)) {

@@ -1,5 +1,37 @@
 # Historial de cambios
 
+## 6.4.13 - 2026-03-10
+- UX Mis Garantías: `.guarantees-list__filter` usa `display: flex`, `align-items: center` y `gap: .5rem` para homogeneizar layout en controles de filtros.
+- UX Favoritos: microanimación de relleno/vaciado de corazón al activar/desactivar filtro y refuerzo visual del estado activo (borde más oscuro + `font-weight: 700`).
+
+## 6.4.12 - 2026-03-10
+- FIX Filtro de favoritos en listado: la caché REST de `get_items` ahora distingue solicitudes con `favorites=1` para evitar devolver listados generales cacheados.
+- UX Botón Favoritos: ajuste de layout con `display: flex`, `align-items: center` y `gap: .5rem` según pauta de interfaz.
+
+## 6.4.11 - 2026-03-10
+- FIX Favoritos en Mis Garantías: se invalida caché de listado tras marcar/desmarcar para que el filtro de favoritos refleje cambios inmediatamente.
+- UX Favoritos: botón de filtro con apariencia de select (`guarantees-list__filter`) y render de un único corazón dinámico (contorno/relleno según estado).
+- UX Notificaciones: al marcar/desmarcar favorito se envía notificación nativa al panel de campana en lugar del toast naranja dentro del popup de gestión.
+
+## 6.4.10 - 2026-03-10
+- Ajuste UI favoritos en Mis Garantías: botón movido fuera del contenedor de búsqueda (junto al slot de búsqueda) y estilo alineado con selects.
+- Ajuste visual de iconografía: se muestra solo corazón contorno en reposo y corazón relleno al activar favoritos.
+
+## 6.4.9 - 2026-03-10
+- FIX Pantalla de finalización: se evita mostrar enlaces de documentos sin etiqueta válida y se endurece la condición de render de proforma para no imprimir un `<a>` vacío.
+- NUEVO Favoritos por usuario en garantías: endpoint REST para marcar/desmarcar, persistencia en `user_meta` y estado `is_favorite` en listado/detalle.
+- NUEVO Filtro visual “Favoritos” junto al buscador en Mis Garantías, con toggle y micro-animación de corazón.
+
+## 6.4.8 - 2026-03-10
+- FIX Notificaciones push: se incluye `guarantee.certificate_regenerated` como evento relevante para que aparezca en panel/toast.
+- FIX Filtros de categorías: el icono `certificate_regenerated` ahora pertenece a la categoría “Garantías”.
+
+## 6.4.7 - 2026-03-10
+- Flujo de corrección de garantía: mejoras UX/UI en popup (texto resumido), botón renombrado a “Continuar formulario de garantía” y opción “No enviar correos”.
+- Correcciones con “No enviar correos”: se bloquean notificaciones de cliente/profesional en la recontratación y se mantiene aviso interno a administración.
+- Notificaciones y actividad: nuevo evento de “Certificado regenerado” para distinguir una corrección frente a una contratación nueva.
+- Añadido icono específico de certificado regenerado para notificaciones push.
+
 ## 6.4.6 - 2026-03-05
 - Bump de versión del plugin.
 - Añadido plan/checklist de auditoría en `docs/email-audit-plan.md` para continuidad del trabajo y traspaso de contexto.

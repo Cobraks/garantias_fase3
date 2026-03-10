@@ -69,7 +69,7 @@ class GuaranteeLogger
             }
         }
 
-        $mapped  = self::map_event_type($event_type);
+        $mapped  = self::map_event_type($event_type, $details);
         $vendor  = self::get_vendor_context($guarantee_id);
         $actor   = self::get_user_details($user_id);
         $context = self::build_context($event_type, $details, $guarantee_id, $vendor, $actor);
@@ -123,9 +123,17 @@ class GuaranteeLogger
         return $result['data'] ?? [];
     }
 
-    private static function map_event_type(string $legacy): string
+    private static function map_event_type(string $legacy, string $details = ''): string
     {
         $legacy = sanitize_key(str_replace(' ', '_', $legacy));
+
+        if ($legacy === 'contract_notice_dispatched') {
+            $contract = self::parse_contract_details($details);
+            if (($contract['previous_state'] ?? '') === 'en_revision') {
+                return 'guarantee.certificate_regenerated';
+            }
+        }
+
         $map = [
             'created'             => 'guarantee.created',
             'updated'             => 'guarantee.updated',
@@ -467,6 +475,10 @@ class GuaranteeLogger
         } elseif (empty($context['current_state_label'])) {
             $context['current_state_label'] = self::status_label((string) $context['current_state']);
         }
+
+        $context['contract_action_label'] = ($context['previous_state'] ?? '') === 'en_revision'
+            ? __('Certificado regenerado', 'garantias-online-360vo')
+            : __('Garantía contratada', 'garantias-online-360vo');
 
         return $context;
     }

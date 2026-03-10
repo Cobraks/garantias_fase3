@@ -8,7 +8,8 @@ use GarantiasOnline360VO\Rest\GuaranteeRestController;
 ?>
 <?php
 $proforma_settings = GuaranteeRestController::get_proforma_feature_settings();
-$show_proforma_on_success = ! empty($proforma_settings['options']['mostrar_en_pantalla_exito']);
+$show_proforma_on_success = ! empty($proforma_settings['enabled'])
+    && ! empty($proforma_settings['options']['mostrar_en_pantalla_exito']);
 ?>
 <div id="form-success" class="form-success">
     <div class="form-success__confetti" aria-hidden="true"></div>

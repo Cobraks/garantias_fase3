@@ -23,6 +23,7 @@ use GarantiasOnline360VO\Support\UserProfileResolver;
 class GuaranteeRestController
 {
     const CONTRACT_NOTICE_META = '_go360_pending_contract_notice';
+    const FAVORITES_USER_META = '_go360_guarantee_favorites';
     const CONTRACT_NOTICE_EVENT = 'go360/guarantee/dispatch_contract_notice';
     const NAMESPACE = 'go/v1';
     const BASE      = 'guarantees';
@@ -96,6 +97,7 @@ class GuaranteeRestController
                         'year'         => ['validate_callback' => 'absint'],
                         'month_from'   => ['validate_callback' => 'absint'],
                         'month_to'     => ['validate_callback' => 'absint'],
+                        'favorites'    => ['sanitize_callback' => 'rest_sanitize_boolean'],
                     ],
                 ],
             ]
@@ -208,6 +210,36 @@ class GuaranteeRestController
                     'args'                => [
                         'id'   => ['validate_callback' => 'absint'],
                         'type' => ['sanitize_callback' => 'sanitize_text_field'],
+                    ],
+                ],
+            ]
+        );
+        register_rest_route(
+            self::NAMESPACE,
+            '/' . self::BASE . '/(?P<id>\d+)/favorite',
+            [
+                [
+                    'methods'             => WP_REST_Server::READABLE,
+                    'callback'            => [__CLASS__, 'get_favorite_status'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::CREATABLE,
+                    'callback'            => [__CLASS__, 'set_favorite_status'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
+                    ],
+                ],
+                [
+                    'methods'             => WP_REST_Server::DELETABLE,
+                    'callback'            => [__CLASS__, 'unset_favorite_status'],
+                    'permission_callback' => [__CLASS__, 'can_view'],
+                    'args'                => [
+                        'id' => ['validate_callback' => 'absint'],
                     ],
                 ],
             ]
@@ -2800,12 +2832,14 @@ class GuaranteeRestController
             );
         }
 
+        $suppress_customer_emails = ! empty($request->get_param('suppress_customer_emails'));
+        $notify_customer = $suppress_customer_emails
+            ? false
+            : ! empty($request->get_param('notify_customer'));
+
         update_post_meta($id, 'estado_garantia_estado_contratacion', 'en_revision');
-        update_post_meta(
-            $id,
-            'estado_garantia_notificar_cliente_correccion',
-            ! empty($request->get_param('notify_customer')) ? '1' : '0'
-        );
+        update_post_meta($id, 'estado_garantia_no_enviar_correos_correccion', $suppress_customer_emails ? '1' : '0');
+        update_post_meta($id, 'estado_garantia_notificar_cliente_correccion', $notify_customer ? '1' : '0');
 
         $snapshot = self::collect_detail_snapshot($id, true);
 
@@ -4100,12 +4134,18 @@ class GuaranteeRestController
             && $new_contract_state !== $previous_contract_state
         ) {
             $queued_contract_notice  = true;
+            $is_correction_regeneration = sanitize_key($previous_contract_state) === 'en_revision';
+            $suppress_customer_emails = $is_correction_regeneration
+                && get_post_meta($post_id, 'estado_garantia_no_enviar_correos_correccion', true) === '1';
+
             $contract_notice_context = [
                 'initiator'      => get_current_user_id(),
                 'previous_state' => $previous_contract_state,
                 'current_state'  => $new_contract_state,
                 'vendor_id'      => $context_vendor_id,
                 'payment_method' => sanitize_key($context_payment_method),
+                'is_correction_regeneration' => $is_correction_regeneration,
+                'suppress_customer_emails'   => $suppress_customer_emails,
             ];
             error_log(sprintf(
                 '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
@@ -5520,8 +5560,22 @@ class GuaranteeRestController
             $prepared_context['payment_method'] = sanitize_key($context['payment_method']);
         }
 
+        $is_correction_regeneration = ! empty($context['is_correction_regeneration'])
+            || sanitize_key((string) ($prepared_context['previous_state'] ?? '')) === 'en_revision';
+        $suppress_customer_emails = ! empty($context['suppress_customer_emails']);
+
+        if ($is_correction_regeneration) {
+            $prepared_context['is_correction_regeneration'] = true;
+            $prepared_context['suppress_customer_emails'] = $suppress_customer_emails;
+        }
+
         error_log('[AUTOSAVE] Dispatching contract notice for ID ' . $post_id . ' (state ' . $prepared_context['current_state'] . ')');
         do_action('go360/guarantee/contracted', $post_id, $prepared_context);
+
+        if ($is_correction_regeneration) {
+            delete_post_meta($post_id, 'estado_garantia_no_enviar_correos_correccion');
+            delete_post_meta($post_id, 'estado_garantia_notificar_cliente_correccion');
+        }
 
         GuaranteeLogger::log(
             $initiator,
@@ -6231,6 +6285,7 @@ class GuaranteeRestController
 
         $detail = [
             'id' => $id,
+            'is_favorite' => self::user_has_favorite_guarantee(get_current_user_id(), $id),
             'uuid' => $uuid,
             'matricula' => $matricula ?: '-',
             'marca_modelo' => $marca_modelo ?: '-',
@@ -6328,6 +6383,107 @@ class GuaranteeRestController
     public static function collect_detail_snapshot($id, $include_document_urls = true)
     {
         return self::get_detail_data($id, $include_document_urls);
+    }
+
+    private static function get_user_favorite_guarantee_ids(int $user_id): array
+    {
+        if ($user_id <= 0) {
+            return [];
+        }
+
+        $raw = get_user_meta($user_id, self::FAVORITES_USER_META, true);
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $ids = array_map('absint', $raw);
+
+        return array_values(array_unique(array_filter($ids, static fn($id) => $id > 0)));
+    }
+
+    private static function save_user_favorite_guarantee_ids(int $user_id, array $ids): void
+    {
+        if ($user_id <= 0) {
+            return;
+        }
+
+        $clean = array_map('absint', $ids);
+        $clean = array_values(array_unique(array_filter($clean, static fn($id) => $id > 0)));
+
+        if (empty($clean)) {
+            delete_user_meta($user_id, self::FAVORITES_USER_META);
+            return;
+        }
+
+        update_user_meta($user_id, self::FAVORITES_USER_META, $clean);
+    }
+
+    private static function user_has_favorite_guarantee(int $user_id, int $post_id): bool
+    {
+        if ($user_id <= 0 || $post_id <= 0) {
+            return false;
+        }
+
+        return in_array($post_id, self::get_user_favorite_guarantee_ids($user_id), true);
+    }
+
+    public static function get_favorite_status($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $user_id = get_current_user_id();
+
+        if ($post_id <= 0 || $user_id <= 0) {
+            return new WP_Error('invalid_request', __('Solicitud no válida.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        return new WP_REST_Response([
+            'id' => $post_id,
+            'is_favorite' => self::user_has_favorite_guarantee($user_id, $post_id),
+        ], 200);
+    }
+
+    public static function set_favorite_status($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $user_id = get_current_user_id();
+
+        if ($post_id <= 0 || $user_id <= 0) {
+            return new WP_Error('invalid_request', __('Solicitud no válida.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        if (get_post_type($post_id) !== \GarantiasOnline360VO\GuaranteeCPT::POST_TYPE) {
+            return new WP_Error('not_found', __('No se ha encontrado la garantía solicitada.', 'garantias-online-360vo'), ['status' => 404]);
+        }
+
+        $favorite_ids = self::get_user_favorite_guarantee_ids($user_id);
+        if (! in_array($post_id, $favorite_ids, true)) {
+            $favorite_ids[] = $post_id;
+        }
+        self::save_user_favorite_guarantee_ids($user_id, $favorite_ids);
+
+        return new WP_REST_Response([
+            'id' => $post_id,
+            'is_favorite' => true,
+        ], 200);
+    }
+
+    public static function unset_favorite_status($request)
+    {
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        $user_id = get_current_user_id();
+
+        if ($post_id <= 0 || $user_id <= 0) {
+            return new WP_Error('invalid_request', __('Solicitud no válida.', 'garantias-online-360vo'), ['status' => 400]);
+        }
+
+        $favorite_ids = self::get_user_favorite_guarantee_ids($user_id);
+        $favorite_ids = array_values(array_filter($favorite_ids, static fn($id) => (int) $id !== (int) $post_id));
+        self::save_user_favorite_guarantee_ids($user_id, $favorite_ids);
+
+        return new WP_REST_Response([
+            'id' => $post_id,
+            'is_favorite' => false,
+        ], 200);
     }
 
     private static function normalize_decimal_value($value)
@@ -6595,6 +6751,17 @@ class GuaranteeRestController
         $year          = isset($request['year']) ? absint($request['year']) : 0;
         $month_from    = isset($request['month_from']) ? absint($request['month_from']) : 0;
         $month_to      = isset($request['month_to']) ? absint($request['month_to']) : 0;
+        $favorites_only = ! empty($request['favorites']);
+        $favorite_ids = self::get_user_favorite_guarantee_ids((int) $current_user);
+
+        if ($favorites_only && empty($favorite_ids)) {
+            return new WP_REST_Response([
+                'data'         => [],
+                'total'        => 0,
+                'per_page'     => $per_page,
+                'current_page' => $page,
+            ]);
+        }
 
         $normalized_month_from = 0;
         $normalized_month_to   = 0;
@@ -6639,6 +6806,9 @@ class GuaranteeRestController
         }
         if ($commercial) {
             $cache_key .= '_cm_' . $commercial;
+        }
+        if ($favorites_only) {
+            $cache_key .= '_fav_1';
         }
         if ($year > 0) {
             $cache_key .= '_yr_' . $year;
@@ -6903,6 +7073,10 @@ class GuaranteeRestController
             }
         }
 
+        if ($favorites_only) {
+            $args['post__in'] = $favorite_ids;
+        }
+
         $q = new WP_Query($args);
 
         $data = [];
@@ -6923,6 +7097,7 @@ class GuaranteeRestController
 
             $data[] = [
                 'id'         => $post_id,
+                'is_favorite' => in_array((int) $post_id, $favorite_ids, true),
                 'mat'        => $detail_with_urls['matricula'],
                 'marca'      => $detail_with_urls['marca_modelo'],
                 'desde'      => $detail_with_urls['desde'],

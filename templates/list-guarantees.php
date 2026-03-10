@@ -299,6 +299,16 @@ if (($is_admin_user || $is_director || $is_professional)
             <div class="guarantees-list__filters-body">
                 <div class="guarantees-list__filters-controls">
                     <div class="guarantees-list__filters-search-slot" data-desktop-search-slot></div>
+                    <button
+                        type="button"
+                        class="guarantees-list__filter guarantees-list__favorites-toggle"
+                        data-filter="favorites"
+                        data-active="false"
+                        aria-pressed="false"
+                        aria-label="<?php esc_attr_e('Mostrar solo favoritos', 'garantias-online-360vo'); ?>">
+                        <span class="guarantees-list__favorites-icon" aria-hidden="true"><?php echo Svg::icon('heart'); ?></span>
+                        <span class="guarantees-list__favorites-label"><?php esc_html_e('Favoritos', 'garantias-online-360vo'); ?></span>
+                    </button>
 
                     <select
                         id="guarantees-filter-estado"

@@ -31,6 +31,7 @@ class PushMessageFactory
                 return $this->build_user_verified($activity_record);
             case 'guarantee.created':
             case 'guarantee.contracted':
+            case 'guarantee.certificate_regenerated':
                 return $this->build_guarantee_event($activity_record, $event_type);
             case 'guarantee.cancelled':
                 return $this->build_guarantee_cancelled($activity_record);
@@ -330,10 +331,21 @@ class PushMessageFactory
             : __('Sin identificar', 'garantias-online-360vo');
 
         $is_initialization = $event_type === 'guarantee.created';
+        $is_correction_regeneration = ! $is_initialization
+            && (
+                $event_type === 'guarantee.certificate_regenerated'
+                || sanitize_key((string) ($context['previous_state'] ?? '')) === 'en_revision'
+            );
 
         if ($is_initialization) {
             $body_suffix = __('ha iniciado la contratación de una nueva cobertura.', 'garantias-online-360vo');
             $status_label = __('Sin finalizar', 'garantias-online-360vo');
+        } elseif ($is_correction_regeneration) {
+            $body_suffix = sprintf(
+                /* translators: %s: guarantee plate */
+                __('ha regenerado el certificado %s.', 'garantias-online-360vo'),
+                $title !== '' ? $title : $plan_display
+            );
         } else {
             $body_suffix = sprintf(
                 /* translators: %s: coverage name */
@@ -367,18 +379,23 @@ class PushMessageFactory
 
         $title_text = $is_initialization
             ? __('Nueva garantía inicializada', 'garantias-online-360vo')
-            : __('Nueva garantía', 'garantias-online-360vo');
+            : ($is_correction_regeneration
+                ? __('Certificado regenerado', 'garantias-online-360vo')
+                : __('Nueva garantía', 'garantias-online-360vo'));
 
-        $badge_text = __('Nuevo', 'garantias-online-360vo');
+        $badge_text = $is_correction_regeneration
+            ? __('Actualización', 'garantias-online-360vo')
+            : __('Nuevo', 'garantias-online-360vo');
 
-        $tone = $is_initialization ? 'info' : 'primary';
+        $tone = $is_initialization ? 'info' : ($is_correction_regeneration ? 'warning' : 'primary');
+        $icon_slug = $is_correction_regeneration ? 'certificate_regenerated' : 'new_shield';
 
         return [
             'title' => $title_text,
             'body'  => $body,
             'link'  => $link,
-            'icon'      => Svg::data_uri('new_shield'),
-            'icon_slug' => 'new_shield',
+            'icon'      => Svg::data_uri($icon_slug),
+            'icon_slug' => $icon_slug,
             'tone'      => $tone,
             'badge'     => $badge_text,
             'meta'      => $meta,
