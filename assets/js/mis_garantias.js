@@ -2328,6 +2328,12 @@ const ADD_DOC_KEY = "add-document";
                         }
                         favoritesFilterToggle.dataset.active = favoritesOnly ? "true" : "false";
                         favoritesFilterToggle.setAttribute("aria-pressed", favoritesOnly ? "true" : "false");
+                        const icon = favoritesFilterToggle.querySelector(
+                                ".guarantees-list__favorites-icon"
+                        );
+                        if (icon) {
+                                icon.innerHTML = favoritesOnly ? heartFilledIcon : heartIcon;
+                        }
                         if (animate) {
                                 favoritesFilterToggle.classList.remove("is-burst");
                                 void favoritesFilterToggle.offsetWidth;
@@ -3116,6 +3122,41 @@ const ADD_DOC_KEY = "add-document";
                                 created_at: new Date().toISOString(),
                         };
                         dispatchNotificationEvent(detail);
+                }
+
+                function notifyFavoriteUpdated(context = {}) {
+                        if (!notificationsRoot) {
+                                return;
+                        }
+                        const matricula = formatNotificationMetaText(context.matricula);
+                        const guaranteeId = formatNotificationMetaText(context.id);
+                        const isFavorite = Boolean(context.isFavorite);
+                        const meta = [];
+                        if (matricula) {
+                                meta.push({ label: "Matrícula", text: matricula });
+                        }
+                        if (guaranteeId) {
+                                meta.push({ label: "ID", text: `#${guaranteeId}` });
+                        }
+                        const safePlate = matricula ? escapeHtml(matricula) : "";
+                        const body = isFavorite
+                                ? safePlate
+                                        ? `La garantía <strong>${safePlate}</strong> se añadió a favoritos.`
+                                        : "La garantía se añadió a favoritos."
+                                : safePlate
+                                ? `La garantía <strong>${safePlate}</strong> se quitó de favoritos.`
+                                : "La garantía se quitó de favoritos.";
+                        dispatchNotificationEvent({
+                                id: Date.now(),
+                                title: isFavorite ? "Favorito guardado" : "Favorito eliminado",
+                                body,
+                                icon_slug: "heart_filled",
+                                icon_svg: heartFilledIcon,
+                                badge: "Garantías",
+                                tone: isFavorite ? "success" : "info",
+                                meta,
+                                created_at: new Date().toISOString(),
+                        });
                 }
 
                 function parseDisplayDate(value) {
@@ -5025,14 +5066,14 @@ const ADD_DOC_KEY = "add-document";
                                                 cached.is_favorite = favorite;
                                                 detailCache.set(String(id), cached);
                                         }
-                                        showDetailToast(
-                                                panel,
-                                                favorite
-                                                        ? "Añadida a favoritos."
-                                                        : "Eliminada de favoritos."
-                                        );
+                                        listCache.clear();
+                                        notifyFavoriteUpdated({
+                                                id,
+                                                matricula: panel.dataset.matricula || (row ? row.dataset.matricula : ""),
+                                                isFavorite: favorite,
+                                        });
 
-                                        if (favoritesOnly && !favorite) {
+                                        if (favoritesOnly) {
                                                 applyFilters();
                                         }
                                 })

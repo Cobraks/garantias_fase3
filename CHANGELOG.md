@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 6.4.11 - 2026-03-10
+- FIX Favoritos en Mis Garantías: se invalida caché de listado tras marcar/desmarcar para que el filtro de favoritos refleje cambios inmediatamente.
+- UX Favoritos: botón de filtro con apariencia de select (`guarantees-list__filter`) y render de un único corazón dinámico (contorno/relleno según estado).
+- UX Notificaciones: al marcar/desmarcar favorito se envía notificación nativa al panel de campana en lugar del toast naranja dentro del popup de gestión.
+
 ## 6.4.10 - 2026-03-10
 - Ajuste UI favoritos en Mis Garantías: botón movido fuera del contenedor de búsqueda (junto al slot de búsqueda) y estilo alineado con selects.
 - Ajuste visual de iconografía: se muestra solo corazón contorno en reposo y corazón relleno al activar favoritos.
