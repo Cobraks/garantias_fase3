@@ -88,6 +88,14 @@ class EmailNotificationService
             return;
         }
 
+        $is_correction_regeneration = ! empty($context['is_correction_regeneration'])
+            || sanitize_key((string) ($context['previous_state'] ?? '')) === 'en_revision';
+        $suppress_customer_emails = $is_correction_regeneration && ! empty($context['suppress_customer_emails']);
+        if ($is_correction_regeneration) {
+            $context['is_correction_regeneration'] = true;
+            $context['suppress_customer_emails'] = $suppress_customer_emails;
+        }
+
         if (
             ! $this->has_been_notified($guarantee_id, 'contracted_admin')
             && $this->should_notify('contracted_admin', $data, $context)
@@ -105,13 +113,15 @@ class EmailNotificationService
         }
 
         if (
+            ! $suppress_customer_emails
+            &&
             ! $this->has_been_notified($guarantee_id, 'contracted_professional')
             && $this->should_notify('contracted_professional', $data, $context)
         ) {
             $this->send_professional_notification($guarantee_id, $data, $context, $initiator_id);
         }
 
-        if ($this->should_send_transfer_activation($guarantee_id, $data, $context)) {
+        if (! $suppress_customer_emails && $this->should_send_transfer_activation($guarantee_id, $data, $context)) {
             $slug = self::EVENT_TRANSFER_ACTIVATED_PROFESSIONAL;
 
             if (

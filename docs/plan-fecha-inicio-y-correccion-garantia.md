@@ -113,3 +113,11 @@ Objetivo: al completar la corrección, decidir si se envía email automáticamen
 3. El botón “Corregir datos” inicia flujo guiado con confirmación y motivo.
 4. Toda corrección queda auditada.
 5. La política de notificación al cliente es explícita y controlable.
+
+## 7) Estado de tareas (actualización 6.4.7)
+
+- ✅ Popup de “Corregir datos” simplificado, sin enlace redundante y CTA actualizado a “Continuar formulario de garantía”.
+- ✅ Opción operativa “No enviar correos” conectada al flujo de corrección.
+- ✅ Si “No enviar correos” está activo, se omiten correos de cliente/profesional al finalizar la corrección.
+- ✅ Se distingue en actividad y push cuándo es contratación nueva vs certificado regenerado.
+- ⏳ Pendiente próximo sprint: sistema de favoritos en listado de garantías y filtro dedicado en la barra de búsqueda.

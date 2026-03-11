@@ -2800,12 +2800,14 @@ class GuaranteeRestController
             );
         }
 
+        $suppress_customer_emails = ! empty($request->get_param('suppress_customer_emails'));
+        $notify_customer = $suppress_customer_emails
+            ? false
+            : ! empty($request->get_param('notify_customer'));
+
         update_post_meta($id, 'estado_garantia_estado_contratacion', 'en_revision');
-        update_post_meta(
-            $id,
-            'estado_garantia_notificar_cliente_correccion',
-            ! empty($request->get_param('notify_customer')) ? '1' : '0'
-        );
+        update_post_meta($id, 'estado_garantia_no_enviar_correos_correccion', $suppress_customer_emails ? '1' : '0');
+        update_post_meta($id, 'estado_garantia_notificar_cliente_correccion', $notify_customer ? '1' : '0');
 
         $snapshot = self::collect_detail_snapshot($id, true);
 
@@ -4100,12 +4102,18 @@ class GuaranteeRestController
             && $new_contract_state !== $previous_contract_state
         ) {
             $queued_contract_notice  = true;
+            $is_correction_regeneration = sanitize_key($previous_contract_state) === 'en_revision';
+            $suppress_customer_emails = $is_correction_regeneration
+                && get_post_meta($post_id, 'estado_garantia_no_enviar_correos_correccion', true) === '1';
+
             $contract_notice_context = [
                 'initiator'      => get_current_user_id(),
                 'previous_state' => $previous_contract_state,
                 'current_state'  => $new_contract_state,
                 'vendor_id'      => $context_vendor_id,
                 'payment_method' => sanitize_key($context_payment_method),
+                'is_correction_regeneration' => $is_correction_regeneration,
+                'suppress_customer_emails'   => $suppress_customer_emails,
             ];
             error_log(sprintf(
                 '[AUTOSAVE] Contract state changed from %s to %s for ID %d',
@@ -5520,8 +5528,22 @@ class GuaranteeRestController
             $prepared_context['payment_method'] = sanitize_key($context['payment_method']);
         }
 
+        $is_correction_regeneration = ! empty($context['is_correction_regeneration'])
+            || sanitize_key((string) ($prepared_context['previous_state'] ?? '')) === 'en_revision';
+        $suppress_customer_emails = ! empty($context['suppress_customer_emails']);
+
+        if ($is_correction_regeneration) {
+            $prepared_context['is_correction_regeneration'] = true;
+            $prepared_context['suppress_customer_emails'] = $suppress_customer_emails;
+        }
+
         error_log('[AUTOSAVE] Dispatching contract notice for ID ' . $post_id . ' (state ' . $prepared_context['current_state'] . ')');
         do_action('go360/guarantee/contracted', $post_id, $prepared_context);
+
+        if ($is_correction_regeneration) {
+            delete_post_meta($post_id, 'estado_garantia_no_enviar_correos_correccion');
+            delete_post_meta($post_id, 'estado_garantia_notificar_cliente_correccion');
+        }
 
         GuaranteeLogger::log(
             $initiator,
