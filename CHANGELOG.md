@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 6.4.14 - 2026-03-12
+- FIX Logging `PrivateDocsManager`: se elimina el mensaje repetitivo "directory exists ..." en cada petición para evitar ruido en `AH01071` de Apache/Plesk.
+- Mejora segura de observabilidad: logs de mantenimiento/no críticos de `PrivateDocsManager` pasan a modo debug (`WP_DEBUG`) y son controlables vía filtro `go360/private_docs/debug_logs`.
+- Sin cambios funcionales en flujos de documentos privados ni en envío de correos.
+
 ## 6.4.13 - 2026-03-10
 - UX Mis Garantías: `.guarantees-list__filter` usa `display: flex`, `align-items: center` y `gap: .5rem` para homogeneizar layout en controles de filtros.
 - UX Favoritos: microanimación de relleno/vaciado de corazón al activar/desactivar filtro y refuerzo visual del estado activo (borde más oscuro + `font-weight: 700`).
