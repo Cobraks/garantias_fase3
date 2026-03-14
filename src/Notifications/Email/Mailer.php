@@ -34,6 +34,11 @@ class Mailer
         if ($reply_to !== '') {
             $headers[] = 'Reply-To: ' . $reply_to;
         }
+
+        $correlation_id = function_exists('wp_generate_uuid4')
+            ? wp_generate_uuid4()
+            : uniqid('go360_', true);
+        $headers[] = 'X-GO360-Correlation-ID: ' . $correlation_id;
         $has_content_type = false;
 
         foreach ($headers as $header) {
@@ -62,6 +67,8 @@ class Mailer
             $headers,
             $attachments
         );
+
+        do_action('go360/email/send_result', $sent, $correlation_id, $message, $recipients, $headers);
 
         if ($buffer_started) {
             $output = ob_get_clean();
