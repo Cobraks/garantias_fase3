@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Auth;
 
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
+use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
@@ -32,6 +33,10 @@ class PasswordResetMailer
         $user_login = $user->user_login ?? $user_login;
         $user_login = is_string($user_login) ? $user_login : '';
         $key        = trim($key);
+
+        if (! EmailReputationGuard::should_send_event('password_reset', ['user_id' => (int) $user->ID])) {
+            return $email;
+        }
 
         if ($user_login === '' || $key === '') {
             return $email;
@@ -85,13 +90,7 @@ class PasswordResetMailer
                 && stripos((string) $header, 'from:') === false
         ));
 
-        $admin_email = sanitize_email(get_option('admin_email'));
-        if ($admin_email === '') {
-            $domain = wp_parse_url(home_url(), PHP_URL_HOST);
-            $admin_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
-        }
-
-        $from_header = EmailSettings::buildFromHeader('professional', $admin_email);
+        $from_header = EmailSettings::buildFromHeader('professional');
 
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
         if ($from_header !== '') {
@@ -144,13 +143,7 @@ class PasswordResetMailer
             static fn($header) => stripos((string) $header, 'content-type:') === false
         ));
 
-        $from_email = sanitize_email(get_option('admin_email'));
-        if ($from_email === '') {
-            $domain = wp_parse_url(home_url(), PHP_URL_HOST);
-            $from_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
-        }
-
-        $from_header = EmailSettings::buildFromHeader('admin', $from_email);
+        $from_header = EmailSettings::buildFromHeader('admin');
 
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
         if ($from_header !== '') {
@@ -167,6 +160,10 @@ class PasswordResetMailer
 
     public static function send_user_password_change_email(WP_User $user, string $new_password): void
     {
+        if (! EmailReputationGuard::should_send_event('password_change_user', ['user_id' => (int) $user->ID])) {
+            return;
+        }
+
         if (! apply_filters('go360/password_reset_mailer/send_user_confirmation', true, $user, $new_password)) {
             return;
         }
@@ -213,8 +210,7 @@ class PasswordResetMailer
 
         $headers = ['Content-Type: text/html; charset=UTF-8'];
 
-        $from_email = sanitize_email(get_option('admin_email'));
-        $from_header = EmailSettings::buildFromHeader('professional', $from_email);
+        $from_header = EmailSettings::buildFromHeader('professional');
         if ($from_header !== '') {
             $headers[] = $from_header;
         }

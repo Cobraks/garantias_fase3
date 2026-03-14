@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Rest;
 use GarantiasOnline360VO\Account\AccountViewModel;
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
@@ -843,8 +844,12 @@ class AccountRestController
      */
     private static function notify_admin_signed_mandate(int $user_id, array $document, string $binary): void
     {
+        if (! EmailReputationGuard::should_send_event('sepa_signed_admin', ['user_id' => $user_id])) {
+            return;
+        }
+
         $delivery = self::resolve_admin_recipients();
-        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+        if (empty($delivery['to'])) {
             return;
         }
 
@@ -938,13 +943,12 @@ class AccountRestController
 
         $mailer = new Mailer();
         $message = new EmailMessage(
-            $delivery['to'] ?: [$delivery['primary']],
+            $delivery['to'],
             $subject,
             $body,
             $headers,
             $attachments,
             [
-                'bcc'      => $delivery['bcc'],
                 'reply_to' => $delivery['reply_to'],
             ]
         );
@@ -968,6 +972,10 @@ class AccountRestController
 
     private static function notify_user_sepa_activated(int $user_id, array $sepa_details, array $signed_meta, array $options = []): void
     {
+        if (! EmailReputationGuard::should_send_event('sepa_activated_user', ['user_id' => $user_id])) {
+            return;
+        }
+
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
             return;
@@ -1042,8 +1050,12 @@ class AccountRestController
 
     private static function notify_admin_sepa_activated(int $user_id, array $sepa_details, array $signed_meta, array $options = []): void
     {
+        if (! EmailReputationGuard::should_send_event('sepa_activated_admin', ['user_id' => $user_id])) {
+            return;
+        }
+
         $delivery = self::resolve_admin_recipients();
-        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+        if (empty($delivery['to'])) {
             return;
         }
 
@@ -1133,13 +1145,12 @@ class AccountRestController
 
         $mailer = new Mailer();
         $message = new EmailMessage(
-            $delivery['to'] ?: [$delivery['primary']],
+            $delivery['to'],
             $subject,
             $body,
             $headers,
             [],
             [
-                'bcc'      => $delivery['bcc'],
                 'reply_to' => $delivery['reply_to'],
             ]
         );
@@ -1148,13 +1159,11 @@ class AccountRestController
     }
 
     /**
-     * @return array{primary:string,to:array<int,string>,bcc:array<int,string>,reply_to:string}
+     * @return array{to:array<int,string>,reply_to:string}
      */
     private static function resolve_admin_recipients(): array
     {
-        $primary = sanitize_email((string) get_option('admin_email'));
         $to = [];
-        $bcc = [];
         $reply_to = '';
 
         if (function_exists('get_field')) {
@@ -1179,19 +1188,7 @@ class AccountRestController
                         continue;
                     }
 
-                    $is_bcc = false;
-                    if (array_key_exists('copia_oculta', $row)) {
-                        $is_bcc = (bool) $row['copia_oculta'];
-                    } else {
-                        $type = sanitize_key($row['destino'] ?? '');
-                        $is_bcc = $type === 'bcc';
-                    }
-
-                    if ($is_bcc) {
-                        $bcc[] = $email;
-                    } else {
-                        $to[] = $email;
-                    }
+                    $to[] = $email;
                 }
             }
             $reply_to_candidate = sanitize_email($settings['direccion_respuesta'] ?? ($notifications['direccion_respuesta'] ?? ''));
@@ -1200,14 +1197,8 @@ class AccountRestController
             }
         }
 
-        if (empty($to) && is_email($primary)) {
-            $to[] = $primary;
-        }
-
         return [
-            'primary'  => is_email($primary) ? $primary : '',
             'to'       => array_values(array_unique(array_filter($to, 'is_email'))),
-            'bcc'      => array_values(array_unique(array_filter($bcc, 'is_email'))),
             'reply_to' => $reply_to,
         ];
     }
@@ -1605,6 +1596,10 @@ class AccountRestController
 
     public static function notify_user_pending_mandate(int $user_id, array $document, string $binary): void
     {
+        if (! EmailReputationGuard::should_send_event('sepa_pending_user', ['user_id' => $user_id])) {
+            return;
+        }
+
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
             return;
@@ -1688,8 +1683,12 @@ class AccountRestController
 
     private static function notify_admin_pending_mandate(int $user_id, array $document, string $binary): void
     {
+        if (! EmailReputationGuard::should_send_event('sepa_pending_admin', ['user_id' => $user_id])) {
+            return;
+        }
+
         $delivery = self::resolve_admin_recipients();
-        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+        if (empty($delivery['to'])) {
             return;
         }
 
@@ -1768,13 +1767,12 @@ class AccountRestController
 
         $mailer = new Mailer();
         $message = new EmailMessage(
-            $delivery['to'] ?: [$delivery['primary']],
+            $delivery['to'],
             $subject,
             $body,
             $headers,
             $attachments,
             [
-                'bcc'      => $delivery['bcc'],
                 'reply_to' => $delivery['reply_to'],
             ]
         );

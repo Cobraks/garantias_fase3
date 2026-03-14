@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Register;
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
+use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Register\SepaMandateService;
@@ -1124,8 +1125,12 @@ class RegistrationService
      */
     private function notify_admin(int $user_id, array $data, array $uploads): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_admin', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $delivery = $this->resolve_admin_recipients();
-        if (empty($delivery['to']) && empty($delivery['bcc'])) {
+        if (empty($delivery['to'])) {
             return false;
         }
 
@@ -1168,13 +1173,12 @@ class RegistrationService
         }
 
         $message = new EmailMessage(
-            $delivery['to'] ?: [$delivery['primary']],
+            $delivery['to'],
             $subject,
             $body,
             $headers,
             [],
             [
-                'bcc'      => $delivery['bcc'],
                 'reply_to' => $delivery['reply_to'],
             ]
         );
@@ -1184,6 +1188,10 @@ class RegistrationService
 
     private function notify_welcome(int $user_id): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_welcome', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
             return false;
@@ -1388,6 +1396,10 @@ class RegistrationService
      */
     private function notify_user(int $user_id, $data, string $code, int $expires): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_verification', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $first_name = '';
         if (is_array($data) && isset($data['first_name'])) {
             $first_name = (string) $data['first_name'];
@@ -1464,11 +1476,10 @@ class RegistrationService
     }
 
     /**
-     * @return array{primary: string, to: array<int, string>, bcc: array<int, string>, reply_to: string}
+     * @return array{to: array<int, string>, bcc: array<int, string>, reply_to: string}
      */
     private function resolve_admin_recipients(): array
     {
-        $primary = get_option('admin_email');
         $to      = [];
         $bcc     = [];
         $reply_to = '';
@@ -1516,13 +1527,7 @@ class RegistrationService
             }
         }
 
-        $primary = is_email($primary) ? $primary : '';
-        if (empty($to) && $primary !== '') {
-            $to[] = $primary;
-        }
-
         return [
-            'primary'  => $primary,
             'to'       => array_values(array_unique(array_filter($to))),
             'bcc'      => array_values(array_unique(array_filter($bcc))),
             'reply_to' => $reply_to,

@@ -270,7 +270,7 @@ class EmailNotificationService
             return;
         }
 
-        $options   = $this->build_admin_options($delivery);
+        $options   = $this->build_admin_options($delivery, $slug);
         $recipients = $delivery['to'];
         $message   = $composer(
             $this->builder,
@@ -368,11 +368,7 @@ class EmailNotificationService
         }
 
         if (empty($to) && empty($bcc)) {
-            $fallback = sanitize_email(get_option('admin_email'));
-            if ($fallback !== '') {
-                $to[$fallback] = $fallback;
-                error_log('[EMAIL] Fallback admin recipient applied for guarantee ' . $guarantee_id);
-            }
+            error_log('[EMAIL] No explicit admin recipients configured for guarantee ' . $guarantee_id);
         }
 
         $filtered_to = apply_filters('go360/email/admin_recipients', array_values($to), $guarantee_id, $context);
@@ -562,7 +558,9 @@ class EmailNotificationService
 
     private function should_notify(string $slug, array $data, array $context): bool
     {
-        return (bool) apply_filters('go360/email/should_notify', true, $slug, $data, $context);
+        $allowed_by_guard = EmailReputationGuard::should_send_event($slug, $context);
+
+        return (bool) apply_filters('go360/email/should_notify', $allowed_by_guard, $slug, $data, $context);
     }
 
     private function resolve_initiator_id(array $context): int
@@ -597,13 +595,11 @@ class EmailNotificationService
         );
     }
 
-    private function build_admin_options(array $delivery): array
+    private function build_admin_options(array $delivery, string $event_slug = ''): array
     {
         $options = [];
 
-        if (! empty($delivery['bcc'])) {
-            $options['bcc'] = $delivery['bcc'];
-        }
+        // Internal BCC intentionally disabled to reduce reputation risk and fan-out.
 
         $from_header = $this->get_admin_from_header();
         if ($from_header !== '') {

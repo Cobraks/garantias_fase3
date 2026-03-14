@@ -12,6 +12,7 @@ use GarantiasOnline360VO\Register\SepaMandateService;
 use GarantiasOnline360VO\GuaranteeLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
+use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\GuaranteeEmailDataFactory;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
@@ -2677,9 +2678,9 @@ class GuaranteeRestController
         );
 
         $recipients = $delivery['to'] ?? [];
-        $bcc        = $delivery['bcc'] ?? [];
+        $bcc        = [];
 
-        if (! empty($recipients) || ! empty($bcc)) {
+        if (! empty($recipients)) {
             $subject = sprintf(
                 /* translators: %s: vehicle plate */
                 __('Transferencia confirmada · Garantía %s', 'garantias-online-360vo'),
@@ -2738,20 +2739,11 @@ class GuaranteeRestController
             }
 
             $headers  = ['Content-Type: text/html; charset=UTF-8'];
-            $sender_email = sanitize_email(
-                apply_filters('go360/email/sender_email', get_option('admin_email'), 'admin', [])
-            );
-            if ($sender_email !== '') {
-                $headers[] = sprintf(
-                    'From: %s <%s>',
-                    __('Garantías 360VO', 'garantias-online-360vo'),
-                    $sender_email
-                );
+            $from_header = EmailSettings::buildFromHeader('admin');
+            if ($from_header !== '') {
+                $headers[] = $from_header;
             }
             $metadata = [];
-            if (! empty($bcc)) {
-                $metadata['bcc'] = $bcc;
-            }
 
             $message = new EmailMessage($recipients, $subject, $body, $headers, [], $metadata);
             $mailer  = new Mailer();
@@ -3244,7 +3236,33 @@ class GuaranteeRestController
 
     public static function can_edit($request)
     {
-        return is_user_logged_in();
+        if (! is_user_logged_in()) {
+            return false;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof \WP_User) {
+            return false;
+        }
+
+        if (
+            current_user_can('manage_options')
+            || in_array('go_garantias', (array) $current_user->roles, true)
+            || in_array('go_comercial', (array) $current_user->roles, true)
+            || in_array('go_director_comercial', (array) $current_user->roles, true)
+        ) {
+            return true;
+        }
+
+        $post_id = isset($request['id']) ? (int) $request['id'] : 0;
+        if ($post_id > 0) {
+            return self::can_view($request);
+        }
+
+        return in_array('go_profesional', (array) $current_user->roles, true)
+            || in_array('profesional', (array) $current_user->roles, true)
+            || in_array('go_particular', (array) $current_user->roles, true)
+            || in_array('go_gestoria', (array) $current_user->roles, true);
     }
 
     private static function normalize_note_text($note): string
