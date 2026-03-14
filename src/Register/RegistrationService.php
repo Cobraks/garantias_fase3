@@ -5,6 +5,7 @@ namespace GarantiasOnline360VO\Register;
 use GarantiasOnline360VO\ActivityLog\ActivityLogger;
 use GarantiasOnline360VO\Notifications\Email\EmailMessage;
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
+use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
 use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Register\SepaMandateService;
@@ -1124,6 +1125,10 @@ class RegistrationService
      */
     private function notify_admin(int $user_id, array $data, array $uploads): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_admin', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $delivery = $this->resolve_admin_recipients();
         if (empty($delivery['to']) && empty($delivery['bcc'])) {
             return false;
@@ -1184,6 +1189,10 @@ class RegistrationService
 
     private function notify_welcome(int $user_id): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_welcome', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $user = get_user_by('id', $user_id);
         if (! $user instanceof WP_User) {
             return false;
@@ -1388,6 +1397,10 @@ class RegistrationService
      */
     private function notify_user(int $user_id, $data, string $code, int $expires): bool
     {
+        if (! EmailReputationGuard::should_send_event('register_verification', ['user_id' => $user_id])) {
+            return false;
+        }
+
         $first_name = '';
         if (is_array($data) && isset($data['first_name'])) {
             $first_name = (string) $data['first_name'];

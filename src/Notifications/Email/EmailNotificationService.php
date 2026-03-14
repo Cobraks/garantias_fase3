@@ -270,7 +270,7 @@ class EmailNotificationService
             return;
         }
 
-        $options   = $this->build_admin_options($delivery);
+        $options   = $this->build_admin_options($delivery, $slug);
         $recipients = $delivery['to'];
         $message   = $composer(
             $this->builder,
@@ -562,7 +562,9 @@ class EmailNotificationService
 
     private function should_notify(string $slug, array $data, array $context): bool
     {
-        return (bool) apply_filters('go360/email/should_notify', true, $slug, $data, $context);
+        $allowed_by_guard = EmailReputationGuard::should_send_event($slug, $context);
+
+        return (bool) apply_filters('go360/email/should_notify', $allowed_by_guard, $slug, $data, $context);
     }
 
     private function resolve_initiator_id(array $context): int
@@ -597,11 +599,11 @@ class EmailNotificationService
         );
     }
 
-    private function build_admin_options(array $delivery): array
+    private function build_admin_options(array $delivery, string $event_slug = ''): array
     {
         $options = [];
 
-        if (! empty($delivery['bcc'])) {
+        if (! empty($delivery['bcc']) && EmailReputationGuard::should_include_internal_bcc($event_slug)) {
             $options['bcc'] = $delivery['bcc'];
         }
 
