@@ -21,6 +21,14 @@ class RegisterRestController
     private const ROUTE_RESEND  = '/register/resend';
     private const ROUTE_STATUS  = '/register/verification';
 
+    private const RATE_LIMITS = [
+        'check_email' => ['window' => 60, 'max' => 20],
+        'register'    => ['window' => 300, 'max' => 5],
+        'verify'      => ['window' => 300, 'max' => 25],
+        'resend'      => ['window' => 300, 'max' => 10],
+        'status'      => ['window' => 120, 'max' => 20],
+    ];
+
     public static function register_routes(): void
     {
         register_rest_route(
@@ -94,6 +102,11 @@ class RegisterRestController
 
     public static function check_email(WP_REST_Request $request)
     {
+        $rate_limited = self::check_rate_limit('check_email', $request);
+        if ($rate_limited instanceof WP_Error) {
+            return self::error_response($rate_limited);
+        }
+
         $email = $request->get_param('email');
         if (! is_string($email) || ! is_email($email)) {
             return new WP_Error('invalid_email', __('Correo electrónico inválido.', 'garantias-online-360vo'), ['status' => 400]);
@@ -106,6 +119,11 @@ class RegisterRestController
 
     public static function create_account(WP_REST_Request $request)
     {
+        $rate_limited = self::check_rate_limit('register', $request);
+        if ($rate_limited instanceof WP_Error) {
+            return self::error_response($rate_limited);
+        }
+
         $service = new RegistrationService();
         $data    = $request->get_params();
         $files   = $request->get_file_params();
@@ -120,6 +138,11 @@ class RegisterRestController
 
     public static function verify_account(WP_REST_Request $request)
     {
+        $rate_limited = self::check_rate_limit('verify', $request);
+        if ($rate_limited instanceof WP_Error) {
+            return self::error_response($rate_limited);
+        }
+
         $service = new RegistrationService();
         $params  = self::get_body_params($request);
         $token   = isset($params['token']) ? (string) $params['token'] : '';
@@ -135,6 +158,11 @@ class RegisterRestController
 
     public static function resend_code(WP_REST_Request $request)
     {
+        $rate_limited = self::check_rate_limit('resend', $request);
+        if ($rate_limited instanceof WP_Error) {
+            return self::error_response($rate_limited);
+        }
+
         $service = new RegistrationService();
         $params  = self::get_body_params($request);
         $token   = isset($params['token']) ? (string) $params['token'] : '';
@@ -149,6 +177,11 @@ class RegisterRestController
 
     public static function get_verification(WP_REST_Request $request)
     {
+        $rate_limited = self::check_rate_limit('status', $request);
+        if ($rate_limited instanceof WP_Error) {
+            return self::error_response($rate_limited);
+        }
+
         $service = new RegistrationService();
         $email   = (string) $request->get_param('email');
 
@@ -171,6 +204,92 @@ class RegisterRestController
         }
 
         return is_array($params) ? $params : [];
+    }
+
+
+    /**
+     * @return true|WP_Error
+     */
+    private static function check_rate_limit(string $action, WP_REST_Request $request)
+    {
+        if (! isset(self::RATE_LIMITS[$action])) {
+            return true;
+        }
+
+        $limit = self::RATE_LIMITS[$action];
+        $window = (int) ($limit['window'] ?? 60);
+        $max = (int) ($limit['max'] ?? 10);
+
+        if ($window <= 0 || $max <= 0) {
+            return true;
+        }
+
+        $ip = self::resolve_client_ip($request);
+        $key = 'go360_rl_' . md5($action . '|' . $ip);
+        $state = get_transient($key);
+
+        if (! is_array($state) || empty($state['start']) || ! isset($state['count'])) {
+            $state = [
+                'start' => time(),
+                'count' => 0,
+            ];
+        }
+
+        $elapsed = time() - (int) $state['start'];
+        if ($elapsed >= $window) {
+            $state = [
+                'start' => time(),
+                'count' => 0,
+            ];
+            $elapsed = 0;
+        }
+
+        $state['count'] = (int) $state['count'] + 1;
+        set_transient($key, $state, $window);
+
+        if ($state['count'] > $max) {
+            return new WP_Error(
+                'go_register_rate_limit',
+                __('Demasiadas solicitudes. Espera unos minutos y vuelve a intentarlo.', 'garantias-online-360vo'),
+                [
+                    'status' => 429,
+                    'retry_in' => max(1, $window - $elapsed),
+                ]
+            );
+        }
+
+        return true;
+    }
+
+    private static function resolve_client_ip(WP_REST_Request $request): string
+    {
+        $headers = [
+            'x-forwarded-for',
+            'x-real-ip',
+            'client-ip',
+        ];
+
+        foreach ($headers as $header) {
+            $value = $request->get_header($header);
+            if (! is_string($value) || trim($value) === '') {
+                continue;
+            }
+
+            $parts = explode(',', $value);
+            foreach ($parts as $part) {
+                $ip = trim($part);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        $server_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        if (is_string($server_ip) && filter_var($server_ip, FILTER_VALIDATE_IP)) {
+            return $server_ip;
+        }
+
+        return 'unknown';
     }
 
     private static function error_response(WP_Error $error)

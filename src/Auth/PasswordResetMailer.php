@@ -3,6 +3,7 @@
 namespace GarantiasOnline360VO\Auth;
 
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
+use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
@@ -32,6 +33,10 @@ class PasswordResetMailer
         $user_login = $user->user_login ?? $user_login;
         $user_login = is_string($user_login) ? $user_login : '';
         $key        = trim($key);
+
+        if (! EmailReputationGuard::should_send_event('password_reset', ['user_id' => (int) $user->ID])) {
+            return $email;
+        }
 
         if ($user_login === '' || $key === '') {
             return $email;
@@ -167,6 +172,10 @@ class PasswordResetMailer
 
     public static function send_user_password_change_email(WP_User $user, string $new_password): void
     {
+        if (! EmailReputationGuard::should_send_event('password_change_user', ['user_id' => (int) $user->ID])) {
+            return;
+        }
+
         if (! apply_filters('go360/password_reset_mailer/send_user_confirmation', true, $user, $new_password)) {
             return;
         }
