@@ -1130,7 +1130,7 @@ class RegistrationService
         }
 
         $delivery = $this->resolve_admin_recipients();
-        if (empty($delivery['to'])) {
+        if (empty($delivery['to']) && empty($delivery['bcc'])) {
             return false;
         }
 
@@ -1173,12 +1173,13 @@ class RegistrationService
         }
 
         $message = new EmailMessage(
-            $delivery['to'],
+            $delivery['to'] ?: [$delivery['primary']],
             $subject,
             $body,
             $headers,
             [],
             [
+                'bcc'      => $delivery['bcc'],
                 'reply_to' => $delivery['reply_to'],
             ]
         );
@@ -1476,10 +1477,11 @@ class RegistrationService
     }
 
     /**
-     * @return array{to: array<int, string>, bcc: array<int, string>, reply_to: string}
+     * @return array{primary: string, to: array<int, string>, bcc: array<int, string>, reply_to: string}
      */
     private function resolve_admin_recipients(): array
     {
+        $primary = get_option('admin_email');
         $to      = [];
         $bcc     = [];
         $reply_to = '';
@@ -1527,7 +1529,13 @@ class RegistrationService
             }
         }
 
+        $primary = is_email($primary) ? $primary : '';
+        if (empty($to) && $primary !== '') {
+            $to[] = $primary;
+        }
+
         return [
+            'primary'  => $primary,
             'to'       => array_values(array_unique(array_filter($to))),
             'bcc'      => array_values(array_unique(array_filter($bcc))),
             'reply_to' => $reply_to,

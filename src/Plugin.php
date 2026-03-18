@@ -9,7 +9,6 @@ use GarantiasOnline360VO\Clients\ClientSummary;
 use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
-use GarantiasOnline360VO\Notifications\Email\EmailTelemetry;
 use GarantiasOnline360VO\Notifications\Push\PushNotificationService;
 use GarantiasOnline360VO\Register\RegisterManager;
 
@@ -89,7 +88,6 @@ class Plugin
         ProfileAvatar::init();
         SettingsPage::init();
         EmailNotificationService::init();
-        EmailTelemetry::init();
         PushNotificationService::init();
         RegisterManager::init();
 

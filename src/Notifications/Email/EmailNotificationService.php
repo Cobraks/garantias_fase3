@@ -368,7 +368,11 @@ class EmailNotificationService
         }
 
         if (empty($to) && empty($bcc)) {
-            error_log('[EMAIL] No explicit admin recipients configured for guarantee ' . $guarantee_id);
+            $fallback = sanitize_email(get_option('admin_email'));
+            if ($fallback !== '') {
+                $to[$fallback] = $fallback;
+                error_log('[EMAIL] Fallback admin recipient applied for guarantee ' . $guarantee_id);
+            }
         }
 
         $filtered_to = apply_filters('go360/email/admin_recipients', array_values($to), $guarantee_id, $context);
@@ -599,7 +603,9 @@ class EmailNotificationService
     {
         $options = [];
 
-        // Internal BCC intentionally disabled to reduce reputation risk and fan-out.
+        if (! empty($delivery['bcc']) && EmailReputationGuard::should_include_internal_bcc($event_slug)) {
+            $options['bcc'] = $delivery['bcc'];
+        }
 
         $from_header = $this->get_admin_from_header();
         if ($from_header !== '') {

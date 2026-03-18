@@ -90,7 +90,13 @@ class PasswordResetMailer
                 && stripos((string) $header, 'from:') === false
         ));
 
-        $from_header = EmailSettings::buildFromHeader('professional');
+        $admin_email = sanitize_email(get_option('admin_email'));
+        if ($admin_email === '') {
+            $domain = wp_parse_url(home_url(), PHP_URL_HOST);
+            $admin_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
+        }
+
+        $from_header = EmailSettings::buildFromHeader('professional', $admin_email);
 
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
         if ($from_header !== '') {
@@ -143,7 +149,13 @@ class PasswordResetMailer
             static fn($header) => stripos((string) $header, 'content-type:') === false
         ));
 
-        $from_header = EmailSettings::buildFromHeader('admin');
+        $from_email = sanitize_email(get_option('admin_email'));
+        if ($from_email === '') {
+            $domain = wp_parse_url(home_url(), PHP_URL_HOST);
+            $from_email = $domain ? 'no-reply@' . ltrim($domain, '.') : 'no-reply@example.com';
+        }
+
+        $from_header = EmailSettings::buildFromHeader('admin', $from_email);
 
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
         if ($from_header !== '') {
@@ -210,7 +222,8 @@ class PasswordResetMailer
 
         $headers = ['Content-Type: text/html; charset=UTF-8'];
 
-        $from_header = EmailSettings::buildFromHeader('professional');
+        $from_email = sanitize_email(get_option('admin_email'));
+        $from_header = EmailSettings::buildFromHeader('professional', $from_email);
         if ($from_header !== '') {
             $headers[] = $from_header;
         }

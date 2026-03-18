@@ -10,7 +10,6 @@ if (! defined('ABSPATH')) {
 
 class EmailSettings
 {
-    private const TRANSACTIONAL_SENDER_OPTION = 'go360_email_sender_transaccional';
     /** @var array<string,mixed>|null */
     private static $cache = null;
 
@@ -127,16 +126,7 @@ class EmailSettings
 
     public static function resolveSenderEmail(string $context, string $fallback = ''): string
     {
-        $transactional = sanitize_email((string) get_option(self::TRANSACTIONAL_SENDER_OPTION, ''));
-        if ($transactional === '') {
-            $transactional = 'garantias-online@360vo.es';
-        }
-
-        $email = $fallback !== '' ? $fallback : $transactional;
-        if ($email === '') {
-            $email = sanitize_email(get_option('admin_email'));
-        }
-
+        $email = $fallback !== '' ? $fallback : sanitize_email(get_option('admin_email'));
         $settings = self::all();
 
         return sanitize_email(
