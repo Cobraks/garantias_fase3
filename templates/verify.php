@@ -80,6 +80,41 @@ TemplateLoader::load_part('header', compact('is_auth_page', 'is_verify_page', 'i
 
                     <form class="auth-form" id="verification-form" novalidate>
                         <div class="verify-grid">
+                            <div class="verify-panel verify-panel--lookup" id="verification-lookup">
+                                <div class="verify-panel__header">
+                                    <div class="verify-panel__icon" aria-hidden="true"><?php echo Svg::icon('email'); ?></div>
+                                    <div>
+                                        <h3 class="verify-panel__title"><?php esc_html_e('Recuperar tu verificación', 'garantias-online-360vo'); ?></h3>
+                                        <p class="verify-panel__eyebrow"><?php esc_html_e('Accede aunque hayas cerrado la pestaña anterior', 'garantias-online-360vo'); ?></p>
+                                    </div>
+                                </div>
+
+                                <p class="verify-panel__description">
+                                    <?php esc_html_e('Introduce el correo electrónico con el que te registraste para recuperar tu código pendiente o solicitar uno nuevo.', 'garantias-online-360vo'); ?>
+                                </p>
+
+                                <div class="input-container">
+                                    <input
+                                        type="email"
+                                        id="verification_email"
+                                        class="form-input"
+                                        placeholder=" "
+                                        inputmode="email"
+                                        autocomplete="email"
+                                        autocapitalize="none"
+                                        value="<?php echo esc_attr($email_prefill); ?>">
+                                    <label for="verification_email" class="form-label"><?php esc_html_e('Correo electrónico', 'garantias-online-360vo'); ?></label>
+                                    <p class="form-field-error" id="verification-email-error" hidden></p>
+                                </div>
+
+                                <div class="verification-actions">
+                                    <button type="button" class="btn btn-primary" id="lookup-code-btn">
+                                        <span class="btn__icon" aria-hidden="true"><?php echo Svg::icon('search'); ?></span>
+                                        <span><?php esc_html_e('Recuperar código', 'garantias-online-360vo'); ?></span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="verify-panel verify-panel--code" id="verification-block" hidden>
                                 <div class="verify-panel__header">
                                     <div class="verify-panel__icon" aria-hidden="true"><?php echo Svg::icon('lock'); ?></div>

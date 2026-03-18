@@ -443,19 +443,21 @@
 
     const persistVerificationState = () => {
       try {
-        if (!state.verification.token) {
-          window.sessionStorage.removeItem(VERIFICATION_STORAGE_KEY);
-          return;
-        }
-        window.sessionStorage.setItem(
-          VERIFICATION_STORAGE_KEY,
-          JSON.stringify({
-            token: state.verification.token,
-            email: state.verification.email,
-            expiresAt: state.verification.expiresAt,
-            resendAvailableAt: state.verification.resendAvailableAt,
-          })
-        );
+        const payload = JSON.stringify({
+          token: state.verification.token,
+          email: state.verification.email,
+          expiresAt: state.verification.expiresAt,
+          resendAvailableAt: state.verification.resendAvailableAt,
+        });
+
+        [window.localStorage, window.sessionStorage].forEach((storage) => {
+          if (!state.verification.token) {
+            storage.removeItem(VERIFICATION_STORAGE_KEY);
+            return;
+          }
+
+          storage.setItem(VERIFICATION_STORAGE_KEY, payload);
+        });
       } catch (error) {
         console.error('[register] persistVerificationState', error);
       }
@@ -473,12 +475,16 @@
 
     const restoreVerificationState = () => {
       try {
-        const raw = window.sessionStorage.getItem(VERIFICATION_STORAGE_KEY);
+        let raw = window.localStorage.getItem(VERIFICATION_STORAGE_KEY);
+        if (!raw) {
+          raw = window.sessionStorage.getItem(VERIFICATION_STORAGE_KEY);
+        }
         if (!raw) {
           return false;
         }
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== 'object' || !parsed.token) {
+          window.localStorage.removeItem(VERIFICATION_STORAGE_KEY);
           window.sessionStorage.removeItem(VERIFICATION_STORAGE_KEY);
           return false;
         }
@@ -488,6 +494,7 @@
           expiresAt: parsed.expiresAt || parsed.expires_at || '',
           resendAvailableAt: Number(parsed.resendAvailableAt || parsed.resend_available_at || 0),
         };
+        persistVerificationState();
         return true;
       } catch (error) {
         console.error('[register] restoreVerificationState', error);
