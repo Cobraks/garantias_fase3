@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 6.4.15 - 2026-03-18
+- Hardening email: `Mailer` emite telemetría estructurada (`go360/email/send_result`) y `Plugin` inicializa `EmailTelemetry` para registrar éxitos/fallos correlacionados.
+- Hardening password reset: la confirmación de cambio de contraseña del usuario pasa por `Mailer` para unificar cabeceras, sanitización y observabilidad.
+- Hardening REST de garantías: `GuaranteeRestController::can_edit()` deja de permitir cualquier usuario autenticado y exige roles internos/profesionales o relación real con la garantía.
+
 ## 6.4.14 - 2026-03-12
 - FIX Logging `PrivateDocsManager`: se elimina el mensaje repetitivo "directory exists ..." en cada petición para evitar ruido en `AH01071` de Apache/Plesk.
 - Mejora segura de observabilidad: logs de mantenimiento/no críticos de `PrivateDocsManager` pasan a modo debug (`WP_DEBUG`) y son controlables vía filtro `go360/private_docs/debug_logs`.
