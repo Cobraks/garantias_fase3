@@ -4,6 +4,8 @@ namespace GarantiasOnline360VO\Auth;
 
 use GarantiasOnline360VO\Notifications\Email\EmailSettings;
 use GarantiasOnline360VO\Notifications\Email\EmailReputationGuard;
+use GarantiasOnline360VO\Notifications\Email\EmailMessage;
+use GarantiasOnline360VO\Notifications\Email\Mailer;
 use GarantiasOnline360VO\Notifications\Email\TemplateRenderer;
 use GarantiasOnline360VO\Support\UserProfileResolver;
 use WP_User;
@@ -235,6 +237,7 @@ class PasswordResetMailer
 
         $subject = sprintf(__('[%s] Tu contraseña se ha actualizado', 'garantias-online-360vo'), $site_name);
 
-        wp_mail($user_email, $subject, $message, $headers);
+        $mailer = new Mailer();
+        $mailer->send(new EmailMessage([$user_email], $subject, $message, $headers));
     }
 }

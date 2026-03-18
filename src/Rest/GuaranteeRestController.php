@@ -3244,7 +3244,61 @@ class GuaranteeRestController
 
     public static function can_edit($request)
     {
-        return is_user_logged_in();
+        if (! is_user_logged_in()) {
+            return false;
+        }
+
+        $current_user = wp_get_current_user();
+        if (! $current_user instanceof \WP_User) {
+            return false;
+        }
+
+        if (
+            current_user_can('manage_options')
+            || in_array('go_garantias', (array) $current_user->roles, true)
+            || in_array('go_comercial', (array) $current_user->roles, true)
+            || in_array('go_director_comercial', (array) $current_user->roles, true)
+            || in_array('go_profesional', (array) $current_user->roles, true)
+            || in_array('profesional', (array) $current_user->roles, true)
+            || in_array('go_gestoria', (array) $current_user->roles, true)
+        ) {
+            return true;
+        }
+
+        $post_id = isset($request['id']) ? absint($request['id']) : 0;
+        if ($post_id <= 0) {
+            return false;
+        }
+
+        $uid  = (int) $current_user->ID;
+        $post = get_post($post_id);
+        if ($post && (int) $post->post_author === $uid) {
+            return true;
+        }
+
+        $profesional = get_post_meta($post_id, 'garantia_contratada_concesionario_empresa_profesional', true);
+        $profesional_id = is_array($profesional) && isset($profesional['ID']) ? (int) $profesional['ID'] : (int) $profesional;
+
+        if ($profesional_id > 0 && $uid === $profesional_id) {
+            return true;
+        }
+
+        if ($profesional_id > 0) {
+            $comerciales = get_field('ajustes_usuarios_comercial_asignado', 'user_' . $profesional_id);
+            if (is_array($comerciales)) {
+                foreach ($comerciales as $comercial) {
+                    $comercial_id = is_array($comercial) && isset($comercial['ID'])
+                        ? (int) $comercial['ID']
+                        : (int) $comercial;
+
+                    if ($comercial_id === $uid) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private static function normalize_note_text($note): string

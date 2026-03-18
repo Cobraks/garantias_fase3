@@ -14,6 +14,10 @@ class Mailer
             return false;
         }
 
+        $correlation_id = function_exists('wp_generate_uuid4')
+            ? wp_generate_uuid4()
+            : uniqid('go360-email-', true);
+
         $recipients = $message->get_recipients();
         if (empty($recipients)) {
             $recipients = ['undisclosed-recipients:;'];
@@ -70,6 +74,8 @@ class Mailer
                 error_log('[Mailer] Unexpected output: ' . trim($sanitized));
             }
         }
+
+        do_action('go360/email/send_result', $sent, $correlation_id, $message, $recipients, $headers, $attachments);
 
         return $sent;
     }
