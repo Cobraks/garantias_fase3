@@ -1,5 +1,10 @@
 # Historial de cambios
 
+## 6.4.15 - 2026-03-18
+- FIX Verificación independiente: la página `/garantias-online/verificacion/` ahora permite recuperar la solicitud pendiente introduciendo manualmente el email, incluso si el usuario llega sin `?email=`.
+- FIX Persistencia del código pendiente: el flujo de registro guarda el contexto de verificación en `localStorage` además de `sessionStorage`, permitiendo retomar la activación tras cerrar la pestaña y abrir la página de verificación más tarde.
+- UX Verificación: se añade un panel explícito para recuperar el código/reenvío desde el correo registrado antes de introducir el código.
+
 ## 6.4.14 - 2026-03-12
 - FIX Logging `PrivateDocsManager`: se elimina el mensaje repetitivo "directory exists ..." en cada petición para evitar ruido en `AH01071` de Apache/Plesk.
 - Mejora segura de observabilidad: logs de mantenimiento/no críticos de `PrivateDocsManager` pasan a modo debug (`WP_DEBUG`) y son controlables vía filtro `go360/private_docs/debug_logs`.
