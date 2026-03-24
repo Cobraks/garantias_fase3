@@ -150,6 +150,10 @@ class ActivitySubscribers
 
     public static function on_option_updated(string $option, $old_value, $value): void
     {
+        if (self::is_transient_option($option)) {
+            return;
+        }
+
         if (strpos($option, 'go360') === false && strpos($option, 'garantia') === false) {
             return;
         }
@@ -161,6 +165,16 @@ class ActivitySubscribers
                 'changes'     => wp_json_encode($changes),
             ],
         ]);
+    }
+
+    private static function is_transient_option(string $option): bool
+    {
+        if ($option === '') {
+            return false;
+        }
+
+        return strpos($option, '_transient_') === 0
+            || strpos($option, '_site_transient_') === 0;
     }
 
     private static function diff_values($old, $new): array
