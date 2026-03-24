@@ -225,7 +225,8 @@ class RegisterRestController
         }
 
         $ip = self::resolve_client_ip($request);
-        $key = 'go360_rl_' . md5($action . '|' . $ip);
+        $identifier = self::resolve_rate_limit_identifier($action, $request);
+        $key = self::build_rate_limit_key($action, $ip, $identifier);
         $state = get_transient($key);
 
         if (! is_array($state) || empty($state['start']) || ! isset($state['count'])) {
@@ -248,12 +249,33 @@ class RegisterRestController
         set_transient($key, $state, $window);
 
         if ($state['count'] > $max) {
+            $retry_in = max(1, $window - $elapsed);
+
+            if ((int) $state['count'] === ($max + 1)) {
+                /**
+                 * Activity log entry for registration rate-limit events.
+                 * Logs only the first blocked hit per window/key to avoid flooding.
+                 */
+                do_action('go360/activity/log', 'auth.register_rate_limited', [
+                    'level' => 'warning',
+                    'context' => [
+                        'action'      => $action,
+                        'retry_in'    => $retry_in,
+                        'attempts'    => (int) $state['count'],
+                        'max'         => $max,
+                        'window'      => $window,
+                        'ip_hash'     => md5($ip),
+                        'key_suffix'  => substr($key, -12),
+                    ],
+                ]);
+            }
+
             return new WP_Error(
                 'go_register_rate_limit',
                 __('Demasiadas solicitudes. Espera unos minutos y vuelve a intentarlo.', 'garantias-online-360vo'),
                 [
                     'status' => 429,
-                    'retry_in' => max(1, $window - $elapsed),
+                    'retry_in' => $retry_in,
                 ]
             );
         }
@@ -264,6 +286,7 @@ class RegisterRestController
     private static function resolve_client_ip(WP_REST_Request $request): string
     {
         $headers = [
+            'cf-connecting-ip',
             'x-forwarded-for',
             'x-real-ip',
             'client-ip',
@@ -290,6 +313,44 @@ class RegisterRestController
         }
 
         return 'unknown';
+    }
+
+    private static function build_rate_limit_key(string $action, string $ip, string $identifier = ''): string
+    {
+        $parts = [$action, $ip];
+        if ($identifier !== '') {
+            $parts[] = $identifier;
+        }
+
+        return 'go360_rl_' . md5(implode('|', $parts));
+    }
+
+    private static function resolve_rate_limit_identifier(string $action, WP_REST_Request $request): string
+    {
+        $params = self::get_body_params($request);
+
+        if ($action === 'check_email' || $action === 'register' || $action === 'status') {
+            $email = '';
+            if ($action === 'check_email' || $action === 'status') {
+                $email = (string) $request->get_param('email');
+            } else {
+                $email = isset($params['email']) ? (string) $params['email'] : '';
+            }
+
+            $email = strtolower(trim(sanitize_email($email)));
+            if ($email !== '' && is_email($email)) {
+                return 'email:' . md5($email);
+            }
+        }
+
+        if ($action === 'verify' || $action === 'resend') {
+            $token = isset($params['token']) ? trim((string) $params['token']) : '';
+            if ($token !== '') {
+                return 'token:' . md5($token);
+            }
+        }
+
+        return '';
     }
 
     private static function error_response(WP_Error $error)

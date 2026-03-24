@@ -295,6 +295,12 @@ class EventCatalog
             'level'    => 'info',
             'message'  => 'Se actualizaron los ajustes {{context.setting_key}}.',
         ],
+        'auth.register_rate_limited' => [
+            'label'    => 'Registro limitado temporalmente',
+            'category' => 'auth',
+            'level'    => 'warning',
+            'message'  => 'Límite de solicitudes en {{context.action}}. Reintento en {{context.retry_in}}s.',
+        ],
         'integrations.synced' => [
             'label'    => 'Integración sincronizada',
             'category' => 'system',

@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 6.4.15 - 2026-03-24
+- Registro público: mejora del rate-limit para minimizar bloqueos falsos positivos, añadiendo particionado por identificador (email/token) además de IP.
+- Registro público: soporte de cabecera `cf-connecting-ip` en resolución de IP cliente para entornos con CDN/proxy.
+- Observabilidad: nuevo evento de actividad `Registro limitado temporalmente` para diagnosticar bloqueos de registro con contexto útil (`action`, `retry_in`, etc.).
+- Dashboard de actividad: se filtran opciones transitorias (`_transient_*` / `_site_transient_*`) para evitar ruido técnico repetitivo de settings.
+
 ## 6.4.14 - 2026-03-12
 - FIX Logging `PrivateDocsManager`: se elimina el mensaje repetitivo "directory exists ..." en cada petición para evitar ruido en `AH01071` de Apache/Plesk.
 - Mejora segura de observabilidad: logs de mantenimiento/no críticos de `PrivateDocsManager` pasan a modo debug (`WP_DEBUG`) y son controlables vía filtro `go360/private_docs/debug_logs`.
