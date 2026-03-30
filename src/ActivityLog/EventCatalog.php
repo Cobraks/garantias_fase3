@@ -187,6 +187,12 @@ class EventCatalog
             'level'    => 'info',
             'message'  => '{{actor_name}} añadió una nota en {{context.guarantee_label}}.',
         ],
+        'incident.email_received' => [
+            'label'    => 'Nueva avería recibida por correo',
+            'category' => 'communication',
+            'level'    => 'warning',
+            'message'  => '{{context.from_email}} notificó una avería para {{context.plate}} por correo.',
+        ],
         'guarantee.expired' => [
             'label'    => 'Garantía caducada',
             'category' => 'guarantee',
