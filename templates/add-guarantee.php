@@ -5,6 +5,7 @@ if (! defined('ABSPATH')) {
 
 use GarantiasOnline360VO\TemplateLoader;
 use GarantiasOnline360VO\Svg;
+use GarantiasOnline360VO\Support\VehicleTypeStats;
 
 
 
@@ -26,11 +27,8 @@ error_log('[add-guarantee] template loaded for user ' . $current_user->ID);
 
 
 
-// Obtener los términos de la taxonomía "tipo_vehiculo"
-$tipos_vehiculo = get_terms([
-    'taxonomy' => 'tipo_vehiculo',
-    'hide_empty' => false,
-]);
+// Obtener los términos de la taxonomía "tipo_vehiculo" (ordenados por uso real en garantías)
+$tipos_vehiculo = VehicleTypeStats::get_ordered_terms(false);
 
 
 //Función para obtener las opciones de los selects del CPT Garantía
