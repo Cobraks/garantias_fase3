@@ -282,30 +282,31 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <div class="form__input-container">
                         <select id="provincia" class="form__select" required autocomplete="address-level1">
                             <?php /* Hacer condicional por si es de otra ciudad, poner por defecto selected de esa ciudad*/ ?>
-                            <option value="Álava">Álava</option>
+                            <option value="A Coruña">A Coruña</option>
+                            <option value="Araba">Araba</option>
                             <option value="Albacete">Albacete</option>
-                            <option value="Alicante">Alicante</option>
+                            <option value="Alacant">Alacant</option>
                             <option value="Almería">Almería</option>
                             <option value="Asturias">Asturias</option>
                             <option value="Ávila">Ávila</option>
                             <option value="Badajoz">Badajoz</option>
-                            <option value="Baleares">Baleares</option>
                             <option value="Barcelona">Barcelona</option>
+                            <option value="Bizkaia">Bizkaia</option>
                             <option value="Burgos">Burgos</option>
                             <option value="Cáceres">Cáceres</option>
                             <option value="Cádiz">Cádiz</option>
                             <option value="Cantabria">Cantabria</option>
-                            <option value="Castellón">Castellón</option>
-                            <option value="Ceuta">Ceuta</option>
+                            <option value="Castelló">Castelló</option>
                             <option value="Ciudad Real">Ciudad Real</option>
                             <option value="Córdoba">Córdoba</option>
                             <option value="Cuenca">Cuenca</option>
+                            <option value="Gipuzkoa">Gipuzkoa</option>
                             <option value="Girona">Girona</option>
                             <option value="Granada">Granada</option>
                             <option value="Guadalajara">Guadalajara</option>
-                            <option value="Guipúzcoa">Guipúzcoa</option>
                             <option value="Huelva">Huelva</option>
                             <option value="Huesca">Huesca</option>
+                            <option value="Illes Balears">Illes Balears</option>
                             <option value="Jaén">Jaén</option>
                             <option value="La Rioja">La Rioja</option>
                             <option value="Las Palmas">Las Palmas</option>
@@ -314,7 +315,6 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                             <option value="Lugo">Lugo</option>
                             <option value="Madrid" selected>Madrid</option>
                             <option value="Málaga">Málaga</option>
-                            <option value="Melilla">Melilla</option>
                             <option value="Murcia">Murcia</option>
                             <option value="Navarra">Navarra</option>
                             <option value="Ourense">Ourense</option>
@@ -328,11 +328,12 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                             <option value="Tarragona">Tarragona</option>
                             <option value="Teruel">Teruel</option>
                             <option value="Toledo">Toledo</option>
-                            <option value="Valencia">Valencia</option>
+                            <option value="València">València</option>
                             <option value="Valladolid">Valladolid</option>
-                            <option value="Vizcaya">Vizcaya</option>
                             <option value="Zamora">Zamora</option>
                             <option value="Zaragoza">Zaragoza</option>
+                            <option value="Ceuta">Ceuta</option>
+                            <option value="Melilla">Melilla</option>
                         </select>
                         <label for="provincia" class="form__placeholder--select">Provincia*</label>
                     </div>
@@ -424,10 +425,10 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                         <label for="check-iva">Precios con IVA</label>
                     </div>
                     <?php if ($is_admin || $is_director) : ?>
-                    <div class="ofertas__desglose checkbox-wrapper-14">
-                        <input id="check-desglose" type="checkbox" class="switch">
-                        <label for="check-desglose">Desglose</label>
-                    </div>
+                        <div class="ofertas__desglose checkbox-wrapper-14">
+                            <input id="check-desglose" type="checkbox" class="switch">
+                            <label for="check-desglose">Desglose</label>
+                        </div>
                     <?php endif; ?>
                 </div>
 
@@ -451,7 +452,7 @@ TemplateLoader::load_part('header', compact('is_add_guarantee')); ?>
                     <span class="mensaje_falta_sepa__icon"><?php echo Svg::icon('info'); ?></span>
                     <span class=" mensaje_falta_sepa__text">Para domiciliación bancaria, rellena y firma el SEPA en tu área de usuario</span>
                     <span onclick="this.parentElement.style.display='none'"
-                        class="mensaje_falta_sepa__close"><?php  echo Svg::icon('close'); 
+                        class="mensaje_falta_sepa__close"><?php echo Svg::icon('close');
                                                             ?></span>
                 </p>
                 <div class="form__input-container">
