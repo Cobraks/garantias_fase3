@@ -1,5 +1,11 @@
 # Historial de cambios
 
+## 6.4.16 - 2026-03-30
+- Formulario “Nueva garantía”: el selector **Tipo de vehículo** ahora se ordena por volumen real de garantías contratadas (descendente), con desempate alfabético.
+- Rendimiento: cálculo agregado de conteos por `tipo_vehiculo` con caché en memoria (`wp_cache`) para evitar consultas repetidas y sin añadir peticiones extra desde frontend.
+- Consistencia de datos: invalidación de caché de conteos al guardar una garantía o cambiar su estado para reflejar el orden actualizado.
+- Sin cambios funcionales en la lógica por slug del formulario (`value` del select se mantiene en `slug`).
+
 ## 6.4.15 - 2026-03-24
 - Registro público: mejora del rate-limit para minimizar bloqueos falsos positivos, añadiendo particionado por identificador (email/token) además de IP.
 - Registro público: soporte de cabecera `cf-connecting-ip` en resolución de IP cliente para entornos con CDN/proxy.
