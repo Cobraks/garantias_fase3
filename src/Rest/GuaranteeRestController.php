@@ -4530,6 +4530,15 @@ class GuaranteeRestController
             self::format_comparison_date_label($year_end)
         );
 
+        $current_active_count = self::get_summary_state_count(
+            isset($current['states']) && is_array($current['states']) ? $current['states'] : [],
+            'activada'
+        );
+        $previous_active_count = self::get_summary_state_count(
+            isset($previous['states']) && is_array($previous['states']) ? $previous['states'] : [],
+            'activada'
+        );
+
         $trends = [
             'amount' => self::build_summary_trend(
                 $current['amount_map']['activada'] ?? 0.0,
@@ -4549,6 +4558,12 @@ class GuaranteeRestController
                 __('vs año ant.', 'garantias-online-360vo'),
                 'integer'
             ),
+            'count_paid'  => self::build_summary_trend(
+                $current_active_count,
+                $previous_active_count,
+                __('vs año ant.', 'garantias-online-360vo'),
+                'integer'
+            ),
         ];
 
         unset($current['amount_map'], $previous['amount_map']);
@@ -4556,16 +4571,6 @@ class GuaranteeRestController
         $current['label'] = $year_start->format('Y');
         $current['trends'] = $trends;
         $current['comparison_note'] = $comparison_note;
-        $previous_active_count = 0;
-        if (isset($previous['states']) && is_array($previous['states'])) {
-            foreach ($previous['states'] as $state) {
-                if (! is_array($state) || ($state['value'] ?? '') !== 'activada') {
-                    continue;
-                }
-                $previous_active_count = isset($state['count']) ? (int) $state['count'] : 0;
-                break;
-            }
-        }
         $current['current_day_label'] = self::format_day_month_year_label($now);
         $current['previous_values'] = [
             'label'        => $previous_start->format('Y'),
@@ -4856,7 +4861,7 @@ class GuaranteeRestController
         $current = self::summarize_period($statuses, $month_start, $month_end);
 
         $previous_start = $month_start->modify('-1 month');
-        $previous_end = $now->modify('-1 month')->setTime(23, 59, 59);
+        $previous_end = self::resolve_previous_month_comparison_end($now, $previous_start);
         if ($previous_end < $previous_start) {
             $previous_end = $previous_start->setTime(23, 59, 59);
         }
@@ -4867,6 +4872,15 @@ class GuaranteeRestController
             self::format_comparison_date_label($month_end)
         );
         $previous_month_label = self::format_day_month_label($previous_end);
+
+        $current_active_count = self::get_summary_state_count(
+            isset($current['states']) && is_array($current['states']) ? $current['states'] : [],
+            'activada'
+        );
+        $previous_active_count = self::get_summary_state_count(
+            isset($previous['states']) && is_array($previous['states']) ? $previous['states'] : [],
+            'activada'
+        );
 
         $trends = [
             'amount' => self::build_summary_trend(
@@ -4887,6 +4901,12 @@ class GuaranteeRestController
                 __('vs mes ant.', 'garantias-online-360vo'),
                 'integer'
             ),
+            'count_paid'  => self::build_summary_trend(
+                $current_active_count,
+                $previous_active_count,
+                __('vs mes ant.', 'garantias-online-360vo'),
+                'integer'
+            ),
         ];
 
         unset($current['amount_map'], $previous['amount_map']);
@@ -4895,16 +4915,6 @@ class GuaranteeRestController
         $current['month_name'] = self::format_month_name($month_start);
         $current['trends'] = $trends;
         $current['comparison_note'] = $comparison_note;
-        $previous_active_count = 0;
-        if (isset($previous['states']) && is_array($previous['states'])) {
-            foreach ($previous['states'] as $state) {
-                if (! is_array($state) || ($state['value'] ?? '') !== 'activada') {
-                    continue;
-                }
-                $previous_active_count = isset($state['count']) ? (int) $state['count'] : 0;
-                break;
-            }
-        }
         $current['current_day_label'] = self::format_day_month_label($now);
         $current['previous_values'] = [
             'label'        => trim((string) $previous_month_label),
@@ -4915,6 +4925,38 @@ class GuaranteeRestController
         ];
 
         return $current;
+    }
+
+    private static function get_summary_state_count(array $states, string $target_value): int
+    {
+        foreach ($states as $state) {
+            if (! is_array($state)) {
+                continue;
+            }
+            if (($state['value'] ?? '') !== $target_value) {
+                continue;
+            }
+            return isset($state['count']) ? (int) $state['count'] : 0;
+        }
+
+        return 0;
+    }
+
+    private static function resolve_previous_month_comparison_end(
+        DateTimeImmutable $now,
+        DateTimeImmutable $previous_month_start
+    ): DateTimeImmutable {
+        $current_day = (int) $now->format('j');
+        $previous_month_last_day = (int) $previous_month_start->format('t');
+        $target_day = min($current_day, $previous_month_last_day);
+
+        return $previous_month_start
+            ->setDate(
+                (int) $previous_month_start->format('Y'),
+                (int) $previous_month_start->format('n'),
+                $target_day
+            )
+            ->setTime(23, 59, 59);
     }
 
     private static function summarize_all_time(array $statuses): array
