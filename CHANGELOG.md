@@ -1,5 +1,21 @@
 # Historial de cambios
 
+## 6.4.18 - 2026-03-30
+- Ajuste de orden en “Tipo de vehículo” (Nueva garantía): ahora solo cuenta garantías con estado de contratación `activada` para calcular el ranking del select.
+- Se mantiene implícitamente el caso “activada + pendiente de domiciliación”, ya que dichas garantías siguen en estado `activada`.
+- Confirmado en código: el KPI de “Garantías” usa `count_paid` en modo **cobrado** para tendencia y comparativa previa.
+
+## 6.4.17 - 2026-03-30
+- FIX Resumen mensual (panel de “Mis garantías”): la comparación con “mes anterior” ahora alinea el día correctamente cuando el mes actual tiene más días (p. ej. 30/31 vs febrero), usando el último día válido del mes anterior.
+- FIX KPI de garantías en modo **cobrado**: la tendencia (`vs mes ant.` / `vs año ant.`) usa ahora el comparativo de garantías activadas (`count_paid`) para que coincida con el valor mostrado.
+- Sin cambios en estructura de consultas ni nuevas peticiones: se mantienen los mismos flujos y rendimiento.
+
+## 6.4.16 - 2026-03-30
+- Formulario “Nueva garantía”: el selector **Tipo de vehículo** ahora se ordena por volumen real de garantías contratadas (descendente), con desempate alfabético.
+- Rendimiento: cálculo agregado de conteos por `tipo_vehiculo` con caché en memoria (`wp_cache`) para evitar consultas repetidas y sin añadir peticiones extra desde frontend.
+- Consistencia de datos: invalidación de caché de conteos al guardar una garantía o cambiar su estado para reflejar el orden actualizado.
+- Sin cambios funcionales en la lógica por slug del formulario (`value` del select se mantiene en `slug`).
+
 ## 6.4.15 - 2026-03-24
 - Registro público: mejora del rate-limit para minimizar bloqueos falsos positivos, añadiendo particionado por identificador (email/token) además de IP.
 - Registro público: soporte de cabecera `cf-connecting-ip` en resolución de IP cliente para entornos con CDN/proxy.
