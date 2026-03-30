@@ -8694,7 +8694,11 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        applySummaryTrend(trendEl, trends.count || null, fallbackTrendLabel);
+                                        const countTrend =
+                                                amountMode === "paid"
+                                                        ? trends.count_paid || trends.count
+                                                        : trends.count;
+                                        applySummaryTrend(trendEl, countTrend || null, fallbackTrendLabel);
                                 }
                                 const previousNoteEl = countCard.querySelector(
                                         "[data-admin-summary-prev-note][data-prev-type=\"count\"]"
