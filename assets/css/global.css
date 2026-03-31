@@ -895,6 +895,24 @@ textarea {
   color: #b91c1c;
 }
 
+.notifications-panel__item--incident-alert {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  border-radius: 12px;
+  padding: 0.85rem 0.9rem;
+  margin: 0.4rem 0;
+}
+
+.notifications-panel__item--incident-alert .notifications-panel__title-text {
+  color: #9f1239;
+}
+
+.notifications-panel__item--incident-alert .notifications-panel__description,
+.notifications-panel__item--incident-alert .notifications-panel__meta-line,
+.notifications-panel__item--incident-alert .notifications-panel__status-line {
+  color: #881337;
+}
+
 .notifications-panel__icon {
   flex-shrink: 0;
   width: 2.5rem;
@@ -1181,6 +1199,29 @@ body.scrolled .notifications-toast {
   pointer-events: none;
 }
 
+.notifications-toast--incident-alert .notifications-toast__inner {
+  background: #fff1f2;
+  border-color: #fb7185;
+  color: #881337;
+  box-shadow:
+    0 24px 50px -28px rgba(190, 24, 93, 0.5),
+    0 0 0 1px rgba(225, 29, 72, 0.2);
+  animation: notifications-toast-attention 1.8s ease-in-out infinite;
+}
+
+.notifications-toast--incident-alert .notifications-toast__icon {
+  background: #ffe4e6;
+  color: #be123c;
+}
+
+.notifications-toast--incident-alert .notifications-toast__title {
+  color: #881337;
+}
+
+.notifications-toast--incident-alert .notifications-toast__description {
+  color: #9f1239;
+}
+
 
 .notifications-toast__inner {
   position: relative;
@@ -1293,6 +1334,34 @@ body.scrolled .notifications-toast {
   color: #0f172a;
 }
 
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__inner {
+  background: #4a1023;
+  border-color: #fb7185;
+  color: #ffe4e6;
+}
+
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__icon {
+  background: #881337;
+  color: #ffe4e6;
+}
+
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__title {
+  color: #ffe4e6;
+}
+
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__description {
+  color: #fecdd3;
+}
+
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__close {
+  color: #fecdd3;
+}
+
+:root[data-theme='dark'] .notifications-toast--incident-alert .notifications-toast__close:hover {
+  background: #881337;
+  color: #fff1f2;
+}
+
 @keyframes notifications-badge-pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(67, 97, 238, 0.4);
@@ -1328,6 +1397,15 @@ body.scrolled .notifications-toast {
   100% {
     opacity: 0;
     transform: translate3d(12px, -10px, 0) scale(0.94);
+  }
+}
+
+@keyframes notifications-toast-attention {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
   }
 }
 
@@ -1385,6 +1463,21 @@ body.scrolled .notifications-toast {
 
 :root[data-theme='dark'] .notifications-panel__item {
   border-bottom: 1px solid #1f2937;
+}
+
+:root[data-theme='dark'] .notifications-panel__item--incident-alert {
+  background: #3f0b1d;
+  border-color: #9f1239;
+}
+
+:root[data-theme='dark'] .notifications-panel__item--incident-alert .notifications-panel__title-text {
+  color: #fecdd3;
+}
+
+:root[data-theme='dark'] .notifications-panel__item--incident-alert .notifications-panel__description,
+:root[data-theme='dark'] .notifications-panel__item--incident-alert .notifications-panel__meta-line,
+:root[data-theme='dark'] .notifications-panel__item--incident-alert .notifications-panel__status-line {
+  color: #fda4af;
 }
 
 :root[data-theme='dark'] .notifications-panel__item--unread .notifications-panel__title-text {

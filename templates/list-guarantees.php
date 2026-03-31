@@ -774,10 +774,12 @@ if (($is_admin_user || $is_director || $is_professional)
             $summary_previous_count_paid = isset($summary_previous_values['count_paid'])
                 ? (int) $summary_previous_values['count_paid']
                 : 0;
+            $summary_default_amount_mode = 'total';
 
-            $amount_trend = isset($summary_trends['amount']) && is_array($summary_trends['amount'])
-                ? $summary_trends['amount']
-                : [];
+            $amount_trend_key = $summary_default_amount_mode === 'total' ? 'amount_total' : 'amount';
+            $amount_trend = isset($summary_trends[$amount_trend_key]) && is_array($summary_trends[$amount_trend_key])
+                ? $summary_trends[$amount_trend_key]
+                : (isset($summary_trends['amount']) && is_array($summary_trends['amount']) ? $summary_trends['amount'] : []);
             $count_trend = isset($summary_trends['count']) && is_array($summary_trends['count'])
                 ? $summary_trends['count']
                 : [];
@@ -841,8 +843,11 @@ if (($is_admin_user || $is_director || $is_professional)
             $summary_total_label = $has_admin_summary
                 ? $format_summary_number($admin_summary_total)
                 : '—';
+            $summary_previous_amount_default = $summary_default_amount_mode === 'total'
+                ? $summary_previous_amount_total
+                : $summary_previous_amount;
             $summary_previous_amount_text = $summary_previous_label !== ''
-                ? sprintf('%s: %s', $summary_previous_label, $format_summary_currency($summary_previous_amount))
+                ? sprintf('%s: %s', $summary_previous_label, $format_summary_currency($summary_previous_amount_default))
                 : '';
             $summary_previous_count_text = $summary_previous_label !== ''
                 ? sprintf('%s: %s', $summary_previous_label, $format_summary_number($summary_previous_count_paid))
