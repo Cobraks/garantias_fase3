@@ -148,6 +148,16 @@ class PushNotificationService
             return $administrators;
         }
 
+        if ($event_type === 'incident.email_received') {
+            $guarantee_managers = $this->get_users_by_roles(['go_garantias']);
+            $target = array_merge($administrators, $guarantee_managers);
+            if (empty($target)) {
+                return [];
+            }
+            $target = array_map('intval', $target);
+            return array_values(array_unique($target));
+        }
+
         $managers = $this->get_users_by_roles([
             'go_director_comercial',
             'go_garantias',
@@ -224,6 +234,7 @@ class PushNotificationService
             'sepa.activated',
             'client.deleted',
             'client.commercials_updated',
+            'incident.email_received',
         ], true);
     }
 

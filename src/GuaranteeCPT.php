@@ -8,6 +8,8 @@
 
 namespace GarantiasOnline360VO;
 
+use GarantiasOnline360VO\Support\VehicleTypeStats;
+
 // Evita acceso directo
 if (! defined('ABSPATH')) {
     exit;
@@ -103,6 +105,7 @@ class GuaranteeCPT
             return;
         }
         $user = get_current_user_id();
+        VehicleTypeStats::invalidate_cache();
         if (! $update) {
             GuaranteeLogger::log($user, $post_id, 'created');
         }
@@ -114,6 +117,7 @@ class GuaranteeCPT
             return;
         }
         $user = get_current_user_id();
+        VehicleTypeStats::invalidate_cache();
         $details = sprintf('De %s a %s', $old_status, $new_status);
         GuaranteeLogger::log($user, $post->ID, 'status_changed', $details);
     }
