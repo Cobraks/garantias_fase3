@@ -415,7 +415,9 @@
             : true;
 
         const toastSoundSrc = container.dataset.toastSound || '';
+        const warningToastSoundSrc = container.dataset.toastSoundWarning || '';
         let toastAudio = null;
+        let warningToastAudio = null;
         let toastHideHandler = null;
         let toastHideFallback = null;
 
@@ -817,6 +819,23 @@
             toggle.classList.toggle('is-toasting', Boolean(active));
         };
 
+        const isIncidentEmailAlert = (item) => {
+            if (!item || typeof item !== 'object') {
+                return false;
+            }
+
+            const iconSlug = typeof item.icon_slug === 'string' ? item.icon_slug : '';
+            if (iconSlug === 'car_crash') {
+                return true;
+            }
+
+            const normalizedTitle = typeof item.title === 'string'
+                ? item.title.toLowerCase()
+                : '';
+
+            return normalizedTitle.indexOf('nueva avería') !== -1;
+        };
+
         const hideToast = (options = {}) => {
             if (!toast) {
                 return;
@@ -842,7 +861,11 @@
                     toastHideHandler = null;
                 }
                 toast.hidden = true;
-                toast.classList.remove('notifications-toast--visible', 'notifications-toast--hiding');
+                toast.classList.remove(
+                    'notifications-toast--visible',
+                    'notifications-toast--hiding',
+                    'notifications-toast--incident-alert'
+                );
                 toast.innerHTML = '';
                 delete toast.dataset.notificationLink;
                 delete toast.dataset.notificationId;
@@ -996,20 +1019,35 @@
             }
         };
 
-        const playToastSound = () => {
-            if (!toastSoundSrc || document.hidden || !state.toastSoundEnabled) {
+        const playToastSound = (item) => {
+            if (document.hidden || !state.toastSoundEnabled) {
                 return;
             }
-            if (!toastAudio) {
-                toastAudio = new Audio(toastSoundSrc);
+            const isIncident = isIncidentEmailAlert(item);
+            const preferredSrc = isIncident
+                ? (warningToastSoundSrc || toastSoundSrc)
+                : toastSoundSrc;
+
+            if (!preferredSrc) {
+                return;
             }
+
+            if (isIncident) {
+                if (!warningToastAudio || warningToastAudio.src !== preferredSrc) {
+                    warningToastAudio = new Audio(preferredSrc);
+                }
+            } else if (!toastAudio || toastAudio.src !== preferredSrc) {
+                toastAudio = new Audio(preferredSrc);
+            }
+
+            const audio = isIncident ? warningToastAudio : toastAudio;
             try {
-                toastAudio.pause();
-                toastAudio.currentTime = 0;
+                audio.pause();
+                audio.currentTime = 0;
             } catch (error) {
                 // noop
             }
-            const playPromise = toastAudio.play();
+            const playPromise = audio.play();
             if (playPromise && typeof playPromise.catch === 'function') {
                 playPromise.catch(() => {
                     // noop
@@ -1082,13 +1120,20 @@
             toast.hidden = false;
             toast.classList.remove('notifications-toast--hiding');
             toast.classList.add('notifications-toast--visible');
+            if (isIncidentEmailAlert(item)) {
+                toast.classList.add('notifications-toast--incident-alert');
+            } else {
+                toast.classList.remove('notifications-toast--incident-alert');
+            }
             setToggleToastState(true);
 
-            playToastSound();
+            playToastSound(item);
 
-            state.toastTimer = window.setTimeout(() => {
-                hideToast();
-            }, toastDuration);
+            if (!isIncidentEmailAlert(item)) {
+                state.toastTimer = window.setTimeout(() => {
+                    hideToast();
+                }, toastDuration);
+            }
         };
 
         const ensureModal = () => {
@@ -1367,6 +1412,9 @@
             if (item.localOnly) {
                 li.dataset.localNotification = 'true';
                 li.classList.add('notifications-panel__item--local');
+            }
+            if (isIncidentEmailAlert(item)) {
+                li.classList.add('notifications-panel__item--incident-alert');
             }
 
             const tone = item.tone || 'info';

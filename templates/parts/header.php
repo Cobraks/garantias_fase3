@@ -507,9 +507,6 @@ $home_destination = $is_admin_user
                     </ul>
                 </nav>
                 <?php if ($can_access_notifications) : ?>
-                    <?php
-                    // Update the toast notification sound by adjusting the data attribute below once the dedicated audio is available.
-                    ?>
                     <div
                         class="top-bar__notifications"
                         data-admin-notifications
@@ -529,6 +526,7 @@ $home_destination = $is_admin_user
                         data-modal-placeholder="<?php echo esc_attr__('Muy pronto podrás gestionar todas tus notificaciones desde aquí.', 'garantias-online-360vo'); ?>"
                         data-modal-close-label="<?php echo esc_attr__('Cerrar', 'garantias-online-360vo'); ?>"
                         data-toast-sound="<?php echo esc_attr(plugins_url('assets/sounds/notify_toast.mp3', GARANTIAS360VO__FILE__)); ?>"
+                        data-toast-sound-warning="<?php echo esc_attr(plugins_url('assets/sounds/warning.mp3', GARANTIAS360VO__FILE__)); ?>"
                         data-browser-icon="<?php echo esc_attr(plugins_url('assets/images/logo.png', GARANTIAS360VO__FILE__)); ?>"
                     >
                         <button

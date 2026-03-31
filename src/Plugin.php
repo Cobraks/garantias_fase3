@@ -8,6 +8,7 @@ use GarantiasOnline360VO\ActivityLog\ActivitySubscribers;
 use GarantiasOnline360VO\Clients\ClientSummary;
 use GarantiasOnline360VO\Auth\AuthController;
 use GarantiasOnline360VO\Docs\PrivateDocsManager;
+use GarantiasOnline360VO\Incidents\EmailIngestCli;
 use GarantiasOnline360VO\Notifications\Email\EmailNotificationService;
 use GarantiasOnline360VO\Notifications\Push\PushNotificationService;
 use GarantiasOnline360VO\Register\RegisterManager;
@@ -90,6 +91,7 @@ class Plugin
         EmailNotificationService::init();
         PushNotificationService::init();
         RegisterManager::init();
+        EmailIngestCli::register();
 
         // 5) Cargar los grupos de campos ACF (solo si ACF está activo)
         add_action('acf/init', function () {

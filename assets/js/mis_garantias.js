@@ -8523,6 +8523,33 @@ const ADD_DOC_KEY = "add-document";
                         labelNode.textContent = parts.length ? parts.join(" ") : "—";
                 }
 
+                function buildFallbackTrend(currentValue, previousValue, format, label) {
+                        const current = normalizeToFloat(currentValue);
+                        const previous = normalizeToFloat(previousValue);
+                        const delta = current - previous;
+                        const direction =
+                                delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral";
+                        const absolute = Math.abs(delta);
+                        let formatted = "0";
+                        if (format === "currency") {
+                                formatted =
+                                        absolute < 0.005
+                                                ? "0€"
+                                                : `${delta > 0 ? "+" : "-"}${formatCurrencyValue(absolute)}`;
+                        } else {
+                                const integerAbs = integerFormatter.format(Math.round(absolute));
+                                formatted =
+                                        absolute < 0.5
+                                                ? "0"
+                                                : `${delta > 0 ? "+" : "-"}${integerAbs}`;
+                        }
+                        return {
+                                direction,
+                                formatted,
+                                label: typeof label === "string" ? label : "",
+                        };
+                }
+
                 function stripYearSuffix(label) {
                         if (typeof label !== "string") {
                                 return "";
@@ -8605,6 +8632,11 @@ const ADD_DOC_KEY = "add-document";
                                 '[data-admin-summary-kpi="amount"]'
                         );
                         if (amountCard) {
+                                const currentAmountValue = getSummaryAmountForMode(amountMap, amountMode);
+                                const previousAmountValue =
+                                        amountMode === "total"
+                                                ? previousValues.amount_total
+                                                : previousValues.amount;
                                 const labelEl = amountCard.querySelector(
                                         "[data-admin-summary-kpi-label]"
                                 );
@@ -8628,7 +8660,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (valueEl) {
                                         animateSummaryCurrency(
                                                 valueEl,
-                                                getSummaryAmountForMode(amountMap, amountMode),
+                                                currentAmountValue,
                                                 { duration: 420 }
                                         );
                                 }
@@ -8636,10 +8668,19 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        const amountTrend =
+                                        const amountTrendFromApi =
                                                 amountMode === "total"
                                                         ? trends.amount_total || trends.amount
                                                         : trends.amount;
+                                        const amountTrend =
+                                                amountTrendFromApi && typeof amountTrendFromApi === "object"
+                                                        ? amountTrendFromApi
+                                                        : buildFallbackTrend(
+                                                                  currentAmountValue,
+                                                                  previousAmountValue,
+                                                                  "currency",
+                                                                  fallbackTrendLabel
+                                                          );
                                         applySummaryTrend(trendEl, amountTrend || null, fallbackTrendLabel);
                                 }
                                 const previousNoteEl = amountCard.querySelector(
@@ -8648,10 +8689,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (previousNoteEl) {
                                         const datasetLabel = previousNoteEl.dataset.prevLabel || "";
                                         const noteLabel = datasetLabel || previousLabel;
-                                        const previousAmount =
-                                                amountMode === "total"
-                                                        ? previousValues.amount_total
-                                                        : previousValues.amount;
+                                        const previousAmount = previousAmountValue;
                                         if (noteLabel && typeof previousAmount !== "undefined") {
                                                 previousNoteEl.textContent = `${noteLabel}: ${formatCurrencyValue(previousAmount)}`;
                                                 previousNoteEl.hidden = false;
@@ -8666,6 +8704,11 @@ const ADD_DOC_KEY = "add-document";
                                 '[data-admin-summary-kpi="count"]'
                         );
                         if (countCard) {
+                                const currentCountValue = amountMode === "paid" ? activeCount : countValue;
+                                const previousCountValue =
+                                        amountMode === "paid"
+                                                ? previousValues.count_paid
+                                                : previousValues.count;
                                 const labelEl = countCard.querySelector(
                                         "[data-admin-summary-kpi-label]"
                                 );
@@ -8687,14 +8730,28 @@ const ADD_DOC_KEY = "add-document";
                                         "[data-admin-summary-kpi-value]"
                                 );
                                 if (valueEl) {
-                                        const nextCount = amountMode === "paid" ? activeCount : countValue;
-                                        animateSummaryNumber(valueEl, nextCount, { duration: 420 });
+                                        animateSummaryNumber(valueEl, currentCountValue, {
+                                                duration: 420,
+                                        });
                                 }
                                 const trendEl = countCard.querySelector(
                                         "[data-admin-summary-kpi-trend]"
                                 );
                                 if (trendEl) {
-                                        applySummaryTrend(trendEl, trends.count || null, fallbackTrendLabel);
+                                        const countTrendFromApi =
+                                                amountMode === "paid"
+                                                        ? trends.count_paid || trends.count
+                                                        : trends.count;
+                                        const countTrend =
+                                                countTrendFromApi && typeof countTrendFromApi === "object"
+                                                        ? countTrendFromApi
+                                                        : buildFallbackTrend(
+                                                                  currentCountValue,
+                                                                  previousCountValue,
+                                                                  "integer",
+                                                                  fallbackTrendLabel
+                                                          );
+                                        applySummaryTrend(trendEl, countTrend || null, fallbackTrendLabel);
                                 }
                                 const previousNoteEl = countCard.querySelector(
                                         "[data-admin-summary-prev-note][data-prev-type=\"count\"]"
@@ -8702,10 +8759,7 @@ const ADD_DOC_KEY = "add-document";
                                 if (previousNoteEl) {
                                         const datasetLabel = previousNoteEl.dataset.prevLabel || "";
                                         const noteLabel = datasetLabel || previousLabel;
-                                        const previousCount =
-                                                amountMode === "paid"
-                                                        ? previousValues.count_paid
-                                                        : previousValues.count;
+                                        const previousCount = previousCountValue;
                                         if (noteLabel && typeof previousCount !== "undefined") {
                                                 previousNoteEl.textContent = `${noteLabel}: ${formatIntegerValue(previousCount)}`;
                                                 previousNoteEl.hidden = false;
