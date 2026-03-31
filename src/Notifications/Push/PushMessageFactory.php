@@ -51,6 +51,8 @@ class PushMessageFactory
                 return $this->build_client_deleted($activity_record);
             case 'client.commercials_updated':
                 return $this->build_client_commercials_updated($activity_record);
+            case 'incident.email_received':
+                return $this->build_incident_email_received($activity_record);
             default:
                 return null;
         }
@@ -293,6 +295,61 @@ class PushMessageFactory
                 'guarantee_label' => $guarantee_label,
                 'plate'           => $plate,
             ],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $record
+     */
+    private function build_incident_email_received(array $record): array
+    {
+        $context = $this->decode_context($record['context'] ?? '');
+        $from_email = isset($context['from_email']) ? sanitize_email((string) $context['from_email']) : '';
+        $plate = isset($context['plate']) ? sanitize_text_field((string) $context['plate']) : '';
+        $received_raw = isset($context['received_at']) ? (string) $context['received_at'] : '';
+
+        $date_label = '';
+        if ($received_raw !== '') {
+            $timestamp = strtotime($received_raw);
+            if ($timestamp !== false) {
+                $date_label = wp_date('d/m/Y H:i', $timestamp, wp_timezone());
+            }
+        }
+        if ($date_label === '') {
+            $date_label = wp_date('d/m/Y H:i', time(), wp_timezone());
+        }
+
+        $title = sprintf(
+            /* translators: %s date label */
+            __('Nueva avería · %s', 'garantias-online-360vo'),
+            $date_label
+        );
+
+        $email_label = $from_email !== '' ? esc_html($from_email) : esc_html__('(email desconocido)', 'garantias-online-360vo');
+        $plate_label = $plate !== '' ? esc_html($plate) : esc_html__('(matrícula no identificada)', 'garantias-online-360vo');
+
+        $body = sprintf(
+            '<p><i>%1$s</i> ha enviado un correo notificando una avería para el vehículo con matrícula <b>%2$s</b></p>',
+            $email_label,
+            $plate_label
+        );
+
+        $meta = [];
+        if ($from_email !== '') {
+            $meta[] = $this->meta_entry(__('Correo', 'garantias-online-360vo'), $from_email, 'actor');
+        }
+        if ($plate !== '') {
+            $meta[] = $this->meta_entry(__('Matrícula', 'garantias-online-360vo'), $plate);
+        }
+
+        return [
+            'title' => $title,
+            'body'  => $body,
+            'link'  => home_url('/garantias-online/mis-garantias/'),
+            'icon'      => Svg::data_uri('car_crash'),
+            'icon_slug' => 'car_crash',
+            'tone'      => 'warning',
+            'meta'      => $meta,
         ];
     }
 
